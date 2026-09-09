@@ -1,0 +1,35 @@
+{
+  "_fixture_note": "Faithful shape of POST /v3/dataforseo_labs/google/domain_rank_overview/live for ONE (target, location_code). One such call is made per country to build the per-country etv split. Used to document the contract; the mock client synthesises this exact shape per domain/week from mock_traffic.json.",
+  "version": "0.1.20250101",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "tasks": [
+    {
+      "id": "mock-labs-sample",
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "result": [
+        {
+          "target": "topcasinoreviews-uk.example",
+          "location_code": 2826,
+          "language_code": "en",
+          "items": [
+            {
+              "se_type": "google",
+              "target": "topcasinoreviews-uk.example",
+              "metrics": {
+                "organic": {
+                  "pos_1": 12,
+                  "pos_2_3": 40,
+                  "count": 5120,
+                  "etv": 84210.5,
+                  "estimated_paid_traffic_cost": 65120.0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

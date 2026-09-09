@@ -1,0 +1,12 @@
+# Secrets — never commit. DataForSEO / CometChat / admin creds live here.
+.env
+.env.*
+
+# Runtime data dir (rebuilt from seed/ on boot). The committed seed is seed/.
+data/
+
+# Python / OS noise
+__pycache__/
+*.pyc
+.DS_Store
+*.log

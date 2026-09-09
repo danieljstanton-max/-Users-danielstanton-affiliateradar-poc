@@ -1,0 +1,24 @@
+{
+  "_fixture_note": "Faithful shape of a DataForSEO Business Data API result (Google / Trustpilot enrichment). This is THIRD-PARTY aggregate reputation, kept strictly separate from AffiliateRadar's own peer reviews. Used for enrichment display only.",
+  "version": "0.1.20250101",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "tasks": [
+    {
+      "id": "mock-business-data",
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "result": [
+        {
+          "type": "business_data",
+          "domain": "topcasinoreviews-uk.example",
+          "title": "Top UK Casino Reviews",
+          "rating": {"value": 4.2, "votes_count": 318, "rating_type": "Max5"},
+          "category": "Casino information & reviews",
+          "phone": null,
+          "address_info": {"country_code": "GB"}
+        }
+      ]
+    }
+  ]
+}

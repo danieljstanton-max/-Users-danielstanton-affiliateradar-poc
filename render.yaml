@@ -1,0 +1,51 @@
+# Render Blueprint for Affswap — https://render.com
+# One Python web service runs BOTH the member app and the back office
+# (serve.py). Stdlib only, so there is nothing to install.
+#
+# This default uses Render's FREE plan: the committed seed DB is restored on
+# every boot, so the site always comes up with real data. Writes made while it
+# is running (swaps, reviews) last until the next restart/redeploy, then reset.
+# That is perfect for a first "does it all work" test at zero cost.
+#
+# TO MAKE DATA DURABLE (survive restarts/redeploys): switch to a paid instance
+# and attach a disk — uncomment the `plan: starter` + `disk:` block below and
+# set AFFSWAP_DB_PATH to /var/data/affiliateradar.db.
+
+services:
+  - type: web
+    name: affswap
+    runtime: python
+    plan: free
+    # plan: starter          # <- needed for a persistent disk (durable data)
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python serve.py"
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Back office (Basic Auth). ADMIN_PASS is a secret — set it in the
+      # Render dashboard, do NOT commit it. Without it the back office is off.
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASS
+        sync: false
+      # Exact hostname the back office answers on (e.g. admin.affswap.com).
+      # Leave unset to route any host beginning "admin." to it.
+      - key: ADMIN_HOSTNAME
+        sync: false
+      # DataForSEO (only needed if you refresh/discover live from the server).
+      - key: DATAFORSEO_LOGIN
+        sync: false
+      - key: DATAFORSEO_PASSWORD
+        sync: false
+      # --- durable-data mode (paired with plan: starter + disk below) ---
+      # - key: AFFSWAP_DB_PATH
+      #   value: /var/data/affiliateradar.db
+      # - key: AFFSWAP_SCREENSHOT_DIR
+      #   value: /var/data/screenshots
+
+    # --- durable-data mode: uncomment with plan: starter above ---
+    # disk:
+    #   name: affswap-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

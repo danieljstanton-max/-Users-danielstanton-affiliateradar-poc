@@ -1,0 +1,12 @@
+{
+  "_note": "Mock traffic table. Per illustrative domain: base monthly etv and its per-country split (fractions sum to ~1). Optional 'drift' sets a per-week % change (as a fraction) so 90-day movement is a deliberate mix of risers and fallers; without it a stable per-domain hash is used. The mock client synthesises a real-shaped Domain Rank Overview response per (domain, country, week).",
+  "week_factors": [1.00, 1.06, 1.13, 0.98],
+  "domains": {
+    "topcasinoreviews-uk.example": {"base_etv": 84210, "drift":  0.020, "split": {"2826": 0.72, "2372": 0.12, "2840": 0.16}},
+    "casinopilot-uk.example":      {"base_etv": 51340, "drift":  0.010, "split": {"2826": 0.81, "2372": 0.09, "2840": 0.10}},
+    "slotwise-uk.example":         {"base_etv": 22110, "drift": -0.028, "split": {"2826": 0.68, "2276": 0.20, "2840": 0.12}},
+    "thegamblingcompass.example":  {"base_etv": 15980, "drift": -0.020, "split": {"2826": 0.40, "2840": 0.35, "2124": 0.25}},
+    "bonusradar-uk.example":       {"base_etv":  9870, "drift":  0.006, "split": {"2826": 0.90, "2372": 0.10}},
+    "reelmentor.example":          {"base_etv":  6420, "drift": -0.015, "split": {"2826": 0.55, "2276": 0.30, "2840": 0.15}}
+  }
+}

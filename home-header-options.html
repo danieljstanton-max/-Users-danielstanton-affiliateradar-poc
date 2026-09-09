@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Affswap — home header options</title>
+<style>
+  *{box-sizing:border-box}
+  :root{--bg:#F1F5FB;--card:#fff;--line:#E4EBF4;--ink:#14213B;--ink2:#5B6B84;--ink3:#93A0B5;
+   --blue:#4E97E6;--blue-d:#2E77CC;--blue-dd:#205CA6;--blue-050:#ECF3FD;
+   --sans:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+  body{margin:0;font-family:var(--sans);color:var(--ink);
+   background:radial-gradient(900px 500px at 100% -6%,#DCEAFB,transparent 60%),
+    radial-gradient(700px 480px at 0 0,#E7F0FB,transparent 55%),var(--bg)}
+  .wrap{max-width:1120px;margin:0 auto;padding:36px 24px 90px}
+  .eyebrow{font:800 11.5px var(--sans);letter-spacing:.16em;color:var(--blue-dd);text-transform:uppercase}
+  h1{font-size:31px;font-weight:800;letter-spacing:-.7px;margin:.3em 0 .12em}h1 span{color:var(--blue-d)}
+  .lead{color:var(--ink2);max-width:720px;line-height:1.55;font-size:15px;margin:0 0 28px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .opt{background:#fff;border:1px solid var(--line);border-radius:20px;padding:26px 26px 28px;
+   box-shadow:0 14px 34px -22px rgba(16,28,52,.26);position:relative}
+  .opt.rec{border-color:var(--blue);box-shadow:0 18px 40px -20px rgba(46,119,204,.4)}
+  .rec-chip{position:absolute;top:-11px;left:22px;background:var(--blue);color:#fff;font:800 10px var(--sans);
+   letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:5px 11px}
+  .tag{font:800 10.5px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+  .lock{display:inline-flex;align-items:center;gap:8px;margin:12px 0 16px}
+  .lock svg{width:24px;height:24px}
+  .wm{font:800 17px var(--sans);letter-spacing:-.3px}.wm b{color:var(--blue-d)}
+  .head{font:800 27px/1.12 var(--sans);letter-spacing:-.9px}.head b{color:var(--blue-d);font-weight:800}
+  .sub{color:var(--ink2);font-size:14px;line-height:1.5;margin-top:11px}
+  .note{color:var(--ink3);font-size:13.5px;margin-top:26px;line-height:1.6}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Affswap · home header · options</div>
+  <h1>Which <span>headline</span> lands?</h1>
+  <p class="lead">Same hero, six copy directions — all keep your "verified network" line underneath. The word in
+    <b style="color:#2E77CC">blue</b> is the accent. Tell me a number (or mix two, e.g. "3's headline + 1's sub").</p>
+  <div class="grid" id="grid"></div>
+  <p class="note"><b>My pick: 3 — "Give a contact. Get a contact."</b> It explains the whole product in one breath
+    and nails the reciprocity. <b>2</b> ("Swap contacts. Grow together.") is the warmer runner-up.</p>
+</div>
+<script>
+  var MARK = "<svg viewBox='0 0 44 44' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='4.8'><path d='M11 9 L18 22 L11 35' stroke='#2E77CC'/><path d='M33 9 L26 22 L33 35' stroke='#7FB4F2'/></svg>";
+  var SUB = "The verified network for iGaming affiliate managers.";
+  var OPTS = [
+    {a:"Ecosystem / network", h:"The affiliate managers&rsquo; <b>ecosystem</b>", s:SUB},
+    {a:"The swap, mutual", h:"Swap contacts.<br><b>Grow together.</b>", s:SUB},
+    {a:"Reciprocity (clearest)", h:"Give a contact.<br><b>Get a contact.</b>", s:SUB, rec:true},
+    {a:"Outcome", h:"<b>Trade up</b> your network.", s:"Swap the affiliate contacts you have for the ones you want. Verified managers only."},
+    {a:"Mutual benefit, punchy", h:"You swap,<br><b>you both win.</b>", s:SUB},
+    {a:"Reach / value", h:"Every affiliate,<br><b>one swap away.</b>", s:SUB},
+  ];
+  document.getElementById('grid').innerHTML = OPTS.map(function(o,i){
+    return "<div class='opt"+(o.rec?" rec":"")+"'>"+(o.rec?"<span class='rec-chip'>Recommended</span>":"")
+      +"<div class='tag'>Option "+(i+1)+" · "+o.a+"</div>"
+      +"<div class='lock'>"+MARK+"<span class='wm'>Aff<b>swap</b></span></div>"
+      +"<div class='head'>"+o.h+"</div><div class='sub'>"+o.s+"</div></div>";
+  }).join('');
+</script>
+</body>
+</html>

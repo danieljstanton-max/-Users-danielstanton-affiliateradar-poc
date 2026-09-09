@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "affswap-app",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "radar.app", "8766"],
+      "port": 8766
+    },
+    {
+      "name": "affswap-backoffice",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "radar.admin", "8765"],
+      "port": 8765
+    }
+  ]
+}

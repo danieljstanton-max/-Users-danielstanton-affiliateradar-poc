@@ -1,0 +1,38 @@
+{
+  "_fixture_note": "Faithful shape of POST /v3/serp/google/organic/live/advanced. Illustrative sample domains only; no real brands.",
+  "version": "0.1.20250101",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "tasks": [
+    {
+      "id": "mock-serp-uk-casino",
+      "status_code": 20000,
+      "status_message": "Ok.",
+      "data": {
+        "keyword": "best online casino uk",
+        "location_code": 2826,
+        "language_code": "en"
+      },
+      "result": [
+        {
+          "keyword": "best online casino uk",
+          "location_code": 2826,
+          "language_code": "en",
+          "items_count": 10,
+          "items": [
+            {"type": "organic", "rank_group": 1, "rank_absolute": 1, "domain": "topcasinoreviews-uk.example", "title": "Top UK Casino Reviews 2026", "url": "https://topcasinoreviews-uk.example/"},
+            {"type": "organic", "rank_group": 2, "rank_absolute": 2, "domain": "casinopilot-uk.example", "title": "CasinoPilot UK", "url": "https://casinopilot-uk.example/"},
+            {"type": "organic", "rank_group": 3, "rank_absolute": 3, "domain": "en.wikipedia.org", "title": "Online casino - Wikipedia", "url": "https://en.wikipedia.org/wiki/Online_casino"},
+            {"type": "organic", "rank_group": 4, "rank_absolute": 4, "domain": "slotwise-uk.example", "title": "Slotwise UK - Slot Guides", "url": "https://slotwise-uk.example/"},
+            {"type": "organic", "rank_group": 5, "rank_absolute": 5, "domain": "casinopilot-uk.example", "title": "CasinoPilot UK - Bonuses", "url": "https://casinopilot-uk.example/bonuses"},
+            {"type": "organic", "rank_group": 6, "rank_absolute": 6, "domain": "thegamblingcompass.example", "title": "The Gambling Compass", "url": "https://thegamblingcompass.example/uk"},
+            {"type": "organic", "rank_group": 7, "rank_absolute": 7, "domain": "gamblingcommission.gov.uk", "title": "Gambling Commission", "url": "https://www.gamblingcommission.gov.uk/"},
+            {"type": "organic", "rank_group": 8, "rank_absolute": 8, "domain": "bonusradar-uk.example", "title": "BonusRadar UK", "url": "https://bonusradar-uk.example/"},
+            {"type": "organic", "rank_group": 9, "rank_absolute": 9, "domain": "topcasinoreviews-uk.example", "title": "Top UK Casino Reviews - Live Casino", "url": "https://topcasinoreviews-uk.example/live"},
+            {"type": "organic", "rank_group": 10, "rank_absolute": 10, "domain": "reelmentor.example", "title": "ReelMentor", "url": "https://reelmentor.example/"}
+          ]
+        }
+      ]
+    }
+  ]
+}

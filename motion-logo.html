@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Affswap — logo in motion</title>
+<style>
+  *{box-sizing:border-box}
+  :root{--blue:#4E97E6;--blue-d:#2E77CC;--blue-dd:#205CA6;--blue-l:#7FB4F2;--blue-050:#ECF3FD;
+   --ink:#14213B;--ink2:#5B6B84;--ink3:#93A0B5;--line:#E4EBF4;--card:#fff;--bg:#F1F5FB;--navy:#0F1B33;
+   --sans:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+  body{margin:0;font-family:var(--sans);color:var(--ink);
+   background:radial-gradient(900px 500px at 100% -5%,#DCEAFB,transparent 60%),
+    radial-gradient(700px 480px at 0 0,#E7F0FB,transparent 55%),var(--bg)}
+  .wrap{max-width:1000px;margin:0 auto;padding:38px 24px 90px}
+  .eyebrow{font:800 11.5px var(--sans);letter-spacing:.18em;color:var(--blue-dd);text-transform:uppercase}
+  h1{font-size:33px;font-weight:800;letter-spacing:-.8px;margin:.3em 0 .1em}
+  h1 span{color:var(--blue-d)}
+  .lead{color:var(--ink2);max-width:680px;line-height:1.55;font-size:15px;margin:0 0 26px}
+  .btn{cursor:pointer;border:0;border-radius:12px;padding:11px 20px;font:800 14px var(--sans);color:#fff;
+   background:linear-gradient(120deg,#5AA0EA,#2E77CC);box-shadow:0 12px 24px -10px rgba(46,119,204,.7)}
+  .sec{font:800 12px var(--sans);letter-spacing:.14em;color:var(--ink3);text-transform:uppercase;margin:32px 2px 14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:0 18px 40px -24px rgba(16,28,52,.3)}
+
+  /* ---------- the animated mark ---------- */
+  .animark{position:relative;display:inline-block}
+  .animark svg{position:absolute;inset:0;width:100%;height:100%}
+  .animark svg path{stroke-linecap:round;stroke-linejoin:round;fill:none}
+
+  /* one-shot: chevrons slide in from the sides and settle together */
+  @keyframes inL{0%{transform:translateX(-42%);opacity:0}62%{transform:translateX(5%);opacity:1}100%{transform:translateX(0)}}
+  @keyframes inR{0%{transform:translateX(42%);opacity:0}62%{transform:translateX(-5%);opacity:1}100%{transform:translateX(0)}}
+  @keyframes spark{0%,55%{transform:scale(0);opacity:0}72%{transform:scale(1);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+  @keyframes wmin{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+  .oneshot .l{animation:inL .62s cubic-bezier(.22,.9,.24,1) both}
+  .oneshot .r{animation:inR .62s cubic-bezier(.22,.9,.24,1) both}
+  .oneshot .spk{animation:spark .7s ease-out both}
+  .wm-anim{animation:wmin .5s ease both;animation-delay:.42s}
+  .spk{fill:var(--blue-l);opacity:0;transform-box:fill-box;transform-origin:center}
+
+  /* loop: gentle converge / diverge — a "live swap" loader */
+  @keyframes pulseL{0%,100%{transform:translateX(-8%)}50%{transform:translateX(2%)}}
+  @keyframes pulseR{0%,100%{transform:translateX(8%)}50%{transform:translateX(-2%)}}
+  .loop .l{animation:pulseL 1.5s ease-in-out infinite}
+  .loop .r{animation:pulseR 1.5s ease-in-out infinite}
+
+  /* hero */
+  .hero{display:flex;align-items:center;gap:34px;padding:44px 40px;flex-wrap:wrap}
+  .hero .animark{width:150px;height:150px}
+  .hero .wm{font:800 46px var(--sans);letter-spacing:-1.4px}.hero .wm b{color:var(--blue-d)}
+  .stage{display:flex;flex-direction:column;align-items:center;gap:14px;padding:26px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .cap{color:var(--ink3);font:700 11px var(--sans);letter-spacing:.05em;text-transform:uppercase}
+  /* app splash mock */
+  .splash{width:230px;height:400px;border-radius:32px;background:linear-gradient(160deg,#EAF2FD,#fff);
+   border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  .splash .animark{width:74px;height:74px}
+  .splash .wm{font:800 26px var(--sans);letter-spacing:-.7px}.splash .wm b{color:var(--blue-d)}
+  /* loader tile */
+  .tile{width:96px;height:96px;border-radius:24px;background:linear-gradient(140deg,#5AA0EA,#2E77CC);
+   display:flex;align-items:center;justify-content:center;box-shadow:0 14px 26px -10px rgba(46,119,204,.7)}
+  .tile .animark{width:56px;height:56px}
+  pre{background:var(--navy);color:#CDE0FA;border-radius:14px;padding:18px 20px;overflow:auto;
+   font:600 12.5px ui-monospace,Menlo,monospace;line-height:1.5}
+  pre .k{color:#7FB4F2}
+  .note{color:var(--ink3);font-size:13.5px;margin-top:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Affswap · brand · motion</div>
+  <h1>The <span>Converge</span> logo, in motion</h1>
+  <p class="lead">Two chevrons slide in from opposite sides and settle together — the swap, animated. One-shot for
+    the splash/app-open, and a gentle looping version for loading states.</p>
+  <button class="btn" onclick="replay()">↻ Replay</button>
+
+  <div class="sec">Splash / app-open · one-shot</div>
+  <div class="card hero">
+    <div class="animark oneshot" data-anim>
+      <svg viewBox="0 0 44 44"><path class="l" d="M11 9 L18 22 L11 35" stroke="#2E77CC" stroke-width="4.6"/></svg>
+      <svg viewBox="0 0 44 44"><path class="r" d="M33 9 L26 22 L33 35" stroke="#7FB4F2" stroke-width="4.6"/></svg>
+      <svg viewBox="0 0 44 44"><circle class="spk" cx="22" cy="22" r="3.4"/></svg>
+    </div>
+    <span class="wm wm-anim" data-anim>Aff<b>swap</b></span>
+  </div>
+
+  <div class="sec">In context</div>
+  <div class="grid">
+    <div class="card stage">
+      <div class="splash">
+        <div class="animark oneshot" data-anim>
+          <svg viewBox="0 0 44 44"><path class="l" d="M11 9 L18 22 L11 35" stroke="#2E77CC" stroke-width="4.8"/></svg>
+          <svg viewBox="0 0 44 44"><path class="r" d="M33 9 L26 22 L33 35" stroke="#7FB4F2" stroke-width="4.8"/></svg>
+          <svg viewBox="0 0 44 44"><circle class="spk" cx="22" cy="22" r="3.4"/></svg>
+        </div>
+        <span class="wm">Aff<b>swap</b></span>
+      </div>
+      <div class="cap">App open · splash</div>
+    </div>
+    <div class="card stage">
+      <div class="tile">
+        <div class="animark loop">
+          <svg viewBox="0 0 44 44"><path class="l" d="M11 9 L18 22 L11 35" stroke="#fff" stroke-width="5"/></svg>
+          <svg viewBox="0 0 44 44"><path class="r" d="M33 9 L26 22 L33 35" stroke="#BBD8F8" stroke-width="5"/></svg>
+        </div>
+      </div>
+      <div class="cap">Loading · gentle loop</div>
+    </div>
+  </div>
+
+  <div class="sec">Drop-in CSS</div>
+  <div class="card" style="padding:20px">
+    <pre>&lt;div class="animark"&gt;
+  &lt;svg viewBox="0 0 44 44"&gt;&lt;path class="l" d="M11 9 L18 22 L11 35" stroke="#2E77CC" stroke-width="4.6"/&gt;&lt;/svg&gt;
+  &lt;svg viewBox="0 0 44 44"&gt;&lt;path class="r" d="M33 9 L26 22 L33 35" stroke="#7FB4F2" stroke-width="4.6"/&gt;&lt;/svg&gt;
+&lt;/div&gt;
+
+<span class="k">@keyframes</span> inL{ 0%{transform:translateX(-42%);opacity:0} 62%{transform:translateX(5%);opacity:1} 100%{transform:translateX(0)} }
+<span class="k">@keyframes</span> inR{ 0%{transform:translateX(42%);opacity:0}  62%{transform:translateX(-5%);opacity:1} 100%{transform:translateX(0)} }
+.animark svg{position:absolute;inset:0}
+.l{animation:inL .62s cubic-bezier(.22,.9,.24,1) both}
+.r{animation:inR .62s cubic-bezier(.22,.9,.24,1) both}</pre>
+    <div class="note">~0.6s, respects <b>prefers-reduced-motion</b> if you add a guard. The loop version just swaps the
+      keyframes for a ±8% ease-in-out pulse. I can hand this off as a component (React/RN or plain CSS) when you build.</div>
+  </div>
+</div>
+
+<script>
+  function replay(){
+    document.querySelectorAll('.oneshot, .wm-anim').forEach(function(el){
+      // restart CSS animation by removing + reflow + re-adding
+      var kids = el.classList.contains('oneshot') ? el.querySelectorAll('.l,.r,.spk') : [el];
+      kids.forEach(function(k){ k.style.animation='none'; void k.offsetWidth; k.style.animation=''; });
+    });
+  }
+</script>
+</body>
+</html>

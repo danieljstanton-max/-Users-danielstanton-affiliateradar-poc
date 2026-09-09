@@ -1,0 +1,2 @@
+# Affswap runs on the Python standard library only — no third-party packages.
+# This file exists so Render's Python runtime detects the project and builds.
