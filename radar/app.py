@@ -59,6 +59,112 @@ def api_home(conn):
             "total_markets": idx["markets"], "stats": stats}
 
 
+def _fmt_traffic(n):
+    n = int(n or 0)
+    if n >= 1_000_000:
+        return f"{n/1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{round(n/1000)}K"
+    return str(n)
+
+
+def api_markets(conn):
+    idx = views.countries_index(conn)
+    countries = idx.get("countries", []) or []
+    verts_by_country: dict = {}
+    for r in conn.execute("""
+        SELECT rg.country AS iso, sv.vertical
+          FROM sites s
+          JOIN site_regions rg ON rg.site_id = s.id
+          JOIN site_verticals sv ON sv.site_id = s.id
+         WHERE s.classification='affiliate'
+         GROUP BY rg.country, sv.vertical
+    """):
+        verts_by_country.setdefault(r["iso"], []).append(r["vertical"])
+    for c in countries:
+        c["etv"] = c.get("total_etv") or 0
+        c["tf"] = _fmt_traffic(c["etv"])
+        c["verts"] = verts_by_country.get(c["iso"], [])
+    return {"markets": idx.get("markets", len(countries)), "countries": countries}
+
+
+def api_account(conn, mid):
+    row = conn.execute(
+        "SELECT handle, real_name, company, work_email, linkedin_url, site_url, sector, status, created_at "
+        "FROM chat_managers WHERE id=?", (mid,)
+    ).fetchone()
+    if not row:
+        return None
+    return {k: row[k] for k in row.keys()}
+
+
+def api_leaderboard(conn, mid, period="all"):
+    """Rank verified managers by (swaps*2 + approved_reviews), all-time or 30d."""
+    if period == "month":
+        clause_sw = "WHERE transferred_at >= datetime('now', '-30 days')"
+        clause_rv = "AND resolved_at >= datetime('now', '-30 days')"
+    else:
+        clause_sw = clause_rv = ""
+    swap_counts: dict = {}
+    for r in conn.execute(f"""
+        SELECT mid, COUNT(*) n FROM (
+            SELECT from_manager mid FROM swap_ledger {clause_sw}
+            UNION ALL
+            SELECT to_manager   mid FROM swap_ledger {clause_sw}
+        ) t GROUP BY mid
+    """):
+        swap_counts[r["mid"]] = r["n"]
+    review_counts = {r["manager_id"]: r["n"] for r in conn.execute(f"""
+        SELECT manager_id, COUNT(*) n FROM reviews WHERE status='approved' {clause_rv}
+        GROUP BY manager_id
+    """)}
+    managers = list(conn.execute(
+        "SELECT id, handle, company FROM chat_managers WHERE status='verified'"))
+    entries = []
+    for m in managers:
+        sw = swap_counts.get(m["id"], 0)
+        rv = review_counts.get(m["id"], 0)
+        entries.append({
+            "id": m["id"], "handle": m["handle"], "company": m["company"],
+            "swaps": sw, "reviews": rv, "score": sw * 2 + rv,
+            "is_you": m["id"] == mid,
+        })
+    entries.sort(key=lambda e: (-e["score"], -e["swaps"], e["handle"] or ""))
+    you_rank = next((i + 1 for i, e in enumerate(entries) if e["is_you"]), None)
+    return {"period": period, "total": len(entries), "you_rank": you_rank,
+            "entries": entries[:20]}
+
+
+def api_swaps(conn, mid):
+    full = swaps.ledger(conn)
+    mine = [e for e in full if e.get("from_id") == mid or e.get("to_id") == mid]
+    return {
+        "matches": swaps.list_matches(conn, mid),
+        "ledger": mine,
+        "access": swaps.access(conn, mid),
+    }
+
+
+def api_signup(conn, payload):
+    handle = (payload.get("handle") or "").strip()
+    if not handle:
+        return {"ok": False, "error": "handle_required"}
+    company = (payload.get("company") or "").strip() or None
+    work_email = (payload.get("work_email") or "").strip() or None
+    linkedin = (payload.get("linkedin_url") or "").strip() or None
+    site_url = (payload.get("site_url") or "").strip() or None
+    sector = (payload.get("sector") or "casino").strip() or "casino"
+    real_name = (payload.get("real_name") or "").strip() or None
+    when = now_iso()
+    cur = conn.execute(
+        "INSERT INTO chat_managers (cc_uid, handle, real_name, company, work_email, linkedin_url, site_url, sector, status, applied_at, created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,'pending',?,?)",
+        (f"web_{when}_{handle[:20]}", handle, real_name, company, work_email, linkedin, site_url, sector, when, when)
+    )
+    conn.commit()
+    return {"ok": True, "id": cur.lastrowid, "status": "pending"}
+
+
 def api_geo(conn, iso, vertical, mid):
     d = views.country_list(conn, iso, vertical=vertical or None, sort="traffic")
     cards = d.get("cards") or []
@@ -157,10 +263,19 @@ class _H(BaseHTTPRequestHandler):
             elif u.path == "/api/site":
                 p = api_site(conn, g("domain"), mid)
                 self._json(p) if p else self._json({"error": "not_found"}, 404)
+            elif u.path == "/api/markets":
+                self._json(api_markets(conn))
             elif u.path == "/api/loyalty":
                 self._json(reviews.loyalty_progress(conn, mid))
             elif u.path == "/api/plans":
                 self._json({"plans": PLANS, "topup": config.SWAP_TOPUP_PRICE})
+            elif u.path == "/api/account":
+                a = api_account(conn, mid)
+                self._json(a) if a else self._json({"error": "not_found"}, 404)
+            elif u.path == "/api/swaps":
+                self._json(api_swaps(conn, mid))
+            elif u.path == "/api/leaderboard":
+                self._json(api_leaderboard(conn, mid, g("period", "all") or "all"))
             elif u.path == "/api/me":
                 a = swaps.access(conn, mid)
                 self._json({"handle": "You", "plan": a.get("plan", "standard"),
@@ -194,6 +309,18 @@ class _H(BaseHTTPRequestHandler):
                     fn(conn, mid, payload.get("domain"))
                     self._json({"ok": True})
                 except swaps.SwapError as e:
+                    self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/swap/agree":
+                try:
+                    res = swaps.agree(conn, int(payload.get("match_id") or 0), mid)
+                    self._json({"ok": True, **(res or {})})
+                except swaps.SwapError as e:
+                    self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/signup":
+                try:
+                    res = api_signup(conn, payload)
+                    self._json(res, 200 if res.get("ok") else 400)
+                except Exception as e:
                     self._json({"ok": False, "error": str(e)}, 400)
             else:
                 self._json({"error": "not_found"}, 404)

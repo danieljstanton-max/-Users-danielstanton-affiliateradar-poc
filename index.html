@@ -393,13 +393,13 @@ button{font-family:inherit}
           <div class="hint">From LinkedIn &middot; JPG, PNG up to 5MB</div>
         </div>
         <div class="fields">
-          <div class="field"><label>Full name</label><div class="inp"><input value="Sam Knight"></div></div>
-          <div class="field"><label>Company</label><div class="inp"><input value="Growth Media Ltd"></div></div>
-          <div class="field"><label>Job title</label><div class="inp"><input value="Affiliate Marketer"></div></div>
-          <div class="field"><label>Work email</label><div class="inp"><input value="sam@growthmedia.co"></div></div>
+          <div class="field"><label>Full name</label><div class="inp"><input id="acct-name" value="Sam Knight"></div></div>
+          <div class="field"><label>Company</label><div class="inp"><input id="acct-company" value="Growth Media Ltd"></div></div>
+          <div class="field"><label>Job title</label><div class="inp"><input id="acct-title" value="Affiliate Marketer"></div></div>
+          <div class="field"><label>Work email</label><div class="inp"><input id="acct-email" value="sam@growthmedia.co"></div></div>
           <div class="frow">
-            <div class="field ic"><label>Telegram</label><div class="inp"><svg class="ico"><use href="#i-send"/></svg><input value="@samknight"></div></div>
-            <div class="field ic"><label>LinkedIn</label><div class="inp"><svg class="ico"><use href="#i-link"/></svg><input value="linkedin.com/in/samknight"></div></div>
+            <div class="field ic"><label>Telegram</label><div class="inp"><svg class="ico"><use href="#i-send"/></svg><input id="acct-telegram" value="@samknight"></div></div>
+            <div class="field ic"><label>LinkedIn</label><div class="inp"><svg class="ico"><use href="#i-link"/></svg><input id="acct-linkedin" value="linkedin.com/in/samknight"></div></div>
           </div>
           <div class="field"><label>Markets of interest</label>
             <div class="chipbox" id="mkchips"></div>
@@ -516,10 +516,10 @@ function vHome(){
     '<div class="hero-art"><img class="hero-shot" alt="Affswap match: an affiliate site marked Want connects two verified managers who can now swap contact details." src="'+HERO_IMG+'"></div>'+
     '</section>'+
     '<div class="stats">'+
-    '<div class="stat"><span class="si"><svg class="ico"><use href="#i-people"/></svg></span><div><b>340</b><span>Managers joined</span></div></div>'+
-    '<div class="stat"><span class="si"><svg class="ico"><use href="#i-globe"/></svg></span><div><b>'+DATA.markets.reduce(function(a,m){return a+m.count},0)+'</b><span>Affiliate websites</span></div></div>'+
-    '<div class="stat"><span class="si"><svg class="ico"><use href="#i-swap"/></svg></span><div><b>1,240</b><span>Swaps to date</span></div></div>'+
-    '<div class="stat g"><span class="si"><svg class="ico"><use href="#i-user"/></svg></span><div><b>48</b><span>Managers online</span></div></div></div>'+
+    '<div class="stat"><span class="si"><svg class="ico"><use href="#i-people"/></svg></span><div><b id="h-managers">340</b><span>Managers joined</span></div></div>'+
+    '<div class="stat"><span class="si"><svg class="ico"><use href="#i-globe"/></svg></span><div><b id="h-sites">'+DATA.markets.reduce(function(a,m){return a+m.count},0)+'</b><span>Affiliate websites</span></div></div>'+
+    '<div class="stat"><span class="si"><svg class="ico"><use href="#i-swap"/></svg></span><div><b id="h-swaps">1,240</b><span>Swaps to date</span></div></div>'+
+    '<div class="stat g"><span class="si"><svg class="ico"><use href="#i-user"/></svg></span><div><b id="h-online">48</b><span>Managers online</span></div></div></div>'+
     '<div class="sec"><h2>How Affswap works</h2><p class="sub">A simple way to connect, collaborate and grow.</p><div class="steps">'+
     '<div class="step"><span class="num">1</span><span class="sic"><svg class="ico"><use href="#i-search"/></svg></span><h3>Discover sites with live SEO data</h3><p>Browse affiliate websites with verified traffic and market data.</p></div>'+
     '<div class="step"><span class="num">2</span><span class="sic"><svg class="ico"><use href="#i-mark"/></svg></span><h3>Mark sites as Have or Want</h3><p>Let others know which sites you have and which you want.</p></div>'+
@@ -584,6 +584,7 @@ function marketsInit(){
   document.getElementById('mkq').oninput=function(e){mkx.q=e.target.value.toLowerCase();marketsRender()};
   document.getElementById('regDd').onclick=function(e){e.stopPropagation();ddMenu(this,REGIONS.map(function(r){return [r==='All regions'?'all':r,r]}),mkx.region,function(v){mkx.region=v;refreshMk()})};
   document.getElementById('sortDd').onclick=function(e){e.stopPropagation();ddMenu(this,SORTS,mkx.sort,function(v){mkx.sort=v;refreshMk()})};
+  marketsHydrate();
 }
 
 /* ---------- MARKET DETAIL ---------- */
@@ -851,11 +852,49 @@ var sGo=document.getElementById('suggestGo');
 if(sGo)sGo.addEventListener('click',function(){var u=document.getElementById('suggestUrl');if(!u||!u.value.trim())return;
   sForm.innerHTML='<div style="color:var(--up-d);font-weight:700;font-size:.85rem;display:flex;align-items:center;gap:8px"><svg style="width:17px;height:17px;fill:none;stroke:var(--up-d);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"><use href="#i-check"/></svg>Submitted for review — you\'ll earn a swap when it\'s approved.</div>';});
 
+accountHydrate();
 }
-function vSignup(){return '<div class="slab"><div class="si"><svg class="ico"><use href="#i-user"/></svg></div><h2>Create your account</h2><p>The verified network for iGaming affiliate managers.</p>'+
-  '<button class="btn" style="background:#0A66C2;color:#fff;width:100%;margin-bottom:12px" onclick="toast(\'Connecting to LinkedIn — imports your profile\')">Continue with LinkedIn</button>'+
-  '<button class="btn btn-gho" style="width:100%" onclick="go(\'#/markets\')">Continue with email</button>'+
-  '<p style="font-size:.78rem;color:var(--muted);margin-top:14px">Free to join · 2 free swaps · No card required</p></div>';}
+function vSignup(){
+  return '<div class="slab"><div class="si"><svg class="ico"><use href="#i-user"/></svg></div><h2>Create your account</h2><p>The verified network for iGaming affiliate managers.</p>'+
+    '<form id="signup-form" onsubmit="event.preventDefault();signupSubmit();" style="display:flex;flex-direction:column;gap:12px;text-align:left">'+
+      '<div class="field"><label>Display name</label><div class="inp"><input id="su-handle" required placeholder="e.g. Sam K." autocomplete="nickname"></div></div>'+
+      '<div class="field"><label>Full name</label><div class="inp"><input id="su-name" placeholder="Sam Knight" autocomplete="name"></div></div>'+
+      '<div class="field"><label>Company</label><div class="inp"><input id="su-company" placeholder="Growth Media Ltd" autocomplete="organization"></div></div>'+
+      '<div class="field"><label>Work email</label><div class="inp"><input id="su-email" type="email" placeholder="you@company.com" autocomplete="email"></div></div>'+
+      '<div class="field"><label>LinkedIn URL</label><div class="inp"><input id="su-linkedin" placeholder="linkedin.com/in/samknight"></div></div>'+
+      '<div class="field"><label>Affiliate site you manage</label><div class="inp"><input id="su-site" placeholder="growthmedia.co"></div></div>'+
+      '<div class="field"><label>Focus</label><div class="inp"><select id="su-sector"><option value="casino">Casino</option><option value="sportsbook">Sportsbook</option><option value="bingo">Bingo</option><option value="poker">Poker</option></select></div></div>'+
+      '<button class="btn btn-pri" type="submit" style="width:100%;margin-top:6px">Submit application <svg class="ico"><use href="#i-arrow"/></svg></button>'+
+    '</form>'+
+    '<p id="signup-msg" style="font-size:.86rem;color:var(--muted);margin-top:14px;min-height:1.2em"></p>'+
+    '<p style="font-size:.78rem;color:var(--muted);margin-top:4px">An admin verifies each application. You&rsquo;ll get 2 free swaps once approved.</p></div>';
+}
+function signupSubmit(){
+  var msg = document.getElementById('signup-msg');
+  var payload = {
+    handle: document.getElementById('su-handle').value.trim(),
+    real_name: document.getElementById('su-name').value.trim(),
+    company: document.getElementById('su-company').value.trim(),
+    work_email: document.getElementById('su-email').value.trim(),
+    linkedin_url: document.getElementById('su-linkedin').value.trim(),
+    site_url: document.getElementById('su-site').value.trim(),
+    sector: document.getElementById('su-sector').value
+  };
+  if(!payload.handle){ msg.textContent = 'Please enter a display name.'; msg.style.color='var(--danger,#B4394A)'; return; }
+  msg.textContent = 'Submitting…'; msg.style.color='var(--muted)';
+  fetch('/api/signup', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
+    .then(function(r){ return r.json().then(function(j){return {status:r.status, body:j};}); })
+    .then(function(res){
+      if(!res.body || res.body.ok===false){
+        msg.textContent = (res.body && res.body.error) || 'Application could not be submitted.';
+        msg.style.color='var(--danger,#B4394A)';
+        return;
+      }
+      document.getElementById('signup-form').innerHTML = '<div style="text-align:center;padding:24px"><svg class="ico" style="width:48px;height:48px;color:var(--up);stroke:var(--up)"><use href="#i-check"/></svg><h3 style="margin:12px 0 4px">Application submitted</h3><p style="color:var(--muted)">An admin will review your application shortly.</p></div>';
+      msg.textContent = ''; }
+    )
+    .catch(function(){ msg.textContent = 'Network error — please try again.'; msg.style.color='var(--danger,#B4394A)'; });
+}
 function vStub(name){return '<div class="slab"><div class="si"><svg class="ico"><use href="#i-'+({Swaps:'swap',Loyalty:'gift',Alerts:'bell',Chat:'chat'}[name]||'globe')+'"/></svg></div><h2>'+name+'</h2><p>This section is on the way — the nav and routing all work; content lands next.</p><button class="btn btn-gho" onclick="go(\'#/markets\')">Browse markets</button></div>';}
 
 /* ---------- SWAPS ---------- */
@@ -870,30 +909,91 @@ var SWAPS=[
   {mgr:'SlotWise',av:'SW',avc:'#C7359E',got:'wettbasis.com',gave:'casino.org',status:'matched',label:'Matched',t:'1w ago'},
   {mgr:'SpinLab',av:'SL',avc:'#E8622B',got:'chipy.com',gave:'oddspedia.com',status:'done',label:'Completed',t:'2w ago'}
 ];
-function matchCard(m,i){return '<div class="mrcard"><div class="mr-mgr"><span class="mr-av" style="background:'+m.avc+'">'+m.av+'</span>Match with <b>'+m.mgr+' · '+m.co+'</b></div>'+
-  '<div class="mr-sites"><div class="mr-site"><span class="mr-fav" style="background:'+m.get.c+'">'+m.get.l+'</span><div><em style="color:var(--up-d)">You get</em><b>'+m.get.d+'</b></div></div>'+
-  '<span class="mr-swap"><svg class="ico"><use href="#i-swap"/></svg></span>'+
-  '<div class="mr-site"><span class="mr-fav" style="background:'+m.give.c+'">'+m.give.l+'</span><div><em style="color:var(--blue-d)">You give</em><b>'+m.give.d+'</b></div></div></div>'+
-  '<button class="mr-btn" onclick="connectSwap(this)"><svg class="ico"><use href="#i-swap"/></svg>Connect · 1 swap</button></div>';}
+var swpState={matches:[], ledger:[], access:{}, filter:'All'};
+function matchCard(m){
+  var av=(m.with||'?').charAt(0).toUpperCase();
+  var btn = m.status === 'completed'
+    ? '<button class="mr-btn" disabled>Contact unlocked ✓</button>'
+    : (m.you_agreed
+        ? '<button class="mr-btn" disabled>Waiting for '+h(m.with||'')+'</button>'
+        : '<button class="mr-btn" onclick="swapAgree('+m.match_id+', this)"><svg class="ico"><use href="#i-swap"/></svg>Connect · 1 swap</button>');
+  var unlocked = m.unlocked_contact
+    ? '<div class="locked" style="background:#EAF7EF;color:var(--up-d);margin-top:8px"><svg class="ico" style="color:var(--up);stroke:var(--up)"><use href="#i-check"/></svg>'+h(m.unlocked_contact)+'</div>'
+    : '';
+  return '<div class="mrcard"><div class="mr-mgr"><span class="mr-av" style="background:#3B86EE">'+av+'</span>Match with <b>'+h(m.with||'someone')+'</b></div>'+
+    '<div class="mr-sites"><div class="mr-site"><span class="mr-fav" style="background:#0E9C7E">'+((m.you_get||'?').charAt(0).toUpperCase())+'</span><div><em style="color:var(--up-d)">You get</em><b>'+h(m.you_get||'')+'</b></div></div>'+
+    '<span class="mr-swap"><svg class="ico"><use href="#i-swap"/></svg></span>'+
+    '<div class="mr-site"><span class="mr-fav" style="background:#2E77CC">'+((m.you_give||'?').charAt(0).toUpperCase())+'</span><div><em style="color:var(--blue-d)">You give</em><b>'+h(m.you_give||'')+'</b></div></div></div>'+
+    unlocked + btn + '</div>';
+}
 function vSwaps(){
   return '<div class="phead"><div><h1>Swaps</h1><p class="sub">Trade site connections with verified managers — spend a swap to unlock a contact.</p></div></div>'+
-  '<div class="stats4"><div class="st b"><span class="si"><svg class="ico"><use href="#i-swap"/></svg></span><div><b id="swleft">'+(ADMIN?'∞':SWLEFT)+'</b><span>Swaps left</span></div></div>'+
-  '<div class="st g"><span class="si"><svg class="ico"><use href="#i-check"/></svg></span><div><b>12</b><span>Completed</span></div></div>'+
-  '<div class="st p"><span class="si"><svg class="ico"><use href="#i-swap"/></svg></span><div><b>1</b><span>In progress</span></div></div>'+
-  '<div class="st k"><span class="si"><svg class="ico"><use href="#i-people"/></svg></span><div><b>'+MATCHES.length+'</b><span>Matches ready</span></div></div></div>'+
-  '<div class="sh"><div><h2>Matches ready</h2><p class="subt">Someone has a site you want — connect to swap contacts.</p></div></div>'+
-  '<div class="mready">'+MATCHES.map(matchCard).join('')+'</div>'+
-  '<div class="sh"><div><h2>Your swaps</h2><p class="subt">Swap history and pending matches.</p></div></div>'+
-  '<div class="swtabs" id="swtabs">'+['All','Matched','In progress','Completed'].map(function(t,i){return '<button class="swtab'+(i===0?' on':'')+'" data-f="'+t+'">'+t+'</button>'}).join('')+'</div>'+
-  '<div class="swlist" id="swlist"></div>';
+    '<div id="sw-box" class="pcard" style="padding:32px;text-align:center;color:var(--muted)">Loading swaps&hellip;</div>';
 }
-function swRender(f){var a=SWAPS.filter(function(s){return f==='All'||s.label===f});
-  document.getElementById('swlist').innerHTML=a.length?a.map(function(s){return '<div class="swrow"><span class="pav" style="background:'+s.avc+'">'+s.av+'</span>'+
-    '<div class="pinfo"><b>'+s.mgr+'</b><span>got <b style="color:var(--ink)">'+s.got+'</b> <svg class="ico"><use href="#i-swap"/></svg> gave '+s.gave+'</span></div>'+
-    '<span class="sbadge '+s.status+'">'+s.label+'</span><span class="tm">'+s.t+'</span></div>'}).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-weight:600">No '+f.toLowerCase()+' swaps.</div>';
+function swapsInit(){ swapsHydrate(); }
+function swapsHydrate(){
+  fetch('/api/swaps', {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(d){
+      swpState.matches = d.matches || [];
+      swpState.ledger = d.ledger || [];
+      swpState.access = d.access || {};
+      swapsRender();
+    })
+    .catch(function(){
+      var box = document.getElementById('sw-box');
+      if(box) box.innerHTML = '<div style="padding:24px;color:var(--muted)">Couldn&rsquo;t load swaps.</div>';
+    });
 }
-function swapsInit(){swRender('All');document.querySelectorAll('#swtabs .swtab').forEach(function(b){b.onclick=function(){document.querySelectorAll('#swtabs .swtab').forEach(function(x){x.classList.remove('on')});b.classList.add('on');swRender(b.dataset.f)}});}
-function connectSwap(btn){if(!ADMIN){SWLEFT=Math.max(0,SWLEFT-1);var el=document.getElementById('swleft');if(el)el.textContent=SWLEFT;updateNav();}toast(ADMIN?'Contact unlocked — admin (unlimited)':'Contact unlocked — 1 swap spent');var c=btn.closest('.mrcard');c.style.opacity='.55';btn.textContent='Connected ✓';btn.disabled=true;btn.onclick=null;}
+function swapsRender(){
+  var box = document.getElementById('sw-box'); if(!box) return;
+  var matches = swpState.matches, ledger = swpState.ledger, access = swpState.access;
+  var swapsLeft = access.unlimited ? '∞' : (access.swaps == null ? 0 : access.swaps);
+  var completed = ledger.length;
+  var inProgress = matches.filter(function(m){return m.status !== 'completed';}).length;
+  box.innerHTML =
+    '<div class="stats4">'+
+      '<div class="st b"><span class="si"><svg class="ico"><use href="#i-swap"/></svg></span><div><b id="swleft">'+swapsLeft+'</b><span>Swaps left</span></div></div>'+
+      '<div class="st g"><span class="si"><svg class="ico"><use href="#i-check"/></svg></span><div><b>'+completed+'</b><span>Completed</span></div></div>'+
+      '<div class="st p"><span class="si"><svg class="ico"><use href="#i-swap"/></svg></span><div><b>'+inProgress+'</b><span>In progress</span></div></div>'+
+      '<div class="st k"><span class="si"><svg class="ico"><use href="#i-people"/></svg></span><div><b>'+matches.length+'</b><span>Matches ready</span></div></div>'+
+    '</div>'+
+    '<div class="sh"><div><h2>Matches ready</h2><p class="subt">Someone has a site you want — connect to swap contacts.</p></div></div>'+
+    '<div class="mready">'+
+      (matches.length ? matches.map(matchCard).join('') : '<div class="pcard" style="text-align:center;padding:32px;color:var(--muted)">No matches yet. Add sites to your <a href="#/markets">Want list</a> to get matched.</div>')+
+    '</div>'+
+    '<div class="sh"><div><h2>Your swaps</h2><p class="subt">Completed contact transfers.</p></div></div>'+
+    '<div class="swlist" id="swlist"></div>';
+  swRender();
+}
+function swRender(){
+  var list = swpState.ledger, el = document.getElementById('swlist'); if(!el) return;
+  if(!list.length){ el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-weight:600">No completed swaps yet.</div>'; return; }
+  el.innerHTML = list.map(function(e){
+    var other = e.to && e.to !== 'You' ? e.to : (e.from || 'someone');
+    var when = e.at ? (new Date(e.at)).toLocaleDateString() : '';
+    return '<div class="swrow"><span class="pav" style="background:#3B86EE">'+(other||'?').charAt(0).toUpperCase()+'</span>'+
+      '<div class="pinfo"><b>'+h(other)+'</b><span>contact for <b style="color:var(--ink)">'+h(e.domain||'')+'</b></span></div>'+
+      '<span class="sbadge matched">Completed</span><span class="tm">'+when+'</span></div>';
+  }).join('');
+}
+function swapAgree(matchId, btn){
+  btn.disabled = true;
+  var orig = btn.innerHTML;
+  btn.innerHTML = 'Confirming&hellip;';
+  fetch('/api/swap/agree', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({match_id: matchId})})
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j || j.ok === false){
+        toast((j && j.error) || 'Could not confirm');
+        btn.disabled = false; btn.innerHTML = orig; return;
+      }
+      toast(j.status === 'completed' ? 'Contact unlocked' : 'Agreed — waiting for the other side');
+      swapsHydrate();
+      updateNav && updateNav();
+    })
+    .catch(function(){ toast('Network error'); btn.disabled = false; btn.innerHTML = orig; });
+}
 
 /* ---------- LEADERBOARD ---------- */
 var MANAGERS=[
@@ -909,18 +1009,52 @@ var MANAGERS=[
  {n:'Nina F.',co:'SlotSphere',av:'NF',avc:'#7A4FE0',sw:19,rv:14,msw:5,mrv:4}
 ];
 var YOU2={sw:12,rv:3,msw:3,mrv:1,posAll:42,posMonth:58,total:340};
-function vLeaderboard(){return '<div class="phead"><div><h1>Leaderboard</h1><p class="sub">Top affiliate managers, ranked by swaps and reviews.</p></div></div>'+
- '<div class="swtabs" id="lbtabs"><button class="swtab on" data-p="all">All time</button><button class="swtab" data-p="month">This month</button></div><div id="lbbody"></div>';}
-function lbRender(period){var mo=period==='month';
- var list=MANAGERS.map(function(m){var sw=mo?m.msw:m.sw,rv=mo?m.mrv:m.rv;return {n:m.n,co:m.co,av:m.av,avc:m.avc,sw:sw,rv:rv,sc:sw*2+rv}});
- list.sort(function(a,b){return b.sc-a.sc});var med=['g1','g2','g3'];
- var podium=list.slice(0,3).map(function(p,i){return '<div class="pod '+med[i]+'"><span class="medal">'+(i+1)+'</span><span class="pav" style="background:'+p.avc+'">'+p.av+'</span><b>'+p.n+'</b><div class="co">'+p.co+'</div><div class="stat2"><span><b>'+p.sw+'</b> swaps</span><span><b>'+p.rv+'</b> reviews</span></div><div class="score">'+p.sc+' pts</div>'+((mo&&i===0)?'<div class="motm"><svg class="ico" style="width:14px;height:14px;stroke:#9A6B00"><use href="#i-trophy"/></svg>Manager of the Month</div>':'')+'</div>'}).join('');
- var rows=list.slice(3).map(function(p,i){return '<div class="lbrow"><span class="lbrank">'+(i+4)+'</span><span class="pav" style="background:'+p.avc+'">'+p.av+'</span><div class="info"><b>'+p.n+'</b><span>'+p.co+'</span></div><div class="metric"><b>'+p.sw+'</b><span>Swaps</span></div><div class="metric rev"><b>'+p.rv+'</b><span>Reviews</span></div><span class="score">'+p.sc+'</span></div>'}).join('');
- var ysw=mo?YOU2.msw:YOU2.sw,yrv=mo?YOU2.mrv:YOU2.rv,yp=mo?YOU2.posMonth:YOU2.posAll;
- var yours='<div class="sh" style="margin-top:22px"><div><h2>Your position</h2><p class="subt">Rank '+yp+' of '+YOU2.total+' &mdash; keep swapping &amp; reviewing to climb.</p></div></div>'+
- '<div class="lblist"><div class="lbrow you"><span class="lbrank" style="color:var(--blue-d)">'+yp+'</span><span class="pav" style="background:#3B86EE">SK</span><div class="info"><b>You &middot; Growth Media Ltd</b><span>Sam Knight</span></div><div class="metric"><b>'+ysw+'</b><span>Swaps</span></div><div class="metric rev"><b>'+yrv+'</b><span>Reviews</span></div><span class="score">'+(ysw*2+yrv)+'</span></div></div>';
- document.getElementById('lbbody').innerHTML='<div class="podium">'+podium+'</div><div class="sh"><div><h2>Rankings</h2><p class="subt">All managers ranked by swaps &amp; reviews.</p></div></div><div class="lblist">'+rows+'</div>'+yours;}
-function lbInit(){lbRender('all');document.querySelectorAll('#lbtabs .swtab').forEach(function(b){b.onclick=function(){document.querySelectorAll('#lbtabs .swtab').forEach(function(x){x.classList.remove('on')});b.classList.add('on');lbRender(b.dataset.p)}});}
+function vLeaderboard(){
+  return '<div class="phead"><div><h1>Leaderboard</h1><p class="sub">Top affiliate managers, ranked by swaps and reviews.</p></div></div>'+
+    '<div class="swtabs" id="lbtabs"><button class="swtab on" data-p="all">All time</button><button class="swtab" data-p="month">This month</button></div>'+
+    '<div id="lbbody" class="pcard" style="padding:32px;text-align:center;color:var(--muted)">Loading&hellip;</div>';
+}
+function lbInit(){
+  lbHydrate('all');
+  document.querySelectorAll('#lbtabs .swtab').forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll('#lbtabs .swtab').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      lbHydrate(b.dataset.p);
+    };
+  });
+}
+function lbHydrate(period){
+  var body = document.getElementById('lbbody');
+  if(body) body.innerHTML = '<div style="padding:24px;color:var(--muted);text-align:center">Loading&hellip;</div>';
+  fetch('/api/leaderboard?period='+encodeURIComponent(period), {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(d){
+      var entries = d.entries || [];
+      var med = ['g1','g2','g3'];
+      var podium = entries.slice(0,3).map(function(p,i){
+        var av = (p.handle||'?').charAt(0).toUpperCase();
+        var motm = (period==='month' && i===0) ? '<div class="motm"><svg class="ico" style="width:14px;height:14px;stroke:#9A6B00"><use href="#i-trophy"/></svg>Manager of the Month</div>' : '';
+        return '<div class="pod '+med[i]+'"><span class="medal">'+(i+1)+'</span><span class="pav" style="background:#3B86EE">'+av+'</span><b>'+h(p.handle||'')+'</b><div class="co">'+h(p.company||'')+'</div><div class="stat2"><span><b>'+p.swaps+'</b> swaps</span><span><b>'+p.reviews+'</b> reviews</span></div><div class="score">'+p.score+' pts</div>'+motm+'</div>';
+      }).join('');
+      var rows = entries.slice(3).map(function(p,i){
+        var av = (p.handle||'?').charAt(0).toUpperCase();
+        return '<div class="lbrow'+(p.is_you?' you':'')+'"><span class="lbrank">'+(i+4)+'</span><span class="pav" style="background:#3B86EE">'+av+'</span><div class="info"><b>'+h(p.handle||'')+'</b><span>'+h(p.company||'')+'</span></div><div class="metric"><b>'+p.swaps+'</b><span>Swaps</span></div><div class="metric rev"><b>'+p.reviews+'</b><span>Reviews</span></div><span class="score">'+p.score+'</span></div>';
+      }).join('');
+      var yourRankText = d.you_rank
+        ? ('Rank ' + d.you_rank + ' of ' + d.total + ' &mdash; keep swapping &amp; reviewing to climb.')
+        : 'Not yet ranked &mdash; swap or review to enter the leaderboard.';
+      var yours = '<div class="sh" style="margin-top:22px"><div><h2>Your position</h2><p class="subt">'+yourRankText+'</p></div></div>';
+      var empty = '<div class="pcard" style="text-align:center;padding:32px;color:var(--muted)">No swaps or reviews yet &mdash; be the first to climb the leaderboard.</div>';
+      body.innerHTML =
+        (entries.length ? '<div class="podium">'+podium+'</div>' : empty)+
+        (entries.length > 3 ? '<div class="sh"><div><h2>Rankings</h2><p class="subt">All managers ranked by swaps &amp; reviews.</p></div></div><div class="lblist">'+rows+'</div>' : '')+
+        yours;
+    })
+    .catch(function(){
+      if(body) body.innerHTML='<div style="padding:24px;color:var(--muted);text-align:center">Couldn&rsquo;t load leaderboard.</div>';
+    });
+}
 
 /* ---------- ADMIN ---------- */
 var TEAM=[{n:'You (Sam Knight)',co:'Growth Media Ltd',av:'SK',avc:'#3B86EE',admin:true,you:true},
@@ -952,6 +1086,99 @@ function toggleTeam(i){TEAM[i].admin=!TEAM[i].admin;teamRender();var el=document
 function toggleAdmin(){ADMIN=!ADMIN;updateNav();document.getElementById('v-admin').innerHTML=vAdmin();teamRender();toast(ADMIN?'Admin powers enabled — unlimited swaps':'Admin powers disabled');}
 function adminInit(){teamRender();}
 
+/* ---------- HYDRATION: /api/home, /api/markets, /api/loyalty, /api/account, /api/swaps ---------- */
+function accountHydrate(){
+  fetch('/api/account', {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(a){
+      var setVal = function(id, val){ var el = document.getElementById(id); if(el) el.value = val || ''; };
+      setVal('acct-name', a.real_name || a.handle || '');
+      setVal('acct-company', a.company);
+      setVal('acct-email', a.work_email);
+      setVal('acct-linkedin', a.linkedin_url);
+      // No `job_title` column yet; derive a soft label from sector when present.
+      var titleEl = document.getElementById('acct-title');
+      if(titleEl) titleEl.value = a.sector ? (String(a.sector).charAt(0).toUpperCase() + String(a.sector).slice(1) + ' affiliate') : '';
+      // No telegram column; clear the placeholder so we don't display fake data.
+      var tg = document.getElementById('acct-telegram'); if(tg) tg.value = '';
+    })
+    .catch(function(){});
+}
+function homeHydrate(){
+  fetch('/api/home', {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(d){
+      var s = d.stats || {};
+      var setNum = function(id, val){
+        var el = document.getElementById(id);
+        if(!el || val == null) return;
+        el.textContent = (typeof val === 'number' && val >= 1000) ? val.toLocaleString('en-US') : val;
+      };
+      setNum('h-managers', s.managers_joined);
+      setNum('h-sites', s.websites);
+      setNum('h-swaps', s.swaps_to_date);
+      setNum('h-online', s.online);
+    })
+    .catch(function(){});
+}
+function marketsHydrate(){
+  fetch('/api/markets', {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(d){
+      var countries = d.countries || d.markets || [];
+      if(!countries.length) return;
+      DATA.markets = countries.map(function(c){
+        return {
+          iso: c.iso, flag: c.flag, name: c.name,
+          count: c.count || 0,
+          etv: c.etv || c.total_etv || 0,
+          tf: c.tf || fmt(c.etv || c.total_etv || 0),
+          verts: c.verts || [],
+          growth: null
+        };
+      });
+      if(document.getElementById('mkresults')) marketsRender();
+    })
+    .catch(function(){});
+}
+function vLoyalty(){
+  return '<div class="phead"><div><h1>Loyalty</h1><p class="sub">Earn free swaps by contributing to the network.</p></div></div>'+
+    '<div id="loy-box" class="pcard" style="padding:32px;text-align:center;color:var(--muted)">Loading&hellip;</div>';
+}
+function loyaltyHydrate(){
+  fetch('/api/loyalty', {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(l){
+      var box = document.getElementById('loy-box'); if(!box) return;
+      var progressPct = l.reviews_to_next_swap > 0
+        ? Math.min(100, Math.round((l.approved_reviews||0) / (l.approved_reviews + l.reviews_to_next_swap) * 100))
+        : 100;
+      var plan = h(String(l.plan || 'standard')).replace(/^./, function(c){return c.toUpperCase();});
+      var contrib = l.contributions || {};
+      box.innerHTML =
+        '<div class="stats4">'+
+          '<div class="st b"><span class="si"><svg class="ico"><use href="#i-user"/></svg></span><div><b>'+plan+'</b><span>Current plan</span></div></div>'+
+          '<div class="st p"><span class="si"><svg class="ico"><use href="#i-swap"/></svg></span><div><b>'+(l.swaps_left||0)+'</b><span>Swaps left</span></div></div>'+
+          '<div class="st k"><span class="si"><svg class="ico"><use href="#i-gift"/></svg></span><div><b>'+(l.free_swaps_earned||0)+'</b><span>Free swaps earned</span></div></div>'+
+          '<div class="st g"><span class="si"><svg class="ico"><use href="#i-check"/></svg></span><div><b>'+(l.approved_reviews||0)+'</b><span>Approved reviews</span></div></div>'+
+        '</div>'+
+        '<div class="pcard" style="margin-top:16px"><div style="font-weight:800;margin-bottom:8px">Next free swap</div>'+
+          '<div style="display:flex;align-items:center;gap:12px"><div style="flex:1;background:#E9F0F9;border-radius:8px;height:12px;overflow:hidden"><div style="width:'+progressPct+'%;height:100%;background:var(--blue);border-radius:8px;transition:width .4s"></div></div>'+
+          '<span style="font-weight:800;color:var(--blue-d)">'+(l.approved_reviews||0)+'/'+((l.approved_reviews||0)+(l.reviews_to_next_swap||0))+'</span></div>'+
+          '<p class="note" style="margin-top:12px">Every 5 approved reviews earns you a free swap. Submit reviews from any site profile.</p>'+
+        '</div>'+
+        '<div class="pcard" style="margin-top:16px"><div style="font-weight:800;margin-bottom:8px">Contributions</div>'+
+          '<div style="display:flex;gap:24px;color:var(--muted)"><div><b style="color:var(--ink);font-size:1.4rem">'+(contrib.approved||0)+'</b> approved</div>'+
+          '<div><b style="color:var(--ink);font-size:1.4rem">'+(contrib.pending||0)+'</b> pending</div></div>'+
+          '<p class="note" style="margin-top:12px">Suggest a new site to the network via the back office — approved suggestions add to your loyalty score.</p>'+
+        '</div>';
+    })
+    .catch(function(){
+      var box = document.getElementById('loy-box');
+      if(box) box.innerHTML = '<div style="padding:24px;color:var(--muted)">Couldn&rsquo;t load loyalty data.</div>';
+    });
+}
+
 /* ---------- ROUTER ---------- */
 function render(id,html,active){
   document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on')});
@@ -962,7 +1189,7 @@ function render(id,html,active){
 }
 function route(){
   var hash=location.hash||'#/home',parts=hash.slice(2).split('/'),s=parts[0]||'home';
-  if(s==='home')render('v-home',vHome(),'home');
+  if(s==='home'){render('v-home',vHome(),'home');homeHydrate();}
   else if(s==='markets'){render('v-markets',vMarkets(),'markets');marketsInit();}
   else if(s==='market'){var iso2=(parts[1]||'US').toUpperCase();render('v-market',vMarket(iso2),'markets');mkHydrate(iso2);}
   else if(s==='site'){var dm=decodeURIComponent(parts.slice(1).join('/'));render('v-site',vSite(dm),'markets');siteHydrate(dm);}
@@ -971,7 +1198,8 @@ function route(){
   else if(s==='swaps'){render('v-swaps',vSwaps(),'swaps');swapsInit();}
   else if(s==='leaderboard'){render('v-leaderboard',vLeaderboard(),'leaderboard');lbInit();}
   else if(s==='admin'){render('v-admin',vAdmin(),'');adminInit();}
-  else if(['loyalty','alerts','chat'].indexOf(s)>=0)render('v-stub',vStub(s[0].toUpperCase()+s.slice(1)),s);
+  else if(s==='loyalty'){render('v-stub',vLoyalty(),'loyalty');loyaltyHydrate();}
+  else if(['alerts','chat'].indexOf(s)>=0)render('v-stub',vStub(s[0].toUpperCase()+s.slice(1)),s);
   else render('v-home',vHome(),'home');
 }
 window.addEventListener('hashchange',route);
