@@ -59,8 +59,22 @@ def api_home(conn):
             "total_markets": idx["markets"], "stats": stats}
 
 
-def api_geo(conn, iso, vertical):
+def api_geo(conn, iso, vertical, mid):
     d = views.country_list(conn, iso, vertical=vertical or None, sort="traffic")
+    cards = d.get("cards") or []
+    domains = [c["domain"] for c in cards if c.get("domain")]
+    if domains:
+        placeholders = ",".join(["?"] * len(domains))
+        dom_to_sid = {r["domain"]: r["id"] for r in conn.execute(
+            f"SELECT id, domain FROM sites WHERE domain IN ({placeholders})", domains)}
+        wants = {r["site_id"] for r in conn.execute(
+            "SELECT site_id FROM swap_wants WHERE manager_id=?", (mid,))}
+        haves = {r["site_id"] for r in conn.execute(
+            "SELECT site_id FROM swap_haves WHERE manager_id=?", (mid,))}
+        for c in cards:
+            sid = dom_to_sid.get(c.get("domain"))
+            c["you_want"] = bool(sid and sid in wants)
+            c["you_have"] = bool(sid and sid in haves)
     return d
 
 
@@ -139,7 +153,7 @@ class _H(BaseHTTPRequestHandler):
             if u.path == "/api/home":
                 self._json(api_home(conn))
             elif u.path == "/api/geo":
-                self._json(api_geo(conn, g("iso", "GB").upper(), g("vertical")))
+                self._json(api_geo(conn, g("iso", "GB").upper(), g("vertical"), mid))
             elif u.path == "/api/site":
                 p = api_site(conn, g("domain"), mid)
                 self._json(p) if p else self._json({"error": "not_found"}, 404)

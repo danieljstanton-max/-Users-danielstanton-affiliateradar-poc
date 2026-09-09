@@ -53,6 +53,9 @@ SEED_DB = ROOT / "seed" / "affiliateradar.db"
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
 ADMIN_HOSTNAME = os.environ.get("ADMIN_HOSTNAME", "").strip().lower()
+# In dev, re-read index.html on every request so client-side edits show up on
+# reload without a server restart. Off by default (prod caches at startup).
+DEV_MODE = os.environ.get("AFFSWAP_DEV", "").lower() in ("1", "true", "yes")
 
 # Headers that must not be blindly forwarded across a proxy hop.
 _HOP_BY_HOP = {
@@ -158,15 +161,21 @@ class Proxy(BaseHTTPRequestHandler):
             self._proxy(self.admin_port)
             return
         # Member "face" = the polished single-page app (static, self-contained).
-        # Its /api/* JSON stays wired to the DB-backed app for future use.
+        # Its /api/* JSON and /shot/* assets stay wired to the DB-backed app.
         path = self.path.split("?", 1)[0]
-        if path == "/api" or path.startswith("/api/"):
+        if path == "/api" or path.startswith("/api/") or path.startswith("/shot/"):
             self._proxy(self.app_port)
         else:
             self._serve_index()
 
     def _serve_index(self) -> None:
-        body = self.index_html
+        if DEV_MODE:
+            try:
+                body = (ROOT / "index.html").read_bytes()
+            except OSError:
+                body = b""
+        else:
+            body = self.index_html
         if not body:  # static file missing -> fall back to the DB-backed app UI
             self._proxy(self.app_port)
             return
