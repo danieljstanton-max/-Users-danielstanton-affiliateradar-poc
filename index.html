@@ -491,7 +491,7 @@ DATA.markets.forEach(function(m){ISONAME[m.iso]=m.name});
 Object.keys(DATA.mk).forEach(function(iso){DATA.mk[iso].rows.forEach(function(r){if(!ROWIDX[r.d])ROWIDX[r.d]=r;(DOMMK[r.d]=DOMMK[r.d]||[]).push({iso:iso,e:r.e})})});
 Object.keys(DOMMK).forEach(function(d){DOMMK[d].sort(function(a,b){return b.e-a.e})});
 var CAPV={casino:'Casino',sportsbook:'Sportsbook',bingo:'Bingo',poker:'Poker'};
-var ADMIN=true,SWLEFT=2;
+var ADMIN=(location.search.indexOf('hero=1')!==-1),SWLEFT=2;
 function updateNav(){var ap=document.getElementById('adminpill');if(ap)ap.style.display=ADMIN?'inline-flex':'none';var sp=document.getElementById('swpill');if(sp)sp.innerHTML='<svg class="ico"><use href="#i-swap"/></svg>'+(ADMIN?'Unlimited swaps':'<span id="swapsleft">'+SWLEFT+'</span> swaps left');}
 function h(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
 function fmt(n){n=n||0;return n>=1e6?(n/1e6).toFixed(1)+'M':(n>=1e3?Math.round(n/1e3)+'K':''+Math.round(n))}

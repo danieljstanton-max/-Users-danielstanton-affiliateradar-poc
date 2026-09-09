@@ -105,6 +105,8 @@ class Proxy(BaseHTTPRequestHandler):
     # ports of the internal backends (filled in by main())
     app_port = 0
     admin_port = 0
+    # the polished single-page app (the public "face"); loaded in main()
+    index_html = b""
 
     # -- routing ----------------------------------------------------------- #
     def _is_admin_host(self) -> bool:
@@ -154,8 +156,27 @@ class Proxy(BaseHTTPRequestHandler):
                 self._deny_admin()
                 return
             self._proxy(self.admin_port)
-        else:
+            return
+        # Member "face" = the polished single-page app (static, self-contained).
+        # Its /api/* JSON stays wired to the DB-backed app for future use.
+        path = self.path.split("?", 1)[0]
+        if path == "/api" or path.startswith("/api/"):
             self._proxy(self.app_port)
+        else:
+            self._serve_index()
+
+    def _serve_index(self) -> None:
+        body = self.index_html
+        if not body:  # static file missing -> fall back to the DB-backed app UI
+            self._proxy(self.app_port)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _proxy(self, port: int) -> None:
         # read request body (if any)
@@ -215,6 +236,8 @@ class Proxy(BaseHTTPRequestHandler):
 
 def main() -> None:
     ensure_db()
+    idx = ROOT / "index.html"
+    Proxy.index_html = idx.read_bytes() if idx.exists() else b""
     Proxy.app_port = _start_backend(AppHandler)
     Proxy.admin_port = _start_backend(AdminHandler)
 
@@ -222,9 +245,11 @@ def main() -> None:
     front = ThreadingHTTPServer(("0.0.0.0", port), Proxy)
     admin_state = "ENABLED" if ADMIN_PASS else "DISABLED (set ADMIN_PASS)"
     admin_host = ADMIN_HOSTNAME or "admin.<your-domain>"
+    face = f"polished SPA ({len(Proxy.index_html)//1024} KB)" if Proxy.index_html else f"DB-backed app UI (internal :{Proxy.app_port})"
     print("=" * 60)
     print(f"Affswap live on 0.0.0.0:{port}")
-    print(f"  member app  -> any host  (internal :{Proxy.app_port})")
+    print(f"  member face -> {face}")
+    print(f"  member /api -> DB-backed app (internal :{Proxy.app_port})")
     print(f"  back office -> {admin_host}  (internal :{Proxy.admin_port}) [{admin_state}]")
     print(f"  database    -> {config.DB_PATH}")
     print("=" * 60)
