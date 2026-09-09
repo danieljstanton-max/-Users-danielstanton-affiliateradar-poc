@@ -165,8 +165,38 @@ class Proxy(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/api" or path.startswith("/api/") or path.startswith("/shot/"):
             self._proxy(self.app_port)
+        elif path.startswith("/preview/"):
+            self._serve_preview(path[len("/preview/"):])
         else:
             self._serve_index()
+
+    def _serve_preview(self, name: str) -> None:
+        """Serve static preview mockup pages from /preview/<name>.html.
+        Kept off the main SPA so redesign previews can be shared without
+        disturbing the live app."""
+        # Only allow simple names; no traversal, no subdirs.
+        safe = name.strip("/").split("/")[0] or "index"
+        # Accept both "/preview/home" and "/preview/home.html".
+        if safe.endswith(".html"):
+            safe = safe[:-5]
+        if not safe.replace("-", "").replace("_", "").isalnum():
+            self.send_response(404); self.end_headers(); return
+        fp = ROOT / "preview" / f"{safe}.html"
+        if not fp.exists():
+            self.send_response(404)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(b"Preview not found.")
+            return
+        body = fp.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _serve_index(self) -> None:
         if DEV_MODE:
