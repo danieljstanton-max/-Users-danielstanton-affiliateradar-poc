@@ -363,19 +363,27 @@ def linkedin_land(conn, ui: dict) -> int:
     #    the existing value when LinkedIn returns null for a field, and
     #    NULLIF turns any empty string LinkedIn returns into NULL so
     #    COALESCE picks up the DB copy instead of blanking it out.
+    #    Handle is only auto-refreshed when the stored handle is a
+    #    placeholder ("You", "member", empty) so members keep the
+    #    display name they've chosen.
     row = conn.execute(
-        "SELECT id FROM chat_managers WHERE linkedin_sub=?", (sub,)).fetchone()
+        "SELECT id, handle FROM chat_managers WHERE linkedin_sub=?", (sub,)).fetchone()
     if row:
+        placeholder_handles = {"", "you", "member", "user"}
+        current_handle = (row["handle"] or "").strip().lower()
+        new_handle = given or (name.split(" ")[0] if name else "")
+        set_handle = new_handle if current_handle in placeholder_handles else None
         conn.execute(
             "UPDATE chat_managers SET last_login_at=?, "
             "avatar_url=COALESCE(NULLIF(?, ''), avatar_url), "
             "real_name=COALESCE(NULLIF(?, ''), real_name), "
             "work_email=COALESCE(NULLIF(?, ''), work_email), "
             "work_email_confirmed=CASE WHEN ?=1 THEN 1 ELSE work_email_confirmed END, "
+            "handle=COALESCE(NULLIF(?, ''), handle), "
             "linkedin_verified=1 "
             "WHERE id=?",
             (when, picture or "", name or "", email or "",
-             email_verified, row["id"]))
+             email_verified, set_handle or "", row["id"]))
         conn.commit()
         return row["id"]
 
