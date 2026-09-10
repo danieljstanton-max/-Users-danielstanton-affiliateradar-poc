@@ -190,6 +190,29 @@ def api_swaps(conn, mid):
     }
 
 
+def api_lists(conn, mid):
+    """The current member's Want and Have lists, with site info attached."""
+    def _fetch(table):
+        rows = conn.execute(
+            f"""SELECT s.domain, s.display_name, s.etv, s.top_country
+                  FROM {table} l
+                  JOIN sites s ON s.id = l.site_id
+                 WHERE l.manager_id = ?
+                 ORDER BY s.etv DESC""", (mid,)).fetchall()
+        out = []
+        for r in rows:
+            iso = r["top_country"] or ""
+            out.append({
+                "domain": r["domain"],
+                "name": r["display_name"] or r["domain"].split(".")[0].capitalize(),
+                "etv": r["etv"] or 0,
+                "iso": iso,
+                "flag": flag(iso) if iso else "🏳️",
+            })
+        return out
+    return {"wants": _fetch("swap_wants"), "haves": _fetch("swap_haves")}
+
+
 def api_signup(conn, payload):
     handle = (payload.get("handle") or "").strip()
     if not handle:
@@ -508,6 +531,8 @@ class _H(BaseHTTPRequestHandler):
                 self._json(a) if a else self._json({"error": "not_found"}, 404)
             elif u.path == "/api/swaps":
                 self._json(api_swaps(conn, mid))
+            elif u.path == "/api/lists":
+                self._json(api_lists(conn, mid))
             elif u.path == "/api/leaderboard":
                 self._json(api_leaderboard(conn, mid, g("period", "all") or "all"))
             elif u.path == "/api/me":
@@ -571,6 +596,19 @@ class _H(BaseHTTPRequestHandler):
                     self._json({"ok": True})
                 except swaps.SwapError as e:
                     self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path in ("/api/want/remove", "/api/have/remove"):
+                dom = (payload.get("domain") or "").strip()
+                if not dom:
+                    self._json({"ok": False, "error": "domain_required"}, 400)
+                    return
+                table = "swap_wants" if u.path == "/api/want/remove" else "swap_haves"
+                sid = conn.execute("SELECT id FROM sites WHERE domain=?", (dom,)).fetchone()
+                if sid:
+                    conn.execute(
+                        f"DELETE FROM {table} WHERE manager_id=? AND site_id=?",
+                        (mid, sid["id"]))
+                    conn.commit()
+                self._json({"ok": True})
             elif u.path == "/api/swap/agree":
                 try:
                     res = swaps.agree(conn, int(payload.get("match_id") or 0), mid)
