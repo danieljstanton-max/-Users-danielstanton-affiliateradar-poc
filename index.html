@@ -249,17 +249,67 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 /* MARKET DETAIL */
 .mkd-back{display:inline-flex;align-items:center;gap:8px;color:var(--ink-2);font-weight:600;font-size:14px;margin:32px 0 20px;cursor:pointer}
 .mkd-back:hover{color:var(--blue)}
-.mkd-head{display:flex;align-items:center;gap:20px;margin-bottom:28px}
-.mkd-flag{font-size:60px;line-height:1;font-family:var(--f-flag)}
-.mkd-head h1{font-size:44px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1.05}
-.mkd-head .sub{color:var(--ink-mute);font-size:14.5px;font-weight:500;margin-top:4px}
-.mkd-head .sub b{color:var(--ink-2);font-weight:600}
+.mkd-hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:32px;align-items:end;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid var(--line)}
+.mkd-title-row{display:flex;align-items:center;gap:20px;margin-bottom:14px}
+.mkd-flag-hero{font-size:64px;line-height:1;font-family:var(--f-flag);filter:drop-shadow(0 4px 12px rgba(15,30,60,0.10))}
+.mkd-h{font-size:clamp(38px,4.6vw,60px);font-weight:700;letter-spacing:-0.045em;color:var(--ink);line-height:1;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mkd-lede{font-size:16.5px;line-height:1.6;color:var(--ink-2);max-width:56ch}
+.mkd-lede b{color:var(--ink);font-weight:600}
+.mkd-hero-side{display:flex;justify-content:flex-end}
+.mkd-badge{background:linear-gradient(135deg,#F5EFFF 0%,#EAF1FA 100%);border:1px solid rgba(139,92,246,0.24);border-radius:14px;padding:16px 22px;text-align:right;box-shadow:0 4px 14px rgba(139,92,246,0.10)}
+.mkd-badge-l{font-family:var(--f-mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--violet-hi);font-weight:600;display:block;margin-bottom:4px}
+.mkd-badge-v{font-size:24px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);display:block;line-height:1}
+.mkd-badge-c{color:var(--ink-mute);font-size:12.5px;display:block;margin-top:4px}
+
 .mkd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-.mkd-pills{display:flex;gap:8px;margin:24px 0 16px;flex-wrap:wrap}
-.mkd-pill{padding:8px 16px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);font-weight:600;font-size:13.5px;border-radius:999px;cursor:pointer}
-.mkd-pill:hover{border-color:var(--blue);color:var(--blue)}
-.mkd-pill.on{background:var(--blue);color:#fff;border-color:var(--blue)}
-.mkd-pill .n{font-family:var(--f-mono);font-size:11.5px;font-weight:400;margin-left:6px;opacity:0.7}
+.mkd-stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-sm);transition:transform .16s ease,box-shadow .16s ease}
+.mkd-stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.mkd-stat-ico{width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 44px}
+.mkd-stat-ico svg{width:22px;height:22px}
+.mkd-stat-ico.b{background:var(--blue-soft);color:var(--blue)}
+.mkd-stat-ico.p{background:#F5EFFF;color:var(--violet-hi)}
+.mkd-stat-ico.k{background:#FEEBE9;color:#E85F8A}
+.mkd-stat-ico.g{background:var(--up-soft);color:#0E9760}
+.mkd-stat-l{color:var(--ink-mute);font-size:12px;font-weight:500;letter-spacing:-0.005em;margin-bottom:4px}
+.mkd-stat-n{font-size:28px;font-weight:700;letter-spacing:-0.035em;color:var(--ink);line-height:1}
+
+.mkd-pills{display:flex;gap:8px;margin:20px 0 16px;flex-wrap:wrap}
+.mkd-pill{padding:10px 18px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);font-weight:600;font-size:13.5px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:border-color .16s ease,color .16s ease,box-shadow .16s ease}
+.mkd-pill:hover{border-color:var(--blue);color:var(--blue);box-shadow:0 0 0 3px rgba(61,124,255,0.08)}
+.mkd-pill.on{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:var(--glow-blue)}
+.mkd-pill.on .n{color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.16)}
+.mkd-pill .n{font-family:var(--f-mono);font-size:11.5px;font-weight:600;padding:2px 8px;background:var(--blue-softer);color:var(--blue);border-radius:999px}
+
+/* site rows inside market detail */
+.mkd-site{display:inline-flex;align-items:center;gap:12px;min-width:0}
+.mkd-fav{width:40px;height:40px;border-radius:10px;color:#fff;font-weight:700;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;letter-spacing:-0.01em}
+.mkd-site-info{display:flex;flex-direction:column;min-width:0}
+.mkd-site-info b{color:var(--ink);font-weight:700;font-size:14.5px;letter-spacing:-0.01em;line-height:1.2}
+.mkd-site-info span{color:var(--ink-mute);font-family:var(--f-mono);font-size:11.5px;margin-top:2px}
+.mkd-tf{display:flex;align-items:center;gap:12px;min-width:180px}
+.mkd-tf b{color:var(--ink);font-weight:700;letter-spacing:-0.02em;font-size:15px;flex:0 0 auto;min-width:52px}
+.mkd-bar{flex:1;background:var(--line);height:8px;border-radius:999px;overflow:hidden;min-width:60px}
+.mkd-bar i{background:linear-gradient(90deg,var(--blue) 0%,var(--blue-cyan) 100%);height:100%;display:block;border-radius:999px}
+.mkd-auth{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 12px;background:var(--blue-softer);color:var(--blue-hi);font-weight:700;font-size:14.5px;font-family:var(--f-mono);border-radius:999px;letter-spacing:-0.02em}
+.mkd-acts{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+.mkd-visit{width:32px;height:32px;background:var(--card);border:1px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-mute)}
+.mkd-visit svg{width:12px;height:12px}
+.mkd-visit:hover{color:var(--blue);border-color:var(--blue)}
+.mkd-btn{padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px;border:1px solid transparent;cursor:pointer;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+.mkd-btn.have{background:var(--card);color:var(--ink-2);border-color:var(--line)}
+.mkd-btn.have:hover{border-color:var(--blue);color:var(--blue)}
+.mkd-btn.want{background:var(--blue);color:#fff}
+.mkd-btn.want:hover{background:var(--blue-hi);box-shadow:var(--glow-blue)}
+.mkd-btn.on{background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28);box-shadow:none}
+
+/* market detail table override */
+.mk-table td{padding:14px 20px}
+.mk-table thead th{padding:14px 20px;background:#FAFCFE}
+
+.mkd-footer-cta{background:linear-gradient(135deg,#E8F0FA 0%,#F5F8FC 40%,#EAF6FF 100%);border:1px solid var(--line);border-radius:16px;margin-top:32px;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;gap:24px;box-shadow:0 4px 16px rgba(61,124,255,0.08)}
+.mkd-footer-cta h3{font-size:20px;font-weight:800;letter-spacing:-0.02em;color:var(--ink);margin-bottom:4px}
+.mkd-footer-cta p{color:var(--ink-2);font-size:14px}
+
 
 /* SITE PROFILE */
 .sp-back{display:inline-flex;align-items:center;gap:8px;color:var(--ink-2);font-weight:600;font-size:14px;margin:32px 0 20px;cursor:pointer}
@@ -476,6 +526,9 @@ footer{padding:56px 0 40px}
   .acct-arow{grid-template-columns:1fr}
   .stamp-card-head{flex-direction:column}
   .loy-earn-grid{grid-template-columns:1fr}
+  .mkd-hero{grid-template-columns:1fr}
+  .mkd-hero-side{justify-content:flex-start}
+  .mkd-footer-cta{flex-direction:column;align-items:flex-start}
 }
 @media (max-width:640px){
   .stamps-row{grid-template-columns:repeat(5,1fr);gap:6px}
@@ -750,30 +803,60 @@ function renderMarketsAll(){
 }
 
 /* ==================== MARKET DETAIL ==================== */
-var MKD_STATE={iso:'',rows:[],cat:'all'};
+var MKD_STATE={iso:'',rows:[],cat:'all',q:'',sort:'traffic'};
+
 function renderMarket(iso){
   document.getElementById('v-market').innerHTML='<div class="wrap" style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading market…</div>';
 }
+
 function hydrateMarket(iso){
-  MKD_STATE.iso=iso;
+  MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
   apiGet('/api/geo?iso='+encodeURIComponent(iso)).then(function(d){
     MKD_STATE.rows = (d.cards||[]).map(function(c){
-      return {domain:c.domain,name:c.name,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0};
+      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0};
     });
     var country = d.country||{iso:iso,name:iso,flag:''};
     var totalEtv = MKD_STATE.rows.reduce(function(s,r){return s+r.etv;},0);
     var cats={casino:0,sportsbook:0,bingo:0,poker:0};
     MKD_STATE.rows.forEach(function(r){r.verts.forEach(function(v){var k=v.toLowerCase();if(cats[k]!=null)cats[k]++;});});
+    var avgAuth = MKD_STATE.rows.length ? Math.round(MKD_STATE.rows.reduce(function(s,r){return s+r.authority;},0)/MKD_STATE.rows.length) : 0;
+    var topVert = Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];})[0];
+    var topVertLabel = topVert.charAt(0).toUpperCase()+topVert.slice(1);
+
     var el=document.getElementById('v-market');
     el.innerHTML =
       '<a class="mkd-back" onclick="go(\'#/markets\')">← Back to all markets</a>'+
-      '<div class="mkd-head"><span class="mkd-flag">'+country.flag+'</span><div><h1>'+h(country.name)+'</h1><div class="sub"><b>'+d.count+'</b> affiliate websites · Live SEO data · Updated daily</div></div></div>'+
-      '<div class="mkd-stats">'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num">'+d.count+'</span></div><span class="stat-lab">Affiliate sites</span></div></div>'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><rect x="3" y="9" width="2.5" height="6" fill="currentColor"/><rect x="7.5" y="5" width="2.5" height="10" fill="currentColor"/><rect x="12" y="2" width="2.5" height="13" fill="currentColor"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num">'+fmt(totalEtv)+'</span></div><span class="stat-lab">Total monthly traffic</span></div></div>'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num">'+(MKD_STATE.rows.length?Math.round(MKD_STATE.rows.reduce(function(s,r){return s+r.authority},0)/MKD_STATE.rows.length):0)+'</span></div><span class="stat-lab">Avg authority</span></div></div>'+
-        '<div class="stat g"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num">—</span></div><span class="stat-lab">Managers here</span></div></div>'+
+
+      /* Hero — matches the design language of markets index */
+      '<div class="mkd-hero">'+
+        '<div class="mkd-hero-left">'+
+          '<div class="eyebrow" style="margin-bottom:14px">Market intelligence</div>'+
+          '<div class="mkd-title-row">'+
+            '<span class="mkd-flag-hero">'+country.flag+'</span>'+
+            '<h1 class="mkd-h">'+h(country.name)+'</h1>'+
+          '</div>'+
+          '<p class="mkd-lede"><b>'+d.count+'</b> verified affiliate '+(d.count===1?'site':'sites')+' in '+h(country.name)+'. Real traffic, real authority, updated daily.</p>'+
+        '</div>'+
+        '<div class="mkd-hero-side">'+
+          '<div class="mkd-badge"><span class="mkd-badge-l">Top vertical</span><span class="mkd-badge-v">'+topVertLabel+'</span><span class="mkd-badge-c">'+cats[topVert]+' '+(cats[topVert]===1?'site':'sites')+'</span></div>'+
+        '</div>'+
       '</div>'+
+
+      /* Rich stats row */
+      '<div class="mkd-stats">'+
+        '<div class="mkd-stat"><div class="mkd-stat-ico b"><svg viewBox="0 0 22 22" fill="none"><path d="M4 6 H18 M4 11 H18 M4 16 H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="mkd-stat-l">Affiliate sites</div><div class="mkd-stat-n">'+d.count+'</div></div></div>'+
+        '<div class="mkd-stat"><div class="mkd-stat-ico p"><svg viewBox="0 0 22 22" fill="none"><rect x="3" y="11" width="3" height="8" fill="currentColor"/><rect x="9.5" y="6" width="3" height="13" fill="currentColor"/><rect x="16" y="2" width="3" height="17" fill="currentColor"/></svg></div><div><div class="mkd-stat-l">Total monthly traffic</div><div class="mkd-stat-n">'+fmt(totalEtv)+'</div></div></div>'+
+        '<div class="mkd-stat"><div class="mkd-stat-ico k"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M11 6 L11 11 L14 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="mkd-stat-l">Avg authority</div><div class="mkd-stat-n">'+avgAuth+'</div></div></div>'+
+        '<div class="mkd-stat"><div class="mkd-stat-ico g"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M3 20 C 3 15, 6 12, 11 12 C 16 12, 19 15, 19 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="mkd-stat-l">Managers here</div><div class="mkd-stat-n">—</div></div></div>'+
+      '</div>'+
+
+      /* Toolbar — search + sort */
+      '<div class="mk-toolbar" style="margin-top:24px">'+
+        '<label class="mk-search"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11 L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input type="text" id="mkd-search" placeholder="Search sites in '+h(country.name)+'…"></label>'+
+        '<div class="mk-dd"><select id="mkd-sort"><option value="traffic">Sort: Most traffic</option><option value="authority">Sort: Highest authority</option><option value="name">Sort: A–Z</option></select><svg class="dd-caret" viewBox="0 0 12 12" fill="none"><path d="M3 5 L6 8 L9 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>'+
+      '</div>'+
+
+      /* Category pills */
       '<div class="mkd-pills" id="mkd-pills">'+
         '<button class="mkd-pill on" data-c="all">All <span class="n">'+d.count+'</span></button>'+
         '<button class="mkd-pill" data-c="Casino">Casino <span class="n">'+cats.casino+'</span></button>'+
@@ -781,8 +864,21 @@ function hydrateMarket(iso){
         '<button class="mkd-pill" data-c="Bingo">Bingo <span class="n">'+cats.bingo+'</span></button>'+
         '<button class="mkd-pill" data-c="Poker">Poker <span class="n">'+cats.poker+'</span></button>'+
       '</div>'+
-      '<div class="mk-table-card"><table class="mk-table"><thead><tr><th>Website</th><th>Monthly traffic</th><th>Authority</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>';
+
+      /* Site rows table */
+      '<div class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th>Monthly traffic</th><th>Authority</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
+
+      /* Footer callout */
+      '<div class="mkd-footer-cta">'+
+        '<div><h3>Ready to swap in '+h(country.name)+'?</h3><p>Add the sites you want to your list. When one of them appears on someone else&rsquo;s Have list, you match.</p></div>'+
+        '<button class="btn" onclick="go(\'#/loyalty\')">See how loyalty works →</button>'+
+      '</div>';
+
+    // Wire pills
     document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(x){x.classList.remove('on');});b.classList.add('on');MKD_STATE.cat=b.dataset.c;renderMkdRows();});});
+    // Wire search + sort
+    document.getElementById('mkd-search').addEventListener('input',function(e){MKD_STATE.q=e.target.value.toLowerCase().trim();renderMkdRows();});
+    document.getElementById('mkd-sort').addEventListener('change',function(e){MKD_STATE.sort=e.target.value;renderMkdRows();});
     renderMkdRows();
   }).catch(function(){document.getElementById('v-market').innerHTML='<div class="wrap" style="padding:60px 0;text-align:center;color:var(--ink-mute)">Couldn\'t load market.</div>';});
 }
@@ -790,12 +886,32 @@ function hydrateMarket(iso){
 function renderMkdRows(){
   var rows=MKD_STATE.rows.slice();
   if(MKD_STATE.cat!=='all') rows=rows.filter(function(r){return r.verts.some(function(v){return v.toLowerCase()===MKD_STATE.cat.toLowerCase();});});
-  rows.sort(function(a,b){return b.etv-a.etv;});
+  if(MKD_STATE.q) rows=rows.filter(function(r){return (r.name||'').toLowerCase().includes(MKD_STATE.q) || (r.domain||'').toLowerCase().includes(MKD_STATE.q);});
+  if(MKD_STATE.sort==='traffic') rows.sort(function(a,b){return b.etv-a.etv;});
+  else if(MKD_STATE.sort==='authority') rows.sort(function(a,b){return b.authority-a.authority;});
+  else if(MKD_STATE.sort==='name') rows.sort(function(a,b){return a.name.localeCompare(b.name);});
   var maxEtv=rows[0]?rows[0].etv:1;
+  var palette=['#3D7CFF','#8B5CF6','#EC4899','#F59E0B','#14B87A','#00D9FF'];
+  if(!rows.length){
+    document.getElementById('mkd-body').innerHTML='<tr><td colspan="5" style="text-align:center;padding:48px;color:var(--ink-mute)">No sites match your filters.</td></tr>';
+    return;
+  }
   document.getElementById('mkd-body').innerHTML = rows.map(function(r,i){
     var bar=Math.max(3,Math.round(r.etv/maxEtv*100));
-    var verts=(r.verts||[]).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
-    return '<tr class="mk-row-link" onclick="go(\'#/site/'+r.domain+'\')"><td><div style="display:flex;flex-direction:column"><b style="color:var(--ink)">'+h(r.name||r.domain)+'</b><span style="color:var(--ink-mute);font-family:var(--f-mono);font-size:12px">'+h(r.domain)+'</span></div></td><td class="tf"><div style="display:flex;align-items:center;gap:8px"><b>'+fmt(r.etv)+'</b><span style="flex:1;background:var(--line);height:6px;border-radius:6px;overflow:hidden"><i style="background:var(--blue);height:100%;width:'+bar+'%;display:block"></i></span></div></td><td class="num-c">'+r.authority+'</td><td>'+verts+'</td><td><div style="display:flex;gap:6px" onclick="event.stopPropagation()"><button class="opp-btn have'+(r.have?' on':'')+'" style="font-size:12px;padding:6px 10px" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button><button class="opp-btn want'+(r.want?' on':'')+'" style="font-size:12px;padding:6px 10px" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted':'Want')+'</button></div></td></tr>';
+    var verts=(r.verts||[]).slice(0,3).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
+    var letter=(r.name||r.domain).charAt(0).toUpperCase();
+    var color=palette[i%palette.length];
+    return '<tr class="mk-row-link" onclick="go(\'#/site/'+r.domain+'\')">'+
+      '<td><div class="mkd-site"><span class="mkd-fav" style="background:'+color+'">'+letter+'</span><div class="mkd-site-info"><b>'+h(r.name)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
+      '<td><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
+      '<td><span class="mkd-auth">'+r.authority+'</span></td>'+
+      '<td>'+verts+'</td>'+
+      '<td><div class="mkd-acts" onclick="event.stopPropagation()">'+
+        '<a class="mkd-visit" href="https://'+encodeURI(r.domain)+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
+        '<button class="mkd-btn have'+(r.have?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button>'+
+        '<button class="mkd-btn want'+(r.want?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted':'Want')+'</button>'+
+      '</div></td>'+
+    '</tr>';
   }).join('');
 }
 
