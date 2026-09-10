@@ -515,6 +515,16 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .acct-stats .lbl{color:var(--ink-mute);font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;font-family:var(--f-mono);margin-bottom:4px}
 .acct-stats .val{font-size:24px;font-weight:700;color:var(--ink);letter-spacing:-0.03em}
 
+/* Compact stamp card inside Account swaps-and-loyalty card */
+.loy-mini{margin-top:18px;padding:16px 18px;background:linear-gradient(135deg,#FFFDF5,#FBF6EA);border:1px solid rgba(230,138,82,0.30);border-radius:12px}
+.loy-mini-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.loy-mini-head b{display:block;font-size:14px;font-weight:700;letter-spacing:-0.015em;color:var(--ink);margin-bottom:2px}
+.loy-mini-head span{color:var(--ink-mute);font-size:12.5px;line-height:1.4}
+.loy-mini-count{font-family:var(--f-mono);font-size:13px;font-weight:700;color:#B47B00;background:var(--card);padding:6px 12px;border-radius:999px;border:1px solid rgba(230,138,82,0.28)}
+.loy-mini-stamps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.mini-stamp{aspect-ratio:1/1;background:var(--card);border:2px dashed rgba(230,138,82,0.30);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:14px;font-weight:500;color:rgba(230,138,82,0.55)}
+.mini-stamp.on{background:linear-gradient(135deg,#FFE7A6,#FFB84D);border-style:solid;border-color:transparent;color:#7A4A00;font-family:var(--f-body);font-size:18px;box-shadow:0 4px 12px rgba(255,168,66,0.35)}
+
 /* Account Your-lists summary card */
 .acct-lists{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .acct-list-tile{padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--ground)}
@@ -679,7 +689,7 @@ function apiPost(path,body){return fetch(path,{method:'POST',headers:{'Content-T
 
 var REGIONS={"US":"americas","CA":"americas","BR":"americas","MX":"americas","PE":"americas","CL":"americas","AR":"americas","CO":"americas","GB":"europe","DE":"europe","FI":"europe","IT":"europe","NL":"europe","FR":"europe","SE":"europe","IE":"europe","CH":"europe","PL":"europe","ES":"europe","PT":"europe","AT":"europe","BE":"europe","DK":"europe","GR":"europe","RO":"europe","CZ":"europe","UA":"europe","TR":"europe","HU":"europe","IN":"asia","PH":"asia","ID":"asia","JP":"asia","AU":"oceania","NZ":"oceania","ZA":"africa","NG":"africa"};
 
-var NAV=[['home','Home'],['markets','Markets'],['swaps','Swaps'],['leaderboard','Leaderboard'],['loyalty','Loyalty'],['alerts','Alerts'],['chat','Chat'],['account','My Account']];
+var NAV=[['home','Home'],['markets','Markets'],['leaderboard','Leaderboard'],['chat','Chat'],['account','My Account']];
 
 function updateNav(active){
   document.getElementById('nlinks').innerHTML=NAV.map(function(n){
@@ -1267,9 +1277,21 @@ function hydrateAccount(){
     apiGet('/api/account'),
     apiGet('/api/loyalty').catch(function(){return{};}),
     apiGet('/api/me').catch(function(){return{};}),
-    apiGet('/api/lists').catch(function(){return{wants:[],haves:[]};})
+    apiGet('/api/lists').catch(function(){return{wants:[],haves:[]};}),
+    apiGet('/api/swaps').catch(function(){return{matches:[],ledger:[],access:{}};})
   ]).then(function(res){
-    var a=res[0], l=res[1], me=res[2], lists=res[3]||{wants:[],haves:[]};
+    var a=res[0], l=res[1]||{}, me=res[2], lists=res[3]||{wants:[],haves:[]}, sw=res[4]||{matches:[],ledger:[],access:{}};
+    var matches=sw.matches||[], ledger=sw.ledger||[];
+    var approved = l.approved_reviews||0;
+    var currentStamps = approved % 5;
+    var freeSwapsEarned = l.free_swaps_earned||0;
+    var toNext = 5 - currentStamps;
+    if(currentStamps===0 && approved>0) currentStamps=5;
+    var stamps='';
+    for(var si=0;si<5;si++){
+      var filled = si<currentStamps;
+      stamps += '<div class="mini-stamp'+(filled?' on':'')+'">'+(filled?'★':(si+1))+'</div>';
+    }
     var initials = (a.handle||'You').split(' ').map(function(w){return w.charAt(0).toUpperCase();}).slice(0,2).join('');
     document.getElementById('v-account').innerHTML =
       '<div class="loy-hero"><h1>My Account</h1><p class="sub">Manage your profile, swaps and alert preferences.</p></div>'+
@@ -1320,12 +1342,21 @@ function hydrateAccount(){
       /* Bottom row: swaps + suggest-a-site */
       '<div class="acct-grid" style="margin-top:16px">'+
         '<div class="acct-card">'+
-          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M3 6 L15 6 L12 3 M15 12 L3 12 L6 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h2>Swaps &amp; plan</h2><p>Your swap balance, loyalty progress, and current plan.</p></div></div>'+
+          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M3 6 L15 6 L12 3 M15 12 L3 12 L6 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h2>Swaps &amp; loyalty</h2><p>Your swap balance, plan, and loyalty rewards.</p></div></div>'+
           '<div class="acct-stats">'+
             '<div><div class="lbl">Current plan</div><div class="val">'+ (me.plan? me.plan.charAt(0).toUpperCase()+me.plan.slice(1) : '—') +'</div></div>'+
             '<div><div class="lbl">Swaps left</div><div class="val">'+ (me.unlimited?'∞':(me.swaps==null?'—':me.swaps)) +'</div></div>'+
-            '<div><div class="lbl">Free swaps earned</div><div class="val">'+ (l.free_swaps_earned||0) +'</div></div>'+
-            '<div><div class="lbl">Approved reviews</div><div class="val">'+ (l.approved_reviews||0) +'</div></div>'+
+            '<div><div class="lbl">Free swaps earned</div><div class="val">'+ freeSwapsEarned +'</div></div>'+
+            '<div><div class="lbl">Approved reviews</div><div class="val">'+ approved +'</div></div>'+
+          '</div>'+
+
+          /* Compact stamp card */
+          '<div class="loy-mini">'+
+            '<div class="loy-mini-head">'+
+              '<div><b>Loyalty rewards</b><span>'+(currentStamps===5?'Card full — free swap added':'Earn '+toNext+' more '+(toNext===1?'review':'reviews')+' to unlock your next free swap')+'</span></div>'+
+              '<div class="loy-mini-count">'+currentStamps+'/5</div>'+
+            '</div>'+
+            '<div class="loy-mini-stamps">'+stamps+'</div>'+
           '</div>'+
           (me.unlimited ? '' :
             '<div class="plan-cta">'+
@@ -1339,29 +1370,41 @@ function hydrateAccount(){
           '<a class="btn btn-gho btn-sm" style="margin-top:12px" onclick="go(\'#/loyalty\')">Go to loyalty →</a>'+
         '</div>'+
         /* Your lists summary card */
+        /* Matches ready (only if any) */
+        (matches.length ?
+          '<div class="acct-card">'+
+            '<div class="acct-card-head"><span class="ico-hero" style="background:#EAF7EF;color:#0E9760"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="9" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M9 17 C 9 14, 11 13, 13 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><h2>Matches ready</h2><p>Someone has a site you want. Connect to swap contact details.</p></div></div>'+
+            matches.map(function(m){
+              var btn = m.status==='completed'?'<button class="match-btn" disabled>Contact unlocked ✓</button>':(m.you_agreed?'<button class="match-btn" disabled>Waiting for '+h(m.with||'')+'</button>':'<button class="match-btn" onclick="swapAgree('+m.match_id+',this)">Connect · 1 swap</button>');
+              return '<div class="match-card"><div class="who">Match with <b>'+h(m.with||'someone')+'</b></div><div class="match-row"><div class="match-tile get"><div class="lbl">You get</div><div class="dom">'+h(m.you_get||'—')+'</div></div><div class="match-arrow"><svg viewBox="0 0 28 28" fill="none"><path d="M4 10 L22 10 L18 6 M24 18 L6 18 L10 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="match-tile"><div class="lbl">You give</div><div class="dom">'+h(m.you_give||'—')+'</div></div></div>'+ (m.unlocked_contact?'<div class="sp-locked" style="background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28)">✓ '+h(m.unlocked_contact)+'</div>':'') +btn+'</div>';
+            }).join('')+
+          '</div>' : '')+
+
+        /* Full Want / Have lists */
         '<div class="acct-card">'+
-          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M5 3 H15 V17 L10 14 L5 17 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Your lists</h2><p>The sites you\'ve marked as Want or Have. Full list &mdash; and remove controls &mdash; live on the Swaps page.</p></div></div>'+
-          '<div class="acct-lists">'+
-            '<div class="acct-list-tile blue">'+
-              '<div class="acct-list-top"><span class="dot-blue"></span><b>Sites you want</b><span class="acct-list-n">'+lists.wants.length+'</span></div>'+
-              (lists.wants.length ?
-                '<div class="acct-list-preview">'+ lists.wants.slice(0,3).map(function(w){return '<a onclick="go(\'#/site/'+w.domain+'\')"><span class="mq-flag">'+w.flag+'</span>'+h(w.domain)+' <span class="acct-list-etv">'+fmt(w.etv)+'/mo</span></a>';}).join('') +'</div>'+
-                (lists.wants.length>3?'<div class="acct-list-more">+'+(lists.wants.length-3)+' more</div>':'') :
-                '<div class="acct-list-empty">No Want-listed sites yet.</div>')+
+          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M5 3 H15 V17 L10 14 L5 17 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Your lists</h2><p>Sites you\'ve marked as Want or Have. Click × to remove one.</p></div></div>'+
+          '<div class="lists-grid">'+
+            '<div class="list-card" style="box-shadow:none;border-color:rgba(61,124,255,0.24);background:#F5F9FF">'+
+              '<div class="list-head"><div><h3><span class="dot-blue"></span>Sites you want <span class="list-n">'+lists.wants.length+'</span></h3><p>When a match happens, it appears above.</p></div><a class="section-link" onclick="go(\'#/markets\')">Add →</a></div>'+
+              '<div class="list-body">'+ (lists.wants.length?lists.wants.map(function(x){
+                return '<div class="list-row"><span class="list-fav" style="background:#3D7CFF">'+x.name.charAt(0).toUpperCase()+'</span><div class="list-info" onclick="go(\'#/site/'+x.domain+'\')"><b>'+h(x.name)+'</b><span>'+h(x.domain)+'</span></div><div class="list-meta"><span class="mq-flag">'+x.flag+'</span> <b>'+fmt(x.etv)+'</b>/mo</div><button class="list-x" onclick="removeFromList(\''+x.domain+'\',\'want\',this)" title="Remove">×</button></div>';
+              }).join(''):'<div class="acct-list-empty">No Want-listed sites yet. Add some from <a onclick="go(\'#/markets\')" style="color:var(--blue);cursor:pointer">Markets</a>.</div>') +'</div>'+
             '</div>'+
-            '<div class="acct-list-tile green">'+
-              '<div class="acct-list-top"><span class="dot-green"></span><b>Sites you have</b><span class="acct-list-n">'+lists.haves.length+'</span></div>'+
-              (lists.haves.length ?
-                '<div class="acct-list-preview">'+ lists.haves.slice(0,3).map(function(w){return '<a onclick="go(\'#/site/'+w.domain+'\')"><span class="mq-flag">'+w.flag+'</span>'+h(w.domain)+' <span class="acct-list-etv">'+fmt(w.etv)+'/mo</span></a>';}).join('') +'</div>'+
-                (lists.haves.length>3?'<div class="acct-list-more">+'+(lists.haves.length-3)+' more</div>':'') :
-                '<div class="acct-list-empty">No Have-listed sites yet.</div>')+
+            '<div class="list-card" style="box-shadow:none;border-color:rgba(20,184,122,0.22);background:#F1FAF5">'+
+              '<div class="list-head"><div><h3><span class="dot-green"></span>Sites you have <span class="list-n">'+lists.haves.length+'</span></h3><p>Only shared when a match happens.</p></div></div>'+
+              '<div class="list-body">'+ (lists.haves.length?lists.haves.map(function(x){
+                return '<div class="list-row"><span class="list-fav" style="background:#0E9760">'+x.name.charAt(0).toUpperCase()+'</span><div class="list-info" onclick="go(\'#/site/'+x.domain+'\')"><b>'+h(x.name)+'</b><span>'+h(x.domain)+'</span></div><div class="list-meta"><span class="mq-flag">'+x.flag+'</span> <b>'+fmt(x.etv)+'</b>/mo</div><button class="list-x" onclick="removeFromList(\''+x.domain+'\',\'have\',this)" title="Remove">×</button></div>';
+              }).join(''):'<div class="acct-list-empty">No Have-listed sites yet. Mark the ones you own from any site profile.</div>') +'</div>'+
             '</div>'+
-          '</div>'+
-          '<div style="display:flex;gap:10px;margin-top:16px">'+
-            '<a class="btn btn-gho" onclick="go(\'#/swaps\')">View full lists →</a>'+
-            '<a class="btn btn-gho" onclick="go(\'#/markets\')">Add sites</a>'+
           '</div>'+
         '</div>'+
+
+        /* Completed swaps (collapsed unless there are any) */
+        (ledger.length ?
+          '<div class="acct-card">'+
+            '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10 L8 14 L16 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h2>Completed swaps</h2><p>'+ledger.length+' contact '+(ledger.length===1?'exchange':'exchanges')+'.</p></div></div>'+
+            '<div style="display:flex;flex-direction:column;gap:8px">'+ ledger.map(function(e){var when=e.at?new Date(e.at).toLocaleDateString():'';return '<div style="padding:12px 16px;background:var(--ground);border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:13.5px"><div><b>'+h(e.to||e.from)+'</b> · contact for <b style="color:var(--blue)">'+h(e.domain||'')+'</b></div><span style="color:var(--ink-mute);font-size:12px">'+when+'</span></div>';}).join('') +'</div>'+
+          '</div>' : '')+
 
         '<div class="acct-card">'+
           '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3 L12 8 L17 8 L13 11 L15 16 L10 13 L5 16 L7 11 L3 8 L8 8 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Suggest a site</h2><p>Know an affiliate site we&rsquo;re missing? Suggest it — approved suggestions earn you a free swap.</p></div></div>'+
@@ -1681,15 +1724,15 @@ function route(){
   else if(s==='markets'){renderMarkets();hydrateMarkets();switchTo('v-markets')}
   else if(s==='market'){var iso=(parts[1]||'US').toUpperCase();renderMarket(iso);hydrateMarket(iso);switchTo('v-market')}
   else if(s==='site'){var dm=decodeURIComponent(parts.slice(1).join('/'));renderSite(dm);hydrateSite(dm);switchTo('v-site')}
-  else if(s==='swaps'){renderSwaps();hydrateSwaps();switchTo('v-swaps')}
-  else if(s==='loyalty'){renderLoyalty();hydrateLoyalty();switchTo('v-loyalty')}
+  else if(s==='swaps'){go('#/account');return;}
+  else if(s==='loyalty'){go('#/account');return;}
+  else if(s==='alerts'){go('#/account');return;}
   else if(s==='account'){renderAccount();hydrateAccount();switchTo('v-account')}
   else if(s==='signup'){renderSignup();switchTo('v-signup')}
   else if(s==='login'){renderLogin();switchTo('v-login')}
   else if(s==='privacy'){renderPrivacy();switchTo('v-privacy')}
   else if(s==='terms'){renderTerms();switchTo('v-terms')}
   else if(s==='leaderboard'){renderLeaderboard();hydrateLeaderboard();switchTo('v-leaderboard')}
-  else if(s==='alerts'){renderStub('Alerts');switchTo('v-stub')}
   else if(s==='chat'){renderStub('Chat');switchTo('v-stub')}
   else{renderHome();hydrateHome();switchTo('v-home')}
 }
