@@ -514,6 +514,22 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .acct-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .acct-stats .lbl{color:var(--ink-mute);font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;font-family:var(--f-mono);margin-bottom:4px}
 .acct-stats .val{font-size:24px;font-weight:700;color:var(--ink);letter-spacing:-0.03em}
+
+/* Account Your-lists summary card */
+.acct-lists{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.acct-list-tile{padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--ground)}
+.acct-list-tile.blue{border-color:rgba(61,124,255,0.24);background:#F5F9FF}
+.acct-list-tile.green{border-color:rgba(20,184,122,0.22);background:#F1FAF5}
+.acct-list-top{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.acct-list-top b{flex:1;font-weight:600}
+.acct-list-n{background:var(--card);color:var(--ink);font-family:var(--f-mono);font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
+.acct-list-preview{display:flex;flex-direction:column;gap:6px}
+.acct-list-preview a{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px;font-weight:500;cursor:pointer;padding:4px 0}
+.acct-list-preview a:hover{color:var(--blue)}
+.acct-list-preview a .mq-flag{font-size:16px}
+.acct-list-etv{margin-left:auto;color:var(--ink-mute);font-family:var(--f-mono);font-size:11.5px;font-weight:500}
+.acct-list-more{color:var(--ink-mute);font-size:12px;margin-top:6px;font-weight:500}
+.acct-list-empty{color:var(--ink-mute);font-size:13px;padding:8px 0}
 .plan-cta{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch;margin-top:8px}
 .btn-glow{background:var(--grad);background-size:200% 200%;color:#fff;border:0;padding:14px 20px;font-weight:700;font-size:14.5px;letter-spacing:-0.01em;border-radius:12px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(109,40,217,0.30), 0 8px 26px rgba(61,124,255,0.42), 0 0 40px rgba(0,217,255,0.25);animation:glowShift 6s ease-in-out infinite;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .06s ease}
 .btn-glow:hover{box-shadow:0 0 0 1px rgba(109,40,217,0.40), 0 12px 32px rgba(61,124,255,0.56), 0 0 60px rgba(0,217,255,0.36)}
@@ -1247,8 +1263,13 @@ var ACC_SEL=['gb','us','de'];
 
 function renderAccount(){document.getElementById('v-account').innerHTML='<div style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading…</div>';}
 function hydrateAccount(){
-  Promise.all([apiGet('/api/account'), apiGet('/api/loyalty').catch(function(){return{};}), apiGet('/api/me').catch(function(){return{};})]).then(function(res){
-    var a=res[0], l=res[1], me=res[2];
+  Promise.all([
+    apiGet('/api/account'),
+    apiGet('/api/loyalty').catch(function(){return{};}),
+    apiGet('/api/me').catch(function(){return{};}),
+    apiGet('/api/lists').catch(function(){return{wants:[],haves:[]};})
+  ]).then(function(res){
+    var a=res[0], l=res[1], me=res[2], lists=res[3]||{wants:[],haves:[]};
     var initials = (a.handle||'You').split(' ').map(function(w){return w.charAt(0).toUpperCase();}).slice(0,2).join('');
     document.getElementById('v-account').innerHTML =
       '<div class="loy-hero"><h1>My Account</h1><p class="sub">Manage your profile, swaps and alert preferences.</p></div>'+
@@ -1317,6 +1338,31 @@ function hydrateAccount(){
           )+
           '<a class="btn btn-gho btn-sm" style="margin-top:12px" onclick="go(\'#/loyalty\')">Go to loyalty →</a>'+
         '</div>'+
+        /* Your lists summary card */
+        '<div class="acct-card">'+
+          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M5 3 H15 V17 L10 14 L5 17 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Your lists</h2><p>The sites you\'ve marked as Want or Have. Full list &mdash; and remove controls &mdash; live on the Swaps page.</p></div></div>'+
+          '<div class="acct-lists">'+
+            '<div class="acct-list-tile blue">'+
+              '<div class="acct-list-top"><span class="dot-blue"></span><b>Sites you want</b><span class="acct-list-n">'+lists.wants.length+'</span></div>'+
+              (lists.wants.length ?
+                '<div class="acct-list-preview">'+ lists.wants.slice(0,3).map(function(w){return '<a onclick="go(\'#/site/'+w.domain+'\')"><span class="mq-flag">'+w.flag+'</span>'+h(w.domain)+' <span class="acct-list-etv">'+fmt(w.etv)+'/mo</span></a>';}).join('') +'</div>'+
+                (lists.wants.length>3?'<div class="acct-list-more">+'+(lists.wants.length-3)+' more</div>':'') :
+                '<div class="acct-list-empty">No Want-listed sites yet.</div>')+
+            '</div>'+
+            '<div class="acct-list-tile green">'+
+              '<div class="acct-list-top"><span class="dot-green"></span><b>Sites you have</b><span class="acct-list-n">'+lists.haves.length+'</span></div>'+
+              (lists.haves.length ?
+                '<div class="acct-list-preview">'+ lists.haves.slice(0,3).map(function(w){return '<a onclick="go(\'#/site/'+w.domain+'\')"><span class="mq-flag">'+w.flag+'</span>'+h(w.domain)+' <span class="acct-list-etv">'+fmt(w.etv)+'/mo</span></a>';}).join('') +'</div>'+
+                (lists.haves.length>3?'<div class="acct-list-more">+'+(lists.haves.length-3)+' more</div>':'') :
+                '<div class="acct-list-empty">No Have-listed sites yet.</div>')+
+            '</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:10px;margin-top:16px">'+
+            '<a class="btn btn-gho" onclick="go(\'#/swaps\')">View full lists →</a>'+
+            '<a class="btn btn-gho" onclick="go(\'#/markets\')">Add sites</a>'+
+          '</div>'+
+        '</div>'+
+
         '<div class="acct-card">'+
           '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3 L12 8 L17 8 L13 11 L15 16 L10 13 L5 16 L7 11 L3 8 L8 8 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Suggest a site</h2><p>Know an affiliate site we&rsquo;re missing? Suggest it — approved suggestions earn you a free swap.</p></div></div>'+
           '<div id="sugg-form">'+
