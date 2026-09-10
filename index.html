@@ -373,6 +373,15 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .acct-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .acct-stats .lbl{color:var(--ink-mute);font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;font-family:var(--f-mono);margin-bottom:4px}
 .acct-stats .val{font-size:24px;font-weight:700;color:var(--ink);letter-spacing:-0.03em}
+.plan-cta{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch;margin-top:8px}
+.btn-glow{background:var(--grad);background-size:200% 200%;color:#fff;border:0;padding:14px 20px;font-weight:700;font-size:14.5px;letter-spacing:-0.01em;border-radius:12px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(109,40,217,0.30), 0 8px 26px rgba(61,124,255,0.42), 0 0 40px rgba(0,217,255,0.25);animation:glowShift 6s ease-in-out infinite;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .06s ease}
+.btn-glow:hover{box-shadow:0 0 0 1px rgba(109,40,217,0.40), 0 12px 32px rgba(61,124,255,0.56), 0 0 60px rgba(0,217,255,0.36)}
+.btn-glow:active{transform:translateY(1px)}
+.btn-glow::before{content:"";position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.24) 50%,transparent 100%);animation:shimmer 3.2s ease-in-out infinite;pointer-events:none}
+@keyframes glowShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes shimmer{0%{left:-100%}55%{left:120%}100%{left:120%}}
+@media (prefers-reduced-motion:reduce){.btn-glow{animation:none}.btn-glow::before{display:none}}
+
 
 /* LEADERBOARD */
 .lb-hero{padding:32px 0 24px}
@@ -953,7 +962,16 @@ function hydrateAccount(){
             '<div><div class="lbl">Free swaps earned</div><div class="val">'+ (l.free_swaps_earned||0) +'</div></div>'+
             '<div><div class="lbl">Approved reviews</div><div class="val">'+ (l.approved_reviews||0) +'</div></div>'+
           '</div>'+
-          '<a class="btn btn-gho btn-sm" onclick="go(\'#/loyalty\')">Go to loyalty →</a>'+
+          (me.unlimited ? '' :
+            '<div class="plan-cta">'+
+              '<button class="btn btn-glow" onclick="openUpgrade()">'+
+                '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1 L10 6 L15 6.5 L11 10 L12 15 L8 12.5 L4 15 L5 10 L1 6.5 L6 6 Z" fill="currentColor"/></svg>'+
+                'Upgrade plan &nbsp;·&nbsp; unlock unlimited swaps'+
+              '</button>'+
+              '<button class="btn btn-gho" onclick="openTopup()">Buy swaps</button>'+
+            '</div>'
+          )+
+          '<a class="btn btn-gho btn-sm" style="margin-top:12px" onclick="go(\'#/loyalty\')">Go to loyalty →</a>'+
         '</div>'+
         '<div class="acct-card">'+
           '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3 L12 8 L17 8 L13 11 L15 16 L10 13 L5 16 L7 11 L3 8 L8 8 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Suggest a site</h2><p>Know an affiliate site we&rsquo;re missing? Suggest it — approved suggestions earn you a free swap.</p></div></div>'+
@@ -991,6 +1009,8 @@ function addAcctMk(btn){
   setTimeout(function(){document.addEventListener('click',function h(){menu.remove();document.removeEventListener('click',h);},{once:true});},0);
 }
 function saveAlertPrefs(btn){var orig=btn.textContent;btn.textContent='Saved ✓';btn.disabled=true;setTimeout(function(){btn.textContent=orig;btn.disabled=false;},1600);toast('Preferences saved');}
+function openUpgrade(){toast('Plan upgrade — checkout coming soon');}
+function openTopup(){toast('Swap top-up — checkout coming soon');}
 function suggestSite(){var u=document.getElementById('sugg-url');if(!u||!u.value.trim()){toast('Enter a site URL');return;}document.getElementById('sugg-form').innerHTML='<div style="padding:16px;background:var(--up-soft);border:1px solid rgba(20,184,122,0.28);border-radius:10px;color:#0E9760;font-weight:600;display:flex;align-items:center;gap:10px"><span style="width:24px;height:24px;background:var(--up);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">✓</span>Submitted for review — you\'ll earn a swap when it\'s approved.</div>';}
 
 /* ==================== SIGNUP ==================== */
