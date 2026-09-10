@@ -282,9 +282,42 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .mkd-pill.on .n{color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.16)}
 .mkd-pill .n{font-family:var(--f-mono);font-size:11.5px;font-weight:600;padding:2px 8px;background:var(--blue-softer);color:var(--blue);border-radius:999px}
 
+/* List / grid view toggle */
+.mkd-viewtog{display:inline-flex;padding:3px;background:var(--card);border:1px solid var(--line);border-radius:10px;margin-left:auto}
+.mkd-viewtog button{width:36px;height:32px;padding:0;background:transparent;border:0;border-radius:7px;color:var(--ink-mute);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .16s ease,color .16s ease}
+.mkd-viewtog button svg{width:16px;height:16px}
+.mkd-viewtog button:hover{color:var(--ink)}
+.mkd-viewtog button.on{background:var(--ground);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* Card grid view for the country page */
+.mkd-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.mkd-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;box-shadow:var(--shadow-sm);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;cursor:pointer;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.mkd-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6D28D9,#3D7CFF,#00D9FF);opacity:0;transition:opacity .16s ease}
+.mkd-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(20,30,50,0.09);border-color:rgba(61,124,255,0.28)}
+.mkd-card:hover::before{opacity:1}
+.mkd-card-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.mkd-card .mkd-fav{width:44px;height:44px;flex:0 0 44px;border-radius:11px}
+.mkd-card .mkd-fav img{width:24px;height:24px}
+.mkd-card .mkd-fav .mkd-mono{font-size:17px}
+.mkd-card-id{min-width:0;flex:1}
+.mkd-card-id b{display:block;font-size:15px;font-weight:700;color:var(--ink);letter-spacing:-0.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
+.mkd-card-id span{display:block;font-size:12px;color:var(--ink-mute);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.mkd-card-verts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;min-height:24px}
+.mkd-card-verts .chip{background:var(--blue-softer);color:var(--blue);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:0}
+.mkd-card-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;padding:10px 12px;background:var(--ground);border-radius:10px}
+.mkd-card-metric b{display:block;font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-0.02em;line-height:1}
+.mkd-card-metric span{display:block;font-size:10px;font-weight:500;color:var(--ink-mute);letter-spacing:0.06em;text-transform:uppercase;margin-top:4px}
+.mkd-card-acts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mkd-card-acts .mkd-btn{width:100%;text-align:center;padding:9px 0}
+
 /* site rows inside market detail */
 .mkd-site{display:inline-flex;align-items:center;gap:12px;min-width:0}
-.mkd-fav{width:40px;height:40px;border-radius:10px;color:#fff;font-weight:700;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;letter-spacing:-0.01em}
+.mkd-fav{position:relative;width:40px;height:40px;border-radius:10px;overflow:hidden;background:var(--card);border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px}
+.mkd-fav img{width:22px;height:22px;object-fit:contain;display:block}
+.mkd-fav .mkd-mono{display:none;width:100%;height:100%;color:#fff;font-weight:700;font-size:16px;align-items:center;justify-content:center;letter-spacing:-0.01em}
+.mkd-fav.is-fallback{border:0}
+.mkd-fav.is-fallback img{display:none}
+.mkd-fav.is-fallback .mkd-mono{display:flex}
 .mkd-site-info{display:flex;flex-direction:column;min-width:0}
 .mkd-site-info b{color:var(--ink);font-weight:700;font-size:15px;letter-spacing:-0.015em;line-height:1.2}
 .mkd-site-info span{color:var(--ink-mute);font-size:13px;font-weight:500;letter-spacing:-0.005em;margin-top:3px;font-feature-settings:"cv11" 1}
@@ -1081,7 +1114,7 @@ function renderMarketsAll(){
 }
 
 /* ==================== MARKET DETAIL ==================== */
-var MKD_STATE={iso:'',rows:[],cat:'all',q:'',sort:'traffic'};
+var MKD_STATE={iso:'',rows:[],cat:'all',q:'',sort:'traffic',view:'list'};
 
 function renderMarket(iso){
   document.getElementById('v-market').innerHTML='<div class="wrap" style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading market…</div>';
@@ -1128,10 +1161,14 @@ function hydrateMarket(iso){
         '<div class="mkd-stat"><div class="mkd-stat-ico g"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M3 20 C 3 15, 6 12, 11 12 C 16 12, 19 15, 19 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="mkd-stat-l">Managers here</div><div class="mkd-stat-n">—</div></div></div>'+
       '</div>'+
 
-      /* Toolbar — search + sort */
-      '<div class="mk-toolbar" style="margin-top:24px">'+
+      /* Toolbar — search + sort + view toggle */
+      '<div class="mk-toolbar" style="margin-top:24px;grid-template-columns:minmax(0,1fr) auto auto auto">'+
         '<label class="mk-search"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11 L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input type="text" id="mkd-search" placeholder="Search sites in '+h(country.name)+'…"></label>'+
         '<div class="mk-dd"><select id="mkd-sort"><option value="traffic">Sort: Most traffic</option><option value="authority">Sort: Highest authority</option><option value="name">Sort: A–Z</option></select><svg class="dd-caret" viewBox="0 0 12 12" fill="none"><path d="M3 5 L6 8 L9 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>'+
+        '<div class="mkd-viewtog" role="tablist" aria-label="Toggle list or grid view">'+
+          '<button id="mkd-view-list" class="on" onclick="setMkdView(\'list\')" title="List view"><svg viewBox="0 0 16 16" fill="none"><path d="M2 4 H14 M2 8 H14 M2 12 H14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>'+
+          '<button id="mkd-view-grid" onclick="setMkdView(\'grid\')" title="Grid view"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/><rect x="9" y="2" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/><rect x="2" y="9" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/><rect x="9" y="9" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/></svg></button>'+
+        '</div>'+
       '</div>'+
 
       /* Category pills */
@@ -1143,8 +1180,9 @@ function hydrateMarket(iso){
         '<button class="mkd-pill" data-c="Poker">Poker <span class="n">'+cats.poker+'</span></button>'+
       '</div>'+
 
-      /* Site rows table */
-      '<div class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th>Monthly traffic</th><th>Authority</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
+      /* Site rows — table (list) or cards (grid), swapped by view toggle */
+      '<div id="mkd-list-wrap" class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th>Monthly traffic</th><th>Authority</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
+      '<div id="mkd-grid-wrap" class="mkd-cards" hidden></div>'+
 
       /* Footer callout */
       '<div class="mkd-footer-cta">'+
@@ -1157,8 +1195,38 @@ function hydrateMarket(iso){
     // Wire search + sort
     document.getElementById('mkd-search').addEventListener('input',function(e){MKD_STATE.q=e.target.value.toLowerCase().trim();renderMkdRows();});
     document.getElementById('mkd-sort').addEventListener('change',function(e){MKD_STATE.sort=e.target.value;renderMkdRows();});
-    renderMkdRows();
+    // Restore view preference from prior visits, default to list
+    var savedView='list'; try{savedView=localStorage.getItem('mkd_view')||'list';}catch(e){}
+    setMkdView(savedView==='grid'?'grid':'list');
   }).catch(function(){document.getElementById('v-market').innerHTML='<div class="wrap" style="padding:60px 0;text-align:center;color:var(--ink-mute)">Couldn\'t load market.</div>';});
+}
+
+var MKD_PALETTE=['#3D7CFF','#8B5CF6','#EC4899','#F59E0B','#14B87A','#00D9FF'];
+
+function setMkdView(v){
+  MKD_STATE.view = v;
+  try{localStorage.setItem('mkd_view', v);}catch(e){}
+  var lbtn=document.getElementById('mkd-view-list');
+  var gbtn=document.getElementById('mkd-view-grid');
+  if(lbtn) lbtn.classList.toggle('on', v==='list');
+  if(gbtn) gbtn.classList.toggle('on', v==='grid');
+  var lw=document.getElementById('mkd-list-wrap');
+  var gw=document.getElementById('mkd-grid-wrap');
+  if(lw) lw.hidden = v!=='list';
+  if(gw) gw.hidden = v!=='grid';
+  renderMkdRows();
+}
+
+/* Small helper: <span class="mkd-fav"><img …><span class="mkd-mono">…</span></span>
+   The img loads a real favicon via Google's public service; when it
+   fails (site has no favicon or the request is blocked), the wrapper
+   flips to .is-fallback and the coloured monogram tile takes over. */
+function mkdFavHtml(r, color){
+  var initial = ((r.name||r.domain||'?').charAt(0)||'?').toUpperCase();
+  return '<span class="mkd-fav">'+
+    '<img src="https://www.google.com/s2/favicons?domain='+encodeURIComponent(r.domain||'')+'&sz=64" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add(\'is-fallback\')">'+
+    '<span class="mkd-mono" style="background:'+color+'">'+initial+'</span>'+
+  '</span>';
 }
 
 function renderMkdRows(){
@@ -1169,28 +1237,49 @@ function renderMkdRows(){
   else if(MKD_STATE.sort==='authority') rows.sort(function(a,b){return b.authority-a.authority;});
   else if(MKD_STATE.sort==='name') rows.sort(function(a,b){return a.name.localeCompare(b.name);});
   var maxEtv=rows[0]?rows[0].etv:1;
-  var palette=['#3D7CFF','#8B5CF6','#EC4899','#F59E0B','#14B87A','#00D9FF'];
+  var body=document.getElementById('mkd-body');
+  var grid=document.getElementById('mkd-grid-wrap');
   if(!rows.length){
-    document.getElementById('mkd-body').innerHTML='<tr><td colspan="5" style="text-align:center;padding:48px;color:var(--ink-mute)">No sites match your filters.</td></tr>';
+    if(body) body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:48px;color:var(--ink-mute)">No sites match your filters.</td></tr>';
+    if(grid) grid.innerHTML='<div style="padding:48px;text-align:center;color:var(--ink-mute);grid-column:1/-1">No sites match your filters.</div>';
     return;
   }
-  document.getElementById('mkd-body').innerHTML = rows.map(function(r,i){
-    var bar=Math.max(3,Math.round(r.etv/maxEtv*100));
-    var verts=(r.verts||[]).slice(0,3).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
-    var letter=(r.name||r.domain).charAt(0).toUpperCase();
-    var color=palette[i%palette.length];
-    return '<tr class="mk-row-link" onclick="go(\'#/site/'+r.domain+'\')">'+
-      '<td><div class="mkd-site"><span class="mkd-fav" style="background:'+color+'">'+letter+'</span><div class="mkd-site-info"><b>'+h(r.name)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
-      '<td><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
-      '<td><span class="mkd-auth">'+r.authority+'</span></td>'+
-      '<td>'+verts+'</td>'+
-      '<td><div class="mkd-acts" onclick="event.stopPropagation()">'+
-        '<a class="mkd-visit" href="https://'+encodeURI(r.domain)+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
-        '<button class="mkd-btn have'+(r.have?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button>'+
-        '<button class="mkd-btn want'+(r.want?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted':'Want')+'</button>'+
-      '</div></td>'+
-    '</tr>';
-  }).join('');
+  if(MKD_STATE.view==='list' && body){
+    body.innerHTML = rows.map(function(r,i){
+      var bar=Math.max(3,Math.round(r.etv/maxEtv*100));
+      var verts=(r.verts||[]).slice(0,3).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
+      var color=MKD_PALETTE[i%MKD_PALETTE.length];
+      return '<tr class="mk-row-link" onclick="go(\'#/site/'+r.domain+'\')">'+
+        '<td><div class="mkd-site">'+mkdFavHtml(r,color)+'<div class="mkd-site-info"><b>'+h(r.name)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
+        '<td><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
+        '<td><span class="mkd-auth">'+r.authority+'</span></td>'+
+        '<td>'+verts+'</td>'+
+        '<td><div class="mkd-acts" onclick="event.stopPropagation()">'+
+          '<a class="mkd-visit" href="https://'+encodeURI(r.domain)+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
+          '<button class="mkd-btn have'+(r.have?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button>'+
+          '<button class="mkd-btn want'+(r.want?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted':'Want')+'</button>'+
+        '</div></td>'+
+      '</tr>';
+    }).join('');
+  }
+  if(MKD_STATE.view==='grid' && grid){
+    grid.innerHTML = rows.map(function(r,i){
+      var verts=(r.verts||[]).slice(0,3).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
+      var color=MKD_PALETTE[i%MKD_PALETTE.length];
+      return '<div class="mkd-card" onclick="go(\'#/site/'+r.domain+'\')">'+
+        '<div class="mkd-card-head">'+mkdFavHtml(r,color)+'<div class="mkd-card-id"><b>'+h(r.name)+'</b><span>'+h(r.domain)+'</span></div></div>'+
+        '<div class="mkd-card-verts">'+verts+'</div>'+
+        '<div class="mkd-card-metrics">'+
+          '<div class="mkd-card-metric"><b>'+fmt(r.etv)+'</b><span>Monthly traffic</span></div>'+
+          '<div class="mkd-card-metric"><b>'+r.authority+'</b><span>Authority</span></div>'+
+        '</div>'+
+        '<div class="mkd-card-acts" onclick="event.stopPropagation()">'+
+          '<button class="mkd-btn have'+(r.have?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button>'+
+          '<button class="mkd-btn want'+(r.want?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted ✓':'Want')+'</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
 }
 
 /* ==================== SITE PROFILE ==================== */
