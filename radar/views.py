@@ -35,6 +35,17 @@ LARGE_COUNTRY_MIN_ETV = 1_500
 _QUALIFIES = (f"rg.etv > (CASE WHEN s.etv >= {LARGE_SITE_ETV} "
               f"THEN {LARGE_COUNTRY_MIN_ETV} ELSE {COUNTRY_MIN_ETV} END)")
 
+# Domains that ranked as affiliates but really aren't — sports-media,
+# aggregators, general-interest sites that happened to compete on iGaming
+# SERPs. Kept as a hard exclude at query time so removing them isn't
+# dependent on the migration having run.
+_EXCLUDED_DOMAINS = ("fotmob.com",)
+_NOT_EXCLUDED = (
+    "AND s.domain NOT IN ("
+    + ",".join(f"'{d}'" for d in _EXCLUDED_DOMAINS)
+    + ")"
+) if _EXCLUDED_DOMAINS else ""
+
 
 def _is_visible(conn: sqlite3.Connection, s) -> bool:
     """App visibility for a single site row: approved, not blacklisted, and it
@@ -136,7 +147,7 @@ def country_list(conn: sqlite3.Connection, country: str,
         q += " AND s.id IN (SELECT site_id FROM site_verticals WHERE vertical = ?)"
         params.append(vertical)
     if published_only:
-        q += f" AND s.classification = 'affiliate' AND {_QUALIFIES} " + _NOT_BLACKLISTED
+        q += f" AND s.classification = 'affiliate' AND {_QUALIFIES} " + _NOT_BLACKLISTED + " " + _NOT_EXCLUDED
     if sort == "reviews":
         q += " ORDER BY (rv.rating IS NULL), rv.rating DESC, rv.review_count DESC"
     else:
@@ -179,7 +190,7 @@ def world_home(conn: sqlite3.Connection, limit: int = 10) -> dict:
     rows = conn.execute(
         f"""SELECT s.domain, s.display_name, s.etv, s.top_country, s.trend_pct, s.trend_dir
            FROM sites s
-           WHERE s.classification='affiliate' {_NOT_BLACKLISTED}
+           WHERE s.classification='affiliate' {_NOT_BLACKLISTED} {_NOT_EXCLUDED}
              AND EXISTS (SELECT 1 FROM site_regions rg
                          WHERE rg.site_id = s.id AND {_QUALIFIES})
            ORDER BY s.etv DESC LIMIT ?""", (limit,)).fetchall()
@@ -200,7 +211,7 @@ def countries_index(conn: sqlite3.Connection) -> dict:
         f"""SELECT rg.country AS iso, COUNT(DISTINCT s.id) AS n,
                    COALESCE(SUM(rg.etv),0) AS total_etv
             FROM sites s JOIN site_regions rg ON rg.site_id = s.id
-            WHERE s.classification='affiliate' AND {_QUALIFIES} {_NOT_BLACKLISTED}
+            WHERE s.classification='affiliate' AND {_QUALIFIES} {_NOT_BLACKLISTED} {_NOT_EXCLUDED}
             GROUP BY rg.country""").fetchall()
     bl = dict(conn.execute(
         "SELECT country, COUNT(*) FROM blacklist WHERE country IS NOT NULL GROUP BY country"
@@ -239,7 +250,7 @@ def market_movers(conn: sqlite3.Connection, country: str,
     matching the vertical tabs on the Market Movers screen."""
     q = (f"""SELECT DISTINCT s.id, s.domain, s.display_name, s.top_country
            FROM sites s JOIN site_regions rg ON rg.site_id = s.id
-           WHERE s.classification='affiliate' AND rg.country = ? AND {_QUALIFIES} {_NOT_BLACKLISTED}""")
+           WHERE s.classification='affiliate' AND rg.country = ? AND {_QUALIFIES} {_NOT_BLACKLISTED} {_NOT_EXCLUDED}""")
     params: list = [country.upper()]
     if vertical:
         q += " AND s.id IN (SELECT site_id FROM site_verticals WHERE vertical = ?)"
