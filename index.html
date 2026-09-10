@@ -71,7 +71,9 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .nav-right{display:flex;align-items:center;gap:12px}
 .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--blue-soft);color:var(--blue-hi);font-weight:600;font-size:13.5px;border-radius:999px}
 .pill svg{width:14px;height:14px}
-.avatar-btn{display:inline-flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;background:var(--card);border:1px solid var(--line);border-radius:999px;cursor:pointer}
+.avatar-btn{display:inline-flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;background:var(--card);border:1px solid var(--line);border-radius:999px;cursor:pointer;position:relative}
+.nav-match-dot{position:absolute;top:2px;right:22px;width:10px;height:10px;border-radius:50%;background:#E5484D;border:2px solid var(--card);box-shadow:0 0 0 0 rgba(229,72,77,0.55);animation:tabDotPulse 1.6s ease-out infinite}
+@media (prefers-reduced-motion:reduce){.nav-match-dot{animation:none}}
 .avatar-30{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:12px;background:linear-gradient(135deg,#6D28D9,#3D7CFF);flex:0 0 30px}
 .caret{color:var(--ink-mute);font-size:12px}
 
@@ -347,7 +349,13 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .sw-hero .sub{color:var(--ink-2);font-size:15px;margin-top:6px}
 .sw-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px}
 .match-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow-sm);margin-bottom:12px}
-.match-card .who{color:var(--ink-mute);font-size:13px;margin-bottom:14px}
+.match-card.match-new{border-color:rgba(229,72,77,0.32);box-shadow:0 4px 20px rgba(229,72,77,0.10),0 0 0 3px rgba(229,72,77,0.05)}
+.match-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.mstat{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;letter-spacing:0}
+.mstat-new{background:rgba(229,72,77,0.10);color:#C53034;border:1px solid rgba(229,72,77,0.22)}
+.mstat-wait{background:rgba(217,119,6,0.10);color:#B45309;border:1px solid rgba(217,119,6,0.22)}
+.mstat-done{background:var(--up-soft);color:#0E9760;border:1px solid rgba(20,184,122,0.22)}
+.match-card .who{color:var(--ink-mute);font-size:13px}
 .match-card .who b{color:var(--ink)}
 .match-row{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-bottom:16px}
 .match-tile{background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -550,6 +558,15 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .acct-tab svg{width:15px;height:15px;flex:0 0 15px;opacity:.85}
 .acct-tab .tab-badge{background:var(--warn);color:#fff;font-family:var(--f-mono);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;line-height:1.4;letter-spacing:0}
 .acct-tab.on .tab-badge{background:var(--blue)}
+/* Pulsing red dot — signals a match awaiting your action */
+.acct-tab .tab-dot{width:8px;height:8px;border-radius:50%;background:#E5484D;box-shadow:0 0 0 0 rgba(229,72,77,0.55);animation:tabDotPulse 1.6s ease-out infinite;flex:0 0 8px}
+.acct-tab.on .tab-dot{background:#E5484D}
+@keyframes tabDotPulse{
+  0%{box-shadow:0 0 0 0 rgba(229,72,77,0.55)}
+  70%{box-shadow:0 0 0 6px rgba(229,72,77,0)}
+  100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}
+}
+@media (prefers-reduced-motion:reduce){.acct-tab .tab-dot{animation:none}}
 .acct-pane{animation:paneIn .18s ease}
 @keyframes paneIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (max-width:640px){
@@ -722,7 +739,7 @@ footer{padding:56px 0 40px}
         <span id="swaps-count">—</span> swaps left
       </span>
       <a id="auth-link" onclick="authAction()" style="font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer;padding:6px 0">Sign in</a>
-      <button class="avatar-btn" onclick="go('#/account')"><span class="avatar-30">SK</span><span class="caret">▾</span></button>
+      <button class="avatar-btn" onclick="go('#/matches')" title="My Account"><span class="avatar-30">SK</span><span id="nav-match-dot" class="nav-match-dot" hidden></span><span class="caret">▾</span></button>
     </div>
   </div>
 </div>
@@ -800,6 +817,14 @@ function updateMeChip(){
     // Show login link if not authed, or hide if authed.
     var authLink=document.getElementById('auth-link');
     if(authLink) authLink.textContent = m.authed ? 'Sign out' : 'Sign in';
+    // Red dot on the avatar chip when the member has pending matches
+    // waiting for their action. Also update the browser tab title so
+    // background tabs surface it.
+    var dot=document.getElementById('nav-match-dot');
+    var pm=+m.pending_matches||0;
+    if(dot) dot.hidden = pm===0;
+    var baseTitle='Affswap · Swap iGaming affiliate connections';
+    document.title = pm>0 ? '('+pm+') '+baseTitle : baseTitle;
   }).catch(function(){});
 }
 function authAction(){
@@ -1242,7 +1267,7 @@ function hydrateSwaps(){
 window.ACCT_TAB = window.ACCT_TAB || 'profile';
 function switchAcctTab(t, el){
   window.ACCT_TAB = t;
-  ['profile','swaps','loyalty','lists'].forEach(function(k){
+  ['profile','matches','swaps','loyalty','lists'].forEach(function(k){
     var pane=document.getElementById('acct-pane-'+k);
     if(pane) pane.hidden = (k!==t);
   });
@@ -1417,14 +1442,16 @@ function hydrateAccount(){
     }
     var initials = (a.handle||'You').split(' ').map(function(w){return w.charAt(0).toUpperCase();}).slice(0,2).join('');
     var pendingMatches = matches.filter(function(m){return m.status!=='completed' && !m.you_agreed;}).length;
+    var openMatches = matches.filter(function(m){return m.status!=='completed';}).length;
     var initialTab = window.ACCT_TAB || 'profile';
     document.getElementById('v-account').innerHTML =
-      '<div class="loy-hero"><h1>My Account</h1><p class="sub">Profile, swaps, loyalty and your Want/Have lists.</p></div>'+
+      '<div class="loy-hero"><h1>My Account</h1><p class="sub">Profile, matches, swaps, loyalty and your Want/Have lists.</p></div>'+
 
       /* Tab bar */
       '<div class="acct-tabs" role="tablist">'+
         '<button class="acct-tab'+(initialTab==='profile'?' on':'')+'" onclick="switchAcctTab(\'profile\',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M2 14 C 2 11, 5 10, 8 10 C 11 10, 14 11, 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Profile</button>'+
-        '<button class="acct-tab'+(initialTab==='swaps'?' on':'')+'" onclick="switchAcctTab(\'swaps\',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 5 L11 5 L9 3 M14 11 L2 11 L4 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>My Swaps'+(pendingMatches?'<span class="tab-badge">'+pendingMatches+'</span>':'')+'</button>'+
+        '<button class="acct-tab'+(initialTab==='matches'?' on':'')+'" onclick="switchAcctTab(\'matches\',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="7" r="2.4" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="7.6" r="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 14 C 7 12, 8.5 11.2, 10.5 11.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Matches'+(pendingMatches?'<span class="tab-dot" title="'+pendingMatches+' match'+(pendingMatches===1?'':'es')+' need your action"></span><span class="tab-badge">'+pendingMatches+'</span>':(openMatches?'<span class="tab-badge" style="background:var(--ink-mute);color:#fff">'+openMatches+'</span>':''))+'</button>'+
+        '<button class="acct-tab'+(initialTab==='swaps'?' on':'')+'" onclick="switchAcctTab(\'swaps\',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 5 L11 5 L9 3 M14 11 L2 11 L4 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>My Swaps</button>'+
         '<button class="acct-tab'+(initialTab==='loyalty'?' on':'')+'" onclick="switchAcctTab(\'loyalty\',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2 L10 6 L14 6.5 L11 9.5 L11.7 13.5 L8 11.5 L4.3 13.5 L5 9.5 L2 6.5 L6 6 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Loyalty</button>'+
         '<button class="acct-tab'+(initialTab==='lists'?' on':'')+'" onclick="switchAcctTab(\'lists\',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M4 3 H12 V13 L8 11 L4 13 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Wants &amp; Haves'+((lists.wants.length+lists.haves.length)?'<span class="tab-badge">'+(lists.wants.length+lists.haves.length)+'</span>':'')+'</button>'+
       '</div>'+
@@ -1479,6 +1506,38 @@ function hydrateAccount(){
       '</div>'+ /* end pane-profile */
 
       /* ============================================================ */
+      /* PANE: Matches                                                */
+      /* ============================================================ */
+      '<div id="acct-pane-matches" class="acct-pane"'+(initialTab==='matches'?'':' hidden')+'>'+
+        (matches.length ?
+          '<div class="acct-card">'+
+            '<div class="acct-card-head"><span class="ico-hero" style="background:#EAF7EF;color:#0E9760"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="9" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M9 17 C 9 14, 11 13, 13 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><h2>Your matches</h2><p>'+(pendingMatches?'<b style="color:#E5484D">'+pendingMatches+' need your action</b> &mdash; ':(openMatches?'':'All matches complete &mdash; '))+'someone has a site you want and you have a site they want. Confirm to swap contact details.</p></div></div>'+
+            matches.map(function(m){
+              var btn;
+              if(m.status==='completed'){
+                btn = '<button class="match-btn" disabled>Contact unlocked ✓</button>';
+              } else if(m.you_agreed){
+                btn = '<button class="match-btn" disabled>Waiting for '+h(m.with||'them')+'</button>';
+              } else {
+                btn = '<button class="match-btn" onclick="swapAgree('+m.match_id+',this)">Connect · 1 swap</button>';
+              }
+              var pill = m.status==='completed'
+                ? '<span class="mstat mstat-done">✓ Completed</span>'
+                : (m.you_agreed
+                    ? '<span class="mstat mstat-wait">⏳ Waiting on them</span>'
+                    : '<span class="mstat mstat-new">● New — action needed</span>');
+              return '<div class="match-card'+(m.status!=='completed' && !m.you_agreed?' match-new':'')+'"><div class="match-head"><div class="who">Match with <b>'+h(m.with||'someone')+'</b></div>'+pill+'</div><div class="match-row"><div class="match-tile get"><div class="lbl">You get</div><div class="dom">'+h(m.you_get||'—')+'</div></div><div class="match-arrow"><svg viewBox="0 0 28 28" fill="none"><path d="M4 10 L22 10 L18 6 M24 18 L6 18 L10 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="match-tile"><div class="lbl">You give</div><div class="dom">'+h(m.you_give||'—')+'</div></div></div>'+ (m.unlocked_contact?'<div class="sp-locked" style="background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28)">✓ '+h(m.unlocked_contact)+'</div>':'') +btn+'</div>';
+            }).join('')+
+          '</div>' :
+          '<div class="acct-card" style="text-align:center;padding:48px 24px">'+
+            '<div style="width:72px;height:72px;margin:0 auto 16px;border-radius:20px;background:linear-gradient(135deg,#F5F9FF,#E7EEF7);display:flex;align-items:center;justify-content:center;color:var(--blue)"><svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="10" r="3.5" stroke="currentColor" stroke-width="1.8"/><circle cx="15" cy="11" r="2.8" stroke="currentColor" stroke-width="1.8"/><path d="M11 20 C 11 17, 13 16, 16 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>'+
+            '<h2 style="font-size:18px;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px">No matches yet</h2>'+
+            '<p style="color:var(--ink-mute);font-size:13.5px;max-width:44ch;margin:0 auto 20px;line-height:1.5">When a member offers a site you want and you have a site they want, it lands here. You\'ll see a red dot on this tab the moment a match is ready.</p>'+
+            '<button class="btn" onclick="switchAcctTab(\'lists\',document.querySelectorAll(\'.acct-tab\')[4])">Manage your Want &amp; Have lists →</button>'+
+          '</div>')+
+      '</div>'+ /* end pane-matches */
+
+      /* ============================================================ */
       /* PANE: My Swaps                                               */
       /* ============================================================ */
       '<div id="acct-pane-swaps" class="acct-pane"'+(initialTab==='swaps'?'':' hidden')+'>'+
@@ -1501,22 +1560,13 @@ function hydrateAccount(){
             '</div>'
           )+
         '</div>'+
-        /* Matches ready */
-        (matches.length ?
-          '<div class="acct-card" style="margin-top:16px">'+
-            '<div class="acct-card-head"><span class="ico-hero" style="background:#EAF7EF;color:#0E9760"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="9" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M9 17 C 9 14, 11 13, 13 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><h2>Matches ready</h2><p>Someone has a site you want. Connect to swap contact details.</p></div></div>'+
-            matches.map(function(m){
-              var btn = m.status==='completed'?'<button class="match-btn" disabled>Contact unlocked ✓</button>':(m.you_agreed?'<button class="match-btn" disabled>Waiting for '+h(m.with||'')+'</button>':'<button class="match-btn" onclick="swapAgree('+m.match_id+',this)">Connect · 1 swap</button>');
-              return '<div class="match-card"><div class="who">Match with <b>'+h(m.with||'someone')+'</b></div><div class="match-row"><div class="match-tile get"><div class="lbl">You get</div><div class="dom">'+h(m.you_get||'—')+'</div></div><div class="match-arrow"><svg viewBox="0 0 28 28" fill="none"><path d="M4 10 L22 10 L18 6 M24 18 L6 18 L10 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="match-tile"><div class="lbl">You give</div><div class="dom">'+h(m.you_give||'—')+'</div></div></div>'+ (m.unlocked_contact?'<div class="sp-locked" style="background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28)">✓ '+h(m.unlocked_contact)+'</div>':'') +btn+'</div>';
-            }).join('')+
-          '</div>' :
-          '<div class="acct-card" style="margin-top:16px;text-align:center;padding:36px 20px"><div style="color:var(--ink-mute);font-size:14px">No live matches right now. Add sites to your <a onclick="switchAcctTab(\'lists\',this.closest(\'.acct-tabs\')?document.querySelector(\'.acct-tab:nth-child(4)\'):null)" style="color:var(--blue);cursor:pointer;font-weight:600">Wants &amp; Haves</a> — we\'ll match you the moment a counterparty appears.</div></div>')+
         /* Completed swaps */
         (ledger.length ?
           '<div class="acct-card" style="margin-top:16px">'+
             '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10 L8 14 L16 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h2>Completed swaps</h2><p>'+ledger.length+' contact '+(ledger.length===1?'exchange':'exchanges')+'.</p></div></div>'+
             '<div style="display:flex;flex-direction:column;gap:8px">'+ ledger.map(function(e){var when=e.at?new Date(e.at).toLocaleDateString():'';return '<div style="padding:12px 16px;background:var(--ground);border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:13.5px"><div><b>'+h(e.to||e.from)+'</b> · contact for <b style="color:var(--blue)">'+h(e.domain||'')+'</b></div><span style="color:var(--ink-mute);font-size:12px">'+when+'</span></div>';}).join('') +'</div>'+
-          '</div>' : '')+
+          '</div>' :
+          '<div class="acct-card" style="margin-top:16px;text-align:center;padding:28px 20px;color:var(--ink-mute);font-size:13.5px">No completed swaps yet — your first contact exchange will appear here.</div>')+
       '</div>'+ /* end pane-swaps */
 
       /* ============================================================ */
@@ -1925,6 +1975,7 @@ function route(){
   else if(s==='market'){var iso=(parts[1]||'US').toUpperCase();renderMarket(iso);hydrateMarket(iso);switchTo('v-market')}
   else if(s==='site'){var dm=decodeURIComponent(parts.slice(1).join('/'));renderSite(dm);hydrateSite(dm);switchTo('v-site')}
   else if(s==='swaps'){window.ACCT_TAB='swaps';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}
+  else if(s==='matches'){window.ACCT_TAB='matches';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}
   else if(s==='loyalty'){window.ACCT_TAB='loyalty';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}
   else if(s==='alerts'){window.ACCT_TAB='profile';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}
   else if(s==='lists'||s==='wants'||s==='haves'){window.ACCT_TAB='lists';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}

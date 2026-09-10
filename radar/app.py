@@ -596,6 +596,16 @@ class _H(BaseHTTPRequestHandler):
                     "FROM chat_managers WHERE id=?",
                     (mid,)).fetchone()
                 handle = row["handle"] if row else "You"
+                # Pending matches — non-completed matches this member has NOT
+                # yet agreed to. Powers the red dot on the Matches tab and
+                # on the avatar chip in the top nav.
+                pending_matches = 0
+                try:
+                    for m in swaps.list_matches(conn, mid):
+                        if m.get("status") != "completed" and not m.get("you_agreed"):
+                            pending_matches += 1
+                except Exception:
+                    pending_matches = 0
                 self._json({
                     "handle": handle,
                     "authed": authed,
@@ -606,6 +616,7 @@ class _H(BaseHTTPRequestHandler):
                     "plan": a.get("plan", "standard"),
                     "swaps": a.get("swaps"),
                     "unlimited": a.get("unlimited"),
+                    "pending_matches": pending_matches,
                 })
             else:
                 self._json({"error": "not_found"}, 404)
