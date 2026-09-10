@@ -328,6 +328,52 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .form-msg{font-size:13.5px;color:var(--ink-mute);margin-top:12px;min-height:1.2em}
 .form-msg.err{color:var(--warn)}
 
+/* ACCOUNT (rich) */
+.acct-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
+.acct-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm)}
+.acct-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+.acct-card-head h2{font-size:18px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-bottom:4px}
+.acct-card-head p{color:var(--ink-mute);font-size:13px;line-height:1.45}
+.acct-card-head .ico-hero{width:38px;height:38px;border-radius:10px;background:var(--blue-soft);color:var(--blue);display:inline-flex;align-items:center;justify-content:center;flex:0 0 38px}
+.acct-card-head .ico-hero svg{width:18px;height:18px}
+.li-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:var(--blue-softer);border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.acct-form{display:grid;grid-template-columns:150px 1fr;gap:24px}
+.acct-avatar{text-align:center}
+.ph-wrap{position:relative;display:inline-block}
+.ph{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#6D28D9,#3D7CFF);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:32px;letter-spacing:-0.02em}
+.li-mini{position:absolute;bottom:0;right:-4px;width:24px;height:24px;background:#0A66C2;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff}
+.acct-hint{color:var(--ink-mute);font-size:11.5px;margin-top:6px;line-height:1.4}
+.acct-fields{display:flex;flex-direction:column;gap:12px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chipbox{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--ground);border:1px solid var(--line);border-radius:10px;min-height:44px;align-items:center}
+.chipbox.mirror{background:transparent;border:0;padding:0}
+.mchip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:var(--card);border:1px solid var(--line);border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.mchip .x{margin-left:4px;color:var(--ink-mute);cursor:pointer;font-weight:400}
+.mchip .x:hover{color:var(--warn)}
+.addmk{background:transparent;border:1px dashed var(--line-strong);color:var(--blue);font-weight:600;font-size:12.5px;padding:6px 12px;border-radius:999px;cursor:pointer}
+.addmk:hover{border-color:var(--blue);background:var(--blue-softer)}
+.mkmenu{position:absolute;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:var(--shadow-lg);margin-top:6px;max-height:240px;overflow-y:auto;z-index:20;min-width:200px}
+.mkmenu button{display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:0;padding:8px 10px;font-size:13.5px;color:var(--ink);cursor:pointer;text-align:left;border-radius:8px}
+.mkmenu button:hover{background:var(--blue-softer)}
+.acct-lab{font-size:14px;font-weight:700;color:var(--ink);margin:16px 0 4px}
+.acct-sub{color:var(--ink-mute);font-size:12.5px;margin-bottom:12px}
+.alerts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.altrow{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--ground);border:1px solid var(--line);border-radius:10px}
+.altrow .at b{font-size:13px;color:var(--ink);display:block;font-weight:600}
+.altrow .at span{color:var(--ink-mute);font-size:11.5px;line-height:1.3;display:block}
+.switch{width:36px;height:20px;background:var(--line);border-radius:999px;position:relative;cursor:pointer;transition:background .16s ease;flex:0 0 36px}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .16s ease;box-shadow:var(--shadow-sm)}
+.switch.on{background:var(--blue)}
+.switch.on::after{transform:translateX(16px)}
+.acct-arow{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px}
+.seg{display:inline-flex;background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{background:transparent;border:0;padding:8px 14px;font-size:13px;font-weight:600;color:var(--ink-mute);border-radius:8px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--blue);box-shadow:var(--shadow-sm)}
+.savebtn{width:100%;margin-top:20px}
+.acct-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.acct-stats .lbl{color:var(--ink-mute);font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;font-family:var(--f-mono);margin-bottom:4px}
+.acct-stats .val{font-size:24px;font-weight:700;color:var(--ink);letter-spacing:-0.03em}
+
 /* LEADERBOARD */
 .lb-hero{padding:32px 0 24px}
 .lb-hero h1{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink)}
@@ -379,6 +425,10 @@ footer{padding:56px 0 40px}
   .steps-grid{grid-template-columns:1fr}
   .step-arrow{display:none}
   .lb-row{grid-template-columns:28px 1fr auto auto}
+  .acct-grid{grid-template-columns:1fr}
+  .acct-form{grid-template-columns:1fr}
+  .alerts-grid{grid-template-columns:1fr}
+  .acct-arow{grid-template-columns:1fr}
 }
 @media (max-width:640px){
   .wrap{padding:0 16px}
@@ -834,25 +884,114 @@ function hydrateLoyalty(){
 }
 
 /* ==================== ACCOUNT ==================== */
+var ACC_MK=[['gb','United Kingdom'],['us','United States'],['de','Germany'],['ca','Canada'],['fi','Finland'],['it','Italy'],['fr','France'],['nl','Netherlands'],['es','Spain'],['au','Australia'],['br','Brazil'],['se','Sweden'],['ie','Ireland'],['nz','New Zealand'],['za','South Africa'],['in','India']];
+var ACC_ALERTS=[
+  {k:'new_aff',t:'New affiliates',d:'When a new affiliate is added',on:true},
+  {k:'swap_done',t:'Swap completed',d:'When one of your swaps completes',on:true},
+  {k:'traf_up',t:'Traffic up',d:'When a site on your list gains traffic',on:true},
+  {k:'rev_ok',t:'Review approved',d:'When your review is approved',on:true},
+  {k:'traf_down',t:'Traffic down',d:'When a site on your list loses traffic',on:true},
+  {k:'sugg_ok',t:'Suggested site approved',d:'When your suggested site is approved',on:false},
+  {k:'match',t:'Match ready',d:'When one of your swaps is ready to connect',on:true},
+];
+var ACC_SEL=['gb','us','de'];
+
 function renderAccount(){document.getElementById('v-account').innerHTML='<div style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading…</div>';}
 function hydrateAccount(){
-  apiGet('/api/account').then(function(a){
+  Promise.all([apiGet('/api/account'), apiGet('/api/loyalty').catch(function(){return{};}), apiGet('/api/me').catch(function(){return{};})]).then(function(res){
+    var a=res[0], l=res[1], me=res[2];
+    var initials = (a.handle||'You').split(' ').map(function(w){return w.charAt(0).toUpperCase();}).slice(0,2).join('');
     document.getElementById('v-account').innerHTML =
       '<div class="loy-hero"><h1>My Account</h1><p class="sub">Manage your profile, swaps and alert preferences.</p></div>'+
-      '<div class="form-card">'+
-        '<div style="font-weight:700;margin-bottom:16px">Profile</div>'+
-        '<div class="field"><label>Display name</label><div class="inp"><input value="'+h(a.handle||'')+'" readonly></div></div>'+
-        '<div class="field"><label>Real name</label><div class="inp"><input value="'+h(a.real_name||'')+'" placeholder="—" readonly></div></div>'+
-        '<div class="field"><label>Company</label><div class="inp"><input value="'+h(a.company||'')+'" placeholder="—" readonly></div></div>'+
-        '<div class="field"><label>Work email</label><div class="inp"><input value="'+h(a.work_email||'')+'" placeholder="—" readonly></div></div>'+
-        '<div class="field"><label>LinkedIn</label><div class="inp"><input value="'+h(a.linkedin_url||'')+'" placeholder="—" readonly></div></div>'+
-        '<div class="field"><label>Site you manage</label><div class="inp"><input value="'+h(a.site_url||'')+'" placeholder="—" readonly></div></div>'+
-        '<div class="field"><label>Sector</label><div class="inp"><input value="'+h(a.sector||'')+'" placeholder="—" readonly></div></div>'+
-        '<div class="field"><label>Status</label><div class="inp"><input value="'+h(a.status||'')+'" readonly style="text-transform:capitalize"></div></div>'+
-        '<p style="color:var(--ink-mute);font-size:13px;margin-top:12px">Read-only for now — profile editing comes in the next update.</p>'+
+
+      /* Profile card */
+      '<div class="acct-grid">'+
+        '<div class="acct-card">'+
+          '<div class="acct-card-head"><div><h2>Profile</h2><p>Your identity across the network — used by matches, reviews and the leaderboard.</p></div>'+
+            '<span class="li-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>LinkedIn connected <span style="color:var(--up)">✓</span></span>'+
+          '</div>'+
+          '<div class="acct-form">'+
+            '<div class="acct-avatar">'+
+              '<div class="ph-wrap"><div class="ph">'+h(initials)+'</div><span class="li-mini"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg></span></div>'+
+              '<button class="btn btn-gho btn-sm" style="margin-top:12px">Change photo</button>'+
+              '<div class="acct-hint">From LinkedIn · JPG, PNG up to 5MB</div>'+
+            '</div>'+
+            '<div class="acct-fields">'+
+              '<div class="field"><label>Display name</label><div class="inp"><input id="acct-handle" value="'+h(a.handle||'')+'"></div></div>'+
+              '<div class="field"><label>Full name</label><div class="inp"><input id="acct-name" value="'+h(a.real_name||'')+'" placeholder="Sam Knight"></div></div>'+
+              '<div class="field"><label>Company</label><div class="inp"><input id="acct-company" value="'+h(a.company||'')+'" placeholder="Growth Media Ltd"></div></div>'+
+              '<div class="field"><label>Work email</label><div class="inp"><input id="acct-email" type="email" value="'+h(a.work_email||'')+'" placeholder="you@company.com"></div></div>'+
+              '<div class="field-row">'+
+                '<div class="field"><label>LinkedIn URL</label><div class="inp"><input id="acct-linkedin" value="'+h(a.linkedin_url||'')+'" placeholder="linkedin.com/in/samknight"></div></div>'+
+                '<div class="field"><label>Site you manage</label><div class="inp"><input id="acct-site" value="'+h(a.site_url||'')+'" placeholder="growthmedia.co"></div></div>'+
+              '</div>'+
+              '<div class="field"><label>Markets of interest</label><div class="chipbox" id="acct-mkchips"></div></div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+
+        /* Email alerts card */
+        '<div class="acct-card">'+
+          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M4 8 C 4 5, 6 3, 10 3 C 14 3, 16 5, 16 8 V12 L17 13 H3 L4 12 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 16 A2 2 0 0 0 12 16" stroke="currentColor" stroke-width="1.6"/></svg></span><div><h2>Email alerts</h2><p>Get notified about the things that matter to you.</p></div></div>'+
+          '<p class="acct-lab">Alert types</p><p class="acct-sub">Choose what you want to be notified about.</p>'+
+          '<div class="alerts-grid" id="acct-alerts"></div>'+
+          '<div class="acct-arow">'+
+            '<div><p class="acct-lab">Delivery frequency</p><p class="acct-sub">How often you want to receive emails.</p><div class="seg" id="acct-seg"><button class="on">Instant</button><button>Daily digest</button><button>Weekly digest</button></div></div>'+
+            '<div><p class="acct-lab">Markets</p><p class="acct-sub">Alerts use your markets of interest.</p><div class="chipbox mirror" id="acct-mkmirror"></div></div>'+
+          '</div>'+
+          '<button class="btn savebtn" onclick="saveAlertPrefs(this)">Save email preferences</button>'+
+        '</div>'+
+      '</div>'+
+
+      /* Bottom row: swaps + suggest-a-site */
+      '<div class="acct-grid" style="margin-top:16px">'+
+        '<div class="acct-card">'+
+          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M3 6 L15 6 L12 3 M15 12 L3 12 L6 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h2>Swaps &amp; plan</h2><p>Your swap balance, loyalty progress, and current plan.</p></div></div>'+
+          '<div class="acct-stats">'+
+            '<div><div class="lbl">Current plan</div><div class="val">'+ (me.plan? me.plan.charAt(0).toUpperCase()+me.plan.slice(1) : '—') +'</div></div>'+
+            '<div><div class="lbl">Swaps left</div><div class="val">'+ (me.unlimited?'∞':(me.swaps==null?'—':me.swaps)) +'</div></div>'+
+            '<div><div class="lbl">Free swaps earned</div><div class="val">'+ (l.free_swaps_earned||0) +'</div></div>'+
+            '<div><div class="lbl">Approved reviews</div><div class="val">'+ (l.approved_reviews||0) +'</div></div>'+
+          '</div>'+
+          '<a class="btn btn-gho btn-sm" onclick="go(\'#/loyalty\')">Go to loyalty →</a>'+
+        '</div>'+
+        '<div class="acct-card">'+
+          '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3 L12 8 L17 8 L13 11 L15 16 L10 13 L5 16 L7 11 L3 8 L8 8 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Suggest a site</h2><p>Know an affiliate site we&rsquo;re missing? Suggest it — approved suggestions earn you a free swap.</p></div></div>'+
+          '<div id="sugg-form">'+
+            '<div class="field"><label>Site URL</label><div class="inp"><input id="sugg-url" placeholder="example.com"></div></div>'+
+            '<button class="btn" style="width:100%" onclick="suggestSite()">Submit for review</button>'+
+          '</div>'+
+        '</div>'+
       '</div>';
+
+    // Wire markets chips + mirror
+    renderAcctMk();
+    // Wire alerts
+    document.getElementById('acct-alerts').innerHTML = ACC_ALERTS.map(function(al,i){
+      return '<div class="altrow"><span class="switch'+(al.on?' on':'')+'" onclick="ACC_ALERTS['+i+'].on=!ACC_ALERTS['+i+'].on;this.classList.toggle(\'on\')"></span><div class="at"><b>'+h(al.t)+'</b><span>'+h(al.d)+'</span></div></div>';
+    }).join('');
+    // Segment
+    document.querySelectorAll('#acct-seg button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#acct-seg button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');});});
   }).catch(function(){document.getElementById('v-account').innerHTML='<div style="padding:24px;color:var(--ink-mute)">Couldn\'t load account.</div>';});
 }
+
+function renderAcctMk(){
+  var chip=function(iso,rm){var name=(ACC_MK.filter(function(m){return m[0]===iso})[0]||[iso,iso])[1];var flagChar={us:'🇺🇸',gb:'🇬🇧',de:'🇩🇪',ca:'🇨🇦',fi:'🇫🇮',it:'🇮🇹',fr:'🇫🇷',nl:'🇳🇱',es:'🇪🇸',au:'🇦🇺',br:'🇧🇷',se:'🇸🇪',ie:'🇮🇪',nz:'🇳🇿',za:'🇿🇦',in:'🇮🇳'}[iso]||'🏳️';return '<span class="mchip"><span class="mq-flag">'+flagChar+'</span>'+h(name)+(rm?'<span class="x" onclick="removeAcctMk(\''+iso+'\')">×</span>':'')+'</span>';};
+  var prof=document.getElementById('acct-mkchips'); if(prof) prof.innerHTML = ACC_SEL.map(function(i){return chip(i,true)}).join('') + '<button class="addmk" onclick="addAcctMk(this)">+ Add market</button>';
+  var mir=document.getElementById('acct-mkmirror'); if(mir) mir.innerHTML = ACC_SEL.length?ACC_SEL.map(function(i){return chip(i,false)}).join(''):'<span style="color:var(--ink-mute);font-size:13px">No markets selected</span>';
+}
+function removeAcctMk(iso){ACC_SEL=ACC_SEL.filter(function(x){return x!==iso});renderAcctMk();}
+function addAcctMk(btn){
+  document.querySelectorAll('.mkmenu').forEach(function(m){m.remove();});
+  var rem=ACC_MK.filter(function(m){return ACC_SEL.indexOf(m[0])<0;});
+  if(!rem.length)return;
+  var menu=document.createElement('div');menu.className='mkmenu';
+  menu.innerHTML=rem.map(function(m){var flagChar={us:'🇺🇸',gb:'🇬🇧',de:'🇩🇪',ca:'🇨🇦',fi:'🇫🇮',it:'🇮🇹',fr:'🇫🇷',nl:'🇳🇱',es:'🇪🇸',au:'🇦🇺',br:'🇧🇷',se:'🇸🇪',ie:'🇮🇪',nz:'🇳🇿',za:'🇿🇦',in:'🇮🇳'}[m[0]]||'🏳️';return '<button onclick="ACC_SEL.push(\''+m[0]+'\');renderAcctMk();this.parentNode.remove();"><span class="mq-flag">'+flagChar+'</span>'+m[1]+'</button>';}).join('');
+  btn.parentNode.appendChild(menu);
+  setTimeout(function(){document.addEventListener('click',function h(){menu.remove();document.removeEventListener('click',h);},{once:true});},0);
+}
+function saveAlertPrefs(btn){var orig=btn.textContent;btn.textContent='Saved ✓';btn.disabled=true;setTimeout(function(){btn.textContent=orig;btn.disabled=false;},1600);toast('Preferences saved');}
+function suggestSite(){var u=document.getElementById('sugg-url');if(!u||!u.value.trim()){toast('Enter a site URL');return;}document.getElementById('sugg-form').innerHTML='<div style="padding:16px;background:var(--up-soft);border:1px solid rgba(20,184,122,0.28);border-radius:10px;color:#0E9760;font-weight:600;display:flex;align-items:center;gap:10px"><span style="width:24px;height:24px;background:var(--up);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">✓</span>Submitted for review — you\'ll earn a swap when it\'s approved.</div>';}
 
 /* ==================== SIGNUP ==================== */
 function renderSignup(){
