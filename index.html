@@ -1612,7 +1612,9 @@ function hydrateAccount(){
       '<div class="acct-grid">'+
         '<div class="acct-card">'+
           '<div class="acct-card-head"><div><h2>Profile</h2><p>Your identity across the network — used by matches, reviews and the leaderboard.</p></div>'+
-            '<span class="li-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>LinkedIn connected <span style="color:var(--up)">✓</span></span>'+
+            (a.linkedin_verified
+              ? '<a class="li-badge" href="/api/oauth/linkedin/start" title="Re-pull your name, email and photo from LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>LinkedIn connected <span style="color:var(--up)">✓</span><span style="color:var(--ink-mute);margin-left:6px;font-weight:500">· Refresh</span></a>'
+              : '<a class="btn btn-sm" style="background:#0A66C2;border-color:#0A66C2;color:#fff;text-decoration:none" href="/api/oauth/linkedin/start"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" style="margin-right:6px;vertical-align:-2px"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>Connect LinkedIn</a>')+
           '</div>'+
           '<div class="acct-form">'+
             '<div class="acct-avatar">'+
@@ -1620,8 +1622,11 @@ function hydrateAccount(){
                 (a.avatar_url ? '<img class="ph-img" src="'+h(a.avatar_url)+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="ph" style="display:none">'+h(initials)+'</div>' : '<div class="ph">'+h(initials)+'</div>')+
                 (a.linkedin_verified ? '<span class="li-mini"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg></span>' : '')+
               '</div>'+
-              '<button class="btn btn-gho btn-sm" style="margin-top:12px">Change photo</button>'+
-              '<div class="acct-hint">From LinkedIn · JPG, PNG up to 5MB</div>'+
+              (a.linkedin_verified
+                ? '<a class="btn btn-gho btn-sm" href="/api/oauth/linkedin/start" style="margin-top:12px;text-decoration:none">Refresh from LinkedIn</a>'+
+                  '<div class="acct-hint">Photo synced from your LinkedIn profile</div>'
+                : '<a class="btn btn-gho btn-sm" href="/api/oauth/linkedin/start" style="margin-top:12px;text-decoration:none;border-color:#0A66C2;color:#0A66C2">Pull photo from LinkedIn</a>'+
+                  '<div class="acct-hint">Connect LinkedIn to auto-fill your photo, name and email</div>')+
             '</div>'+
             '<div class="acct-fields">'+
               '<div class="field"><label>Display name</label><div class="inp"><input id="acct-handle" value="'+h(a.handle||'')+'"></div></div>'+
@@ -2217,9 +2222,20 @@ function renderStub(name){
 function switchTo(id){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on')});document.getElementById(id).classList.add('on');window.scrollTo(0,0)}
 function route(){
   var hash=location.hash||'#/home';
-  var parts=hash.slice(2).split('/');
+  // Split off any ?query=params on the last segment so section
+  // matching works even when the callback lands us on
+  // /#/account?li=synced etc.
+  var qIdx = hash.indexOf('?');
+  var qs = qIdx>=0 ? hash.slice(qIdx+1) : '';
+  var pathOnly = qIdx>=0 ? hash.slice(0, qIdx) : hash;
+  window.ROUTE_QS = {};
+  if(qs){qs.split('&').forEach(function(pair){var eq=pair.indexOf('=');var k=eq>=0?pair.slice(0,eq):pair;var v=eq>=0?decodeURIComponent(pair.slice(eq+1).replace(/\+/g,' ')):'';window.ROUTE_QS[decodeURIComponent(k)]=v;});}
+  var parts=pathOnly.slice(2).split('/');
   var s=parts[0]||'home';
   updateNav(s);
+  // Post-OAuth toast — surfaced from route() so it fires no matter
+  // which section owns the URL.
+  if(window.ROUTE_QS.li==='synced'){setTimeout(function(){toast('Profile synced from LinkedIn');},250);}
   if(s==='home'){renderHome();hydrateHome();switchTo('v-home')}
   else if(s==='markets'){renderMarkets();hydrateMarkets();switchTo('v-markets')}
   else if(s==='market'){var iso=(parts[1]||'US').toUpperCase();renderMarket(iso);hydrateMarket(iso);switchTo('v-market')}

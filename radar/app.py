@@ -358,13 +358,24 @@ def linkedin_land(conn, ui: dict) -> int:
     if not sub:
         raise ValueError("missing_linkedin_sub")
 
-    # 1. Existing LinkedIn identity — refresh picture in case they updated it.
+    # 1. Existing LinkedIn identity — refresh picture, name and email in
+    #    case they changed on LinkedIn since last sign-in. COALESCE keeps
+    #    the existing value when LinkedIn returns null for a field, and
+    #    NULLIF turns any empty string LinkedIn returns into NULL so
+    #    COALESCE picks up the DB copy instead of blanking it out.
     row = conn.execute(
         "SELECT id FROM chat_managers WHERE linkedin_sub=?", (sub,)).fetchone()
     if row:
         conn.execute(
-            "UPDATE chat_managers SET last_login_at=?, avatar_url=COALESCE(?, avatar_url) WHERE id=?",
-            (when, picture, row["id"]))
+            "UPDATE chat_managers SET last_login_at=?, "
+            "avatar_url=COALESCE(NULLIF(?, ''), avatar_url), "
+            "real_name=COALESCE(NULLIF(?, ''), real_name), "
+            "work_email=COALESCE(NULLIF(?, ''), work_email), "
+            "work_email_confirmed=CASE WHEN ?=1 THEN 1 ELSE work_email_confirmed END, "
+            "linkedin_verified=1 "
+            "WHERE id=?",
+            (when, picture or "", name or "", email or "",
+             email_verified, row["id"]))
         conn.commit()
         return row["id"]
 
@@ -538,8 +549,11 @@ class _H(BaseHTTPRequestHandler):
                 except Exception:
                     return self._redirect("/#/signup?li=failed",
                                           cookies=[auth.linkedin_clear_state_cookie()])
+                # Land on Account so the member immediately sees the
+                # fields we just pulled from LinkedIn (name, email,
+                # avatar). Better feedback than a home-page welcome.
                 return self._redirect(
-                    "/#/home?welcome=linkedin",
+                    "/#/account?li=synced",
                     cookies=[
                         auth.set_cookie_header(auth.make_session_cookie(mid)),
                         auth.linkedin_clear_state_cookie(),
