@@ -639,6 +639,65 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .share-locked-t b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
 .share-locked-t span{color:var(--ink-mute);font-size:12.5px}
 .plan-cta{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch;margin-top:8px}
+
+/* ============ Payments page ============ */
+.pay-hero{padding:32px 0 28px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:32px}
+.pay-hero h1{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink)}
+.pay-hero .sub{color:var(--ink-2);font-size:15px;margin-top:6px;max-width:52ch;line-height:1.5}
+.pay-hero-status{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.pay-hero-plan{display:flex;align-items:center;gap:22px;padding:14px 20px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm)}
+.pay-hero-plan > div{text-align:right;line-height:1.15}
+.pay-hero-plan b{display:block;font-size:20px;font-weight:700;letter-spacing:-0.02em;color:var(--ink)}
+.pay-hero-plan span{color:var(--ink-mute);font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em}
+.plan-chip{background:var(--ground);color:var(--ink);border:1px solid var(--line);font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px;letter-spacing:0.01em;white-space:nowrap;text-transform:uppercase}
+.plan-chip.unlim{background:linear-gradient(135deg,#6D28D9 0%,#3D7CFF 55%,#00D9FF 100%);color:#fff;border-color:transparent}
+
+.pay-sec-head{margin-bottom:20px}
+.pay-sec-head h2{font-size:22px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-bottom:6px}
+.pay-sec-head p{color:var(--ink-mute);font-size:14px;max-width:60ch;line-height:1.5}
+
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.plan-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 22px 22px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.plan-card:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(20,30,50,0.10);border-color:var(--line-strong,#C7CDD6)}
+.plan-card.popular{border-color:var(--blue);box-shadow:0 12px 30px rgba(61,124,255,0.14)}
+.plan-card.current{border-color:var(--up);background:linear-gradient(180deg,#F6FCF9 0%,#FFFFFF 60%)}
+.plan-flag{position:absolute;top:-11px;left:22px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:0.02em;text-transform:uppercase;box-shadow:0 3px 10px rgba(61,124,255,0.28)}
+.plan-card.current .plan-flag{left:auto;right:22px}
+.plan-head h3{font-size:18px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-bottom:6px}
+.plan-head p{color:var(--ink-mute);font-size:13px;line-height:1.5;margin-bottom:16px;min-height:44px}
+.plan-price{padding:12px 0 20px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.plan-price b{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1}
+.plan-price span{color:var(--ink-mute);font-size:13px;font-weight:500;margin-left:8px}
+.plan-feats{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:10px;flex:1}
+.plan-feats li{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:var(--ink);line-height:1.45}
+.plan-feats li svg{width:14px;height:14px;flex:0 0 14px;color:var(--up);margin-top:4px}
+.plan-card.popular .plan-feats li svg{color:var(--blue)}
+
+.topup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.topup-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 20px 20px;box-shadow:var(--shadow-sm);text-align:center}
+.topup-card.best{border-color:var(--blue);background:linear-gradient(180deg,#F5F9FF 0%,#FFFFFF 60%)}
+.topup-flag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:0.02em;text-transform:uppercase}
+.topup-amt{display:flex;align-items:baseline;gap:6px;justify-content:center;margin-bottom:6px}
+.topup-amt b{font-size:38px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1}
+.topup-amt span{color:var(--ink-mute);font-size:14px;font-weight:500}
+.topup-price{color:var(--ink-2);font-size:14px;font-weight:600;margin-bottom:16px}
+.topup-price em{font-style:normal;color:var(--ink-mute);font-weight:500}
+
+.pay-tbl{width:100%;border-collapse:collapse}
+.pay-tbl th{text-align:left;font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-mute);padding:14px 16px;border-bottom:1px solid var(--line)}
+.pay-tbl td{padding:14px 16px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink)}
+
+.pay-security{margin-top:32px;display:flex;align-items:flex-start;gap:14px;padding:18px 20px;background:var(--ground);border:1px solid var(--line);border-radius:12px}
+.pay-security-ico{width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:var(--up-soft);color:var(--up);display:flex;align-items:center;justify-content:center}
+.pay-security b{display:block;color:var(--ink);font-size:14px;font-weight:600;margin-bottom:2px}
+.pay-security span{color:var(--ink-mute);font-size:12.5px;line-height:1.5}
+
+@media (max-width:900px){
+  .plans-grid,.topup-grid{grid-template-columns:1fr}
+  .pay-hero{flex-direction:column;align-items:flex-start}
+  .pay-hero-status{align-items:flex-start}
+  .pay-hero-plan{flex-wrap:wrap;gap:14px}
+}
 .btn-glow{background:var(--grad);background-size:200% 200%;color:#fff;border:0;padding:14px 20px;font-weight:700;font-size:14.5px;letter-spacing:-0.01em;border-radius:12px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(109,40,217,0.30), 0 8px 26px rgba(61,124,255,0.42), 0 0 40px rgba(0,217,255,0.25);animation:glowShift 6s ease-in-out infinite;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .06s ease}
 .btn-glow:hover{box-shadow:0 0 0 1px rgba(109,40,217,0.40), 0 12px 32px rgba(61,124,255,0.56), 0 0 60px rgba(0,217,255,0.36)}
 .btn-glow:active{transform:translateY(1px)}
@@ -757,6 +816,7 @@ footer{padding:56px 0 40px}
   <section id="v-privacy" class="view"></section>
   <section id="v-terms" class="view"></section>
   <section id="v-leaderboard" class="view"></section>
+  <section id="v-payments" class="view"></section>
   <section id="v-stub" class="view"></section>
 </main>
 
@@ -767,7 +827,7 @@ footer{padding:56px 0 40px}
       Aff<em>swap</em>
     </a>
     <nav class="foot-links">
-      <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/swaps')">Swaps</a><a onclick="go('#/leaderboard')">Leaderboard</a><a onclick="go('#/loyalty')">Loyalty</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
+      <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/leaderboard')">Leaderboard</a><a onclick="go('#/payments')">Payments</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
     </nav>
     <span class="foot-tag">Real people. Real opportunities. Bigger networks.</span>
   </div>
@@ -787,7 +847,7 @@ function apiPost(path,body){return fetch(path,{method:'POST',headers:{'Content-T
 
 var REGIONS={"US":"americas","CA":"americas","BR":"americas","MX":"americas","PE":"americas","CL":"americas","AR":"americas","CO":"americas","GB":"europe","DE":"europe","FI":"europe","IT":"europe","NL":"europe","FR":"europe","SE":"europe","IE":"europe","CH":"europe","PL":"europe","ES":"europe","PT":"europe","AT":"europe","BE":"europe","DK":"europe","GR":"europe","RO":"europe","CZ":"europe","UA":"europe","TR":"europe","HU":"europe","IN":"asia","PH":"asia","ID":"asia","JP":"asia","AU":"oceania","NZ":"oceania","ZA":"africa","NG":"africa"};
 
-var NAV=[['home','Home'],['markets','Markets'],['leaderboard','Leaderboard'],['chat','Chat'],['account','My Account']];
+var NAV=[['home','Home'],['markets','Markets'],['leaderboard','Leaderboard'],['chat','Chat'],['payments','Payments'],['account','My Account']];
 
 function updateNav(active){
   document.getElementById('nlinks').innerHTML=NAV.map(function(n){
@@ -1552,11 +1612,11 @@ function hydrateAccount(){
           '</div>'+
           (me.unlimited ? '' :
             '<div class="plan-cta">'+
-              '<button class="btn btn-glow" onclick="openUpgrade()">'+
+              '<button class="btn btn-glow" onclick="go(\'#/payments\')">'+
                 '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1 L10 6 L15 6.5 L11 10 L12 15 L8 12.5 L4 15 L5 10 L1 6.5 L6 6 Z" fill="currentColor"/></svg>'+
                 'Upgrade plan &nbsp;·&nbsp; unlock unlimited swaps'+
               '</button>'+
-              '<button class="btn btn-gho" onclick="openTopup()">Buy swaps</button>'+
+              '<button class="btn btn-gho" onclick="go(\'#/payments\')">Buy swaps</button>'+
             '</div>'
           )+
         '</div>'+
@@ -1685,8 +1745,8 @@ function saveProfile(btn){
     updateMeChip();
   }).catch(function(){toast('Network error');btn.disabled=false;btn.textContent=orig;});
 }
-function openUpgrade(){toast('Plan upgrade — checkout coming soon');}
-function openTopup(){toast('Swap top-up — checkout coming soon');}
+/* openUpgrade / openTopup are defined in the Payments section and
+   redirect to /#/payments — kept for callers elsewhere in the app. */
 function suggestSite(){var u=document.getElementById('sugg-url');if(!u||!u.value.trim()){toast('Enter a site URL');return;}document.getElementById('sugg-form').innerHTML='<div style="padding:16px;background:var(--up-soft);border:1px solid rgba(20,184,122,0.28);border-radius:10px;color:#0E9760;font-weight:600;display:flex;align-items:center;gap:10px"><span style="width:24px;height:24px;background:var(--up);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">✓</span>Submitted for review — you\'ll earn a swap when it\'s approved.</div>';}
 
 function markSharePosted(){
@@ -1935,6 +1995,107 @@ function loginSubmit(){
   }).catch(function(){msg.className='form-msg err';msg.textContent='Network error — please try again.'});
 }
 
+/* ==================== PAYMENTS ==================== */
+function renderPayments(){document.getElementById('v-payments').innerHTML='<div style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading…</div>';}
+function hydratePayments(){
+  Promise.all([
+    apiGet('/api/me'),
+    apiGet('/api/swaps').catch(function(){return{ledger:[]};}),
+    apiGet('/api/loyalty').catch(function(){return{};})
+  ]).then(function(res){
+    var me=res[0]||{}, sw=res[1]||{ledger:[]}, l=res[2]||{};
+    var ledger = sw.ledger||[];
+    var plan = (me.plan||'standard').toLowerCase();
+    var swapsLeft = me.unlimited ? '∞' : (me.swaps==null?'—':me.swaps);
+    var freeEarned = l.free_swaps_earned||0;
+    var el = document.getElementById('v-payments');
+    el.innerHTML =
+      /* Hero */
+      '<div class="pay-hero">'+
+        '<div><h1>Payments &amp; billing</h1><p class="sub">Your plan, swap top-ups and billing history in one place.</p></div>'+
+        '<div class="pay-hero-status">'+
+          '<div class="pay-hero-plan">'+
+            '<span class="plan-chip'+(me.unlimited?' unlim':'')+'">'+ (me.unlimited?'Unlimited':(plan.charAt(0).toUpperCase()+plan.slice(1))) +' plan</span>'+
+            '<div><b>'+ swapsLeft +'</b><span>Swaps left</span></div>'+
+            '<div><b>'+ freeEarned +'</b><span>Free earned</span></div>'+
+            '<div><b>'+ ledger.length +'</b><span>Exchanges</span></div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+
+      /* Plans */
+      '<div class="pay-sec-head"><h2>Choose a plan</h2><p>Swaps are the currency of Affswap. Every completed contact exchange uses one.</p></div>'+
+      '<div class="plans-grid">'+
+        planCard({key:'standard',name:'Standard',price:'£0',cadence:'forever',blurb:'Get started. Earn swaps by reviewing, sharing and suggesting sites.',current:plan==='standard'&&!me.unlimited,features:['3 swaps included','Earn +1 swap per 5 approved reviews','+1 swap per LinkedIn share (7-day cooldown)','+1 swap per approved suggested site','Full Markets and Leaderboard access']})+
+        planCard({key:'pro',name:'Pro',price:'£29',cadence:'per month',blurb:'For managers doing 5–10 deals a month. Bulk swaps at a lower unit cost.',current:plan==='pro',popular:true,features:['20 swaps per month','Rollover unused swaps for 3 months','Priority match alerts (instant email)','Reviewer badge on your profile','Everything in Standard']})+
+        planCard({key:'unlimited',name:'Unlimited',price:'£79',cadence:'per month',blurb:'Do as many deals as you can close. No swap counter, no thinking about it.',current:!!me.unlimited,features:['Unlimited swaps','Priority match alerts','Verified Unlimited badge on your profile','Chat priority queue','Everything in Pro']})+
+      '</div>'+
+
+      /* Top-up */
+      '<div class="pay-sec-head" style="margin-top:40px"><h2>Buy swaps</h2><p>One-time top-ups if you\'re not ready to move to Pro or Unlimited. Swaps never expire.</p></div>'+
+      '<div class="topup-grid">'+
+        topupCard(5, 15, false)+
+        topupCard(15, 39, true)+
+        topupCard(40, 89, false)+
+      '</div>'+
+
+      /* Billing history */
+      '<div class="pay-sec-head" style="margin-top:40px"><h2>Billing history</h2><p>Downloadable receipts for every plan payment and top-up.</p></div>'+
+      '<div class="acct-card">'+
+        (ledger.length ?
+          '<table class="pay-tbl"><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th></th></tr></thead><tbody>'+
+            /* No real billing yet — show a placeholder empty row so the shape is real */
+            '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--ink-mute);font-size:13.5px">No payment history yet. When you upgrade or buy swaps, receipts appear here.</td></tr>'+
+          '</tbody></table>'
+          :
+          '<div style="text-align:center;padding:36px 24px">'+
+            '<div style="width:56px;height:56px;margin:0 auto 14px;border-radius:14px;background:var(--ground);display:flex;align-items:center;justify-content:center;color:var(--ink-mute)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6 H20 V18 A2 2 0 0 1 18 20 H6 A2 2 0 0 1 4 18 Z M4 10 H20" stroke="currentColor" stroke-width="1.6"/></svg></div>'+
+            '<h3 style="font-size:15px;font-weight:700;margin-bottom:4px">No payments yet</h3>'+
+            '<p style="color:var(--ink-mute);font-size:13px;max-width:36ch;margin:0 auto">You\'re on the Standard plan. When you upgrade or buy swaps, receipts show up here.</p>'+
+          '</div>')+
+      '</div>'+
+
+      /* Security note */
+      '<div class="pay-security">'+
+        '<span class="pay-security-ico"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2 L16 5 V10 C16 13.5, 13.5 16, 10 18 C 6.5 16, 4 13.5, 4 10 V5 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10 L9 12 L13 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'+
+        '<div><b>Secure payments via Stripe</b><span>Card details never touch Affswap servers. All plans are cancel-anytime and pro-rated on the day you switch.</span></div>'+
+      '</div>';
+  }).catch(function(){document.getElementById('v-payments').innerHTML='<div style="padding:24px;color:var(--ink-mute)">Couldn\'t load payments.</div>';});
+}
+
+function planCard(p){
+  return '<div class="plan-card'+(p.current?' current':'')+(p.popular?' popular':'')+'">'+
+    (p.popular?'<span class="plan-flag">Most popular</span>':'')+
+    (p.current?'<span class="plan-flag" style="background:var(--up);color:#fff">Your plan</span>':'')+
+    '<div class="plan-head"><h3>'+h(p.name)+'</h3><p>'+h(p.blurb)+'</p></div>'+
+    '<div class="plan-price"><b>'+h(p.price)+'</b><span>'+h(p.cadence)+'</span></div>'+
+    '<ul class="plan-feats">'+ p.features.map(function(f){return '<li><svg viewBox="0 0 14 14" fill="none"><path d="M3 7 L6 10 L11 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'+h(f)+'</li>';}).join('') +'</ul>'+
+    (p.current
+      ? '<button class="btn btn-gho" disabled style="width:100%">You\'re on this plan</button>'
+      : (p.key==='standard'
+          ? '<button class="btn btn-gho" onclick="downgradePlan()" style="width:100%">Downgrade</button>'
+          : '<button class="btn'+(p.popular||p.key==='unlimited'?' btn-glow':'')+'" onclick="upgradePlan(\''+p.key+'\')" style="width:100%">Upgrade to '+h(p.name)+' →</button>'))+
+  '</div>';
+}
+
+function topupCard(swaps, price, best){
+  var per = (price/swaps).toFixed(2);
+  return '<div class="topup-card'+(best?' best':'')+'">'+
+    (best?'<span class="topup-flag">Best value</span>':'')+
+    '<div class="topup-amt"><b>'+swaps+'</b><span>swaps</span></div>'+
+    '<div class="topup-price">£'+price+' <em>&middot; £'+per+' each</em></div>'+
+    '<button class="btn'+(best?' btn-glow':' btn-gho')+'" style="width:100%" onclick="buySwaps('+swaps+','+price+')">Buy '+swaps+' swaps</button>'+
+  '</div>';
+}
+
+function upgradePlan(plan){toast('Upgrade to '+plan.charAt(0).toUpperCase()+plan.slice(1)+' — Stripe checkout coming soon');}
+function downgradePlan(){toast('You\'re downgrading to Standard — coming soon');}
+function buySwaps(n,price){toast('Buy '+n+' swaps for £'+price+' — Stripe checkout coming soon');}
+/* Keep the old handlers pointing at the new page so any lingering
+   callers still work; they redirect the user to Payments. */
+function openUpgrade(){go('#/payments');}
+function openTopup(){go('#/payments');}
+
 /* ==================== LEADERBOARD ==================== */
 var LB_STATE={period:'all'};
 function renderLeaderboard(){document.getElementById('v-leaderboard').innerHTML='<div style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading…</div>';}
@@ -1985,6 +2146,7 @@ function route(){
   else if(s==='privacy'){renderPrivacy();switchTo('v-privacy')}
   else if(s==='terms'){renderTerms();switchTo('v-terms')}
   else if(s==='leaderboard'){renderLeaderboard();hydrateLeaderboard();switchTo('v-leaderboard')}
+  else if(s==='payments'||s==='billing'||s==='plans'){renderPayments();hydratePayments();switchTo('v-payments')}
   else if(s==='chat'){renderStub('Chat');switchTo('v-stub')}
   else{renderHome();hydrateHome();switchTo('v-home')}
 }
