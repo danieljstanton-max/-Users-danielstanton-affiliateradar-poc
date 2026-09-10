@@ -751,33 +751,6 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 @media (prefers-reduced-motion:reduce){.btn-glow{animation:none}.btn-glow::before{display:none}}
 
 
-/* LEADERBOARD */
-.lb-hero{padding:32px 0 24px}
-.lb-hero h1{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink)}
-.lb-hero .sub{color:var(--ink-2);font-size:15px;margin-top:6px}
-.lb-tabs{display:flex;gap:8px;margin:20px 0 24px}
-.lb-tab{padding:8px 18px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);font-weight:600;font-size:13.5px;border-radius:999px;cursor:pointer}
-.lb-tab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
-.podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px}
-.pod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 20px;box-shadow:var(--shadow-sm);text-align:center}
-.pod.p1{border-color:#E8B62F;box-shadow:0 0 0 1px rgba(232,182,47,0.28), 0 8px 24px rgba(232,182,47,0.18)}
-.pod .medal{width:36px;height:36px;border-radius:50%;background:#E8B62F;color:#fff;font-weight:800;font-size:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px}
-.pod.p2 .medal{background:#B8B8B8}
-.pod.p3 .medal{background:#CD7F32}
-.pod .name{font-weight:700;color:var(--ink);font-size:16px}
-.pod .co{color:var(--ink-mute);font-size:12.5px;margin-top:2px;margin-bottom:16px}
-.pod .stats{display:flex;justify-content:center;gap:16px;font-size:12.5px;color:var(--ink-2)}
-.pod .stats b{color:var(--ink);font-weight:700;font-size:14px}
-.pod .score{margin-top:14px;font-family:var(--f-mono);color:var(--blue);font-weight:600;font-size:14px}
-.lb-row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 20px;display:grid;grid-template-columns:36px 1fr auto auto auto;gap:16px;align-items:center;margin-bottom:8px;box-shadow:var(--shadow-sm)}
-.lb-row.you{background:var(--blue-softer);border-color:var(--blue)}
-.lb-row .rk{font-family:var(--f-mono);color:var(--ink-mute);font-size:12.5px}
-.lb-row .lb-name{font-weight:600;color:var(--ink)}
-.lb-row .lb-name span{color:var(--ink-mute);font-weight:500;font-size:12px;display:block}
-.lb-row .metric{color:var(--ink-mute);font-size:12px}
-.lb-row .metric b{color:var(--ink);font-weight:700;font-size:15px;display:block}
-.lb-row .sc{font-family:var(--f-mono);color:var(--blue);font-weight:600}
-
 /* STUB */
 .stub{padding:80px 0;text-align:center;color:var(--ink-mute)}
 .stub h2{font-size:32px;color:var(--ink);margin-bottom:8px;font-weight:700}
@@ -797,11 +770,10 @@ footer{padding:56px 0 40px}
 /* RESPONSIVE */
 @media (max-width:1024px){
   .hero-grid,.mk-hero-grid,.sp-grid{grid-template-columns:1fr;gap:32px}
-  .stats-grid,.mk-side-row,.sw-stats,.mkd-stats,.podium{grid-template-columns:1fr 1fr;gap:12px}
+  .stats-grid,.mk-side-row,.sw-stats,.mkd-stats{grid-template-columns:1fr 1fr;gap:12px}
   .opp-grid{grid-template-columns:1fr 1fr}
   .steps-grid{grid-template-columns:1fr}
   .step-arrow{display:none}
-  .lb-row{grid-template-columns:28px 1fr auto auto}
   .lists-grid{grid-template-columns:1fr}
   .acct-grid{grid-template-columns:1fr}
   .acct-form{grid-template-columns:1fr}
@@ -821,7 +793,7 @@ footer{padding:56px 0 40px}
 @media (max-width:640px){
   .wrap{padding:0 16px}
   .nav-links{display:none}
-  .stats-grid,.opp-grid,.sw-stats,.mkd-stats,.podium{grid-template-columns:1fr}
+  .stats-grid,.opp-grid,.sw-stats,.mkd-stats{grid-template-columns:1fr}
   .section{padding:48px 0}
   .cta-band{flex-direction:column;align-items:flex-start;padding:20px}
 }
@@ -859,7 +831,6 @@ footer{padding:56px 0 40px}
   <section id="v-login" class="view"></section>
   <section id="v-privacy" class="view"></section>
   <section id="v-terms" class="view"></section>
-  <section id="v-leaderboard" class="view"></section>
   <section id="v-payments" class="view"></section>
   <section id="v-stub" class="view"></section>
 </main>
@@ -871,7 +842,7 @@ footer{padding:56px 0 40px}
       Aff<em>swap</em>
     </a>
     <nav class="foot-links">
-      <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/leaderboard')">Leaderboard</a><a onclick="go('#/payments')">Payments</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
+      <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/payments')">Payments</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
     </nav>
     <span class="foot-tag">Real people. Real opportunities. Bigger networks.</span>
   </div>
@@ -891,7 +862,7 @@ function apiPost(path,body){return fetch(path,{method:'POST',headers:{'Content-T
 
 var REGIONS={"US":"americas","CA":"americas","BR":"americas","MX":"americas","PE":"americas","CL":"americas","AR":"americas","CO":"americas","GB":"europe","DE":"europe","FI":"europe","IT":"europe","NL":"europe","FR":"europe","SE":"europe","IE":"europe","CH":"europe","PL":"europe","ES":"europe","PT":"europe","AT":"europe","BE":"europe","DK":"europe","GR":"europe","RO":"europe","CZ":"europe","UA":"europe","TR":"europe","HU":"europe","IN":"asia","PH":"asia","ID":"asia","JP":"asia","AU":"oceania","NZ":"oceania","ZA":"africa","NG":"africa"};
 
-var NAV=[['home','Home'],['markets','Markets'],['leaderboard','Leaderboard'],['chat','Chat'],['payments','Payments'],['account','My Account']];
+var NAV=[['home','Home'],['markets','Markets'],['chat','Chat'],['payments','Payments'],['account','My Account']];
 
 function updateNav(active){
   document.getElementById('nlinks').innerHTML=NAV.map(function(n){
@@ -1640,7 +1611,7 @@ function hydrateAccount(){
       })())+
       '<div class="acct-grid">'+
         '<div class="acct-card">'+
-          '<div class="acct-card-head"><div><h2>Profile</h2><p>Your identity across the network — used by matches, reviews and the leaderboard.</p></div>'+
+          '<div class="acct-card-head"><div><h2>Profile</h2><p>Your identity across the network — used by matches and reviews.</p></div>'+
             (a.linkedin_verified
               ? '<a class="li-badge" href="/api/oauth/linkedin/start" title="Re-pull your name, email and photo from LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>LinkedIn connected <span style="color:var(--up)">✓</span><span style="color:var(--ink-mute);margin-left:6px;font-weight:500">· Refresh</span></a>'
               : '<a class="btn btn-sm" style="background:#0A66C2;border-color:#0A66C2;color:#fff;text-decoration:none" href="/api/oauth/linkedin/start"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" style="margin-right:6px;vertical-align:-2px"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>Connect LinkedIn</a>')+
@@ -2149,7 +2120,7 @@ function hydratePayments(){
       /* Plans */
       '<div class="pay-sec-head"><h2>Choose a plan</h2><p>Swaps are the currency of Affswap. Every completed contact exchange uses one.</p></div>'+
       '<div class="plans-grid">'+
-        planCard({key:'standard',name:'Standard',price:'£0',cadence:'forever',blurb:'Get started. Earn swaps by reviewing, sharing and suggesting sites.',current:plan==='standard'&&!me.unlimited,features:['3 swaps included','Earn +1 swap per 5 approved reviews','+1 swap per LinkedIn share (7-day cooldown)','+1 swap per approved suggested site','Full Markets and Leaderboard access']})+
+        planCard({key:'standard',name:'Standard',price:'£0',cadence:'forever',blurb:'Get started. Earn swaps by reviewing, sharing and suggesting sites.',current:plan==='standard'&&!me.unlimited,features:['3 swaps included','Earn +1 swap per 5 approved reviews','+1 swap per LinkedIn share (7-day cooldown)','+1 swap per approved suggested site','Full Markets access']})+
         planCard({key:'pro',name:'Pro',price:'£29',cadence:'per month',blurb:'For managers doing 5–10 deals a month. Bulk swaps at a lower unit cost.',current:plan==='pro',popular:true,features:['20 swaps per month','Rollover unused swaps for 3 months','Priority match alerts (instant email)','Reviewer badge on your profile','Everything in Standard']})+
         planCard({key:'unlimited',name:'Unlimited',price:'£79',cadence:'per month',blurb:'Do as many deals as you can close. No swap counter, no thinking about it.',current:!!me.unlimited,features:['Unlimited swaps','Priority match alerts','Verified Unlimited badge on your profile','Chat priority queue','Everything in Pro']})+
       '</div>'+
@@ -2219,29 +2190,6 @@ function buySwaps(n,price){toast('Buy '+n+' swaps for £'+price+' — Stripe che
 function openUpgrade(){go('#/payments');}
 function openTopup(){go('#/payments');}
 
-/* ==================== LEADERBOARD ==================== */
-var LB_STATE={period:'all'};
-function renderLeaderboard(){document.getElementById('v-leaderboard').innerHTML='<div style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading…</div>';}
-function hydrateLeaderboard(){
-  apiGet('/api/leaderboard?period='+LB_STATE.period).then(function(d){
-    var entries=d.entries||[];
-    var el=document.getElementById('v-leaderboard');
-    var podium = entries.slice(0,3).map(function(p,i){
-      var motm=(LB_STATE.period==='month'&&i===0)?'<div style="color:#B47B00;font-size:11.5px;font-weight:700;margin-top:12px">🏆 Manager of the Month</div>':'';
-      return '<div class="pod p'+(i+1)+'"><span class="medal">'+(i+1)+'</span><div class="name">'+h(p.handle||'')+'</div><div class="co">'+h(p.company||'')+'</div><div class="stats"><span><b>'+p.swaps+'</b> swaps</span><span><b>'+p.reviews+'</b> reviews</span></div><div class="score">'+p.score+' pts</div>'+motm+'</div>';
-    }).join('');
-    var rows = entries.slice(3).map(function(p,i){
-      return '<div class="lb-row'+(p.is_you?' you':'')+'"><span class="rk">'+(i+4)+'</span><div class="lb-name"><b>'+h(p.handle||'')+'</b><span>'+h(p.company||'')+'</span></div><div class="metric"><b>'+p.swaps+'</b>swaps</div><div class="metric"><b>'+p.reviews+'</b>reviews</div><span class="sc">'+p.score+'</span></div>';
-    }).join('');
-    var yourRank = d.you_rank ? 'Rank '+d.you_rank+' of '+d.total+' — keep swapping &amp; reviewing to climb.' : 'Not yet ranked — swap or review to enter the leaderboard.';
-    el.innerHTML =
-      '<div class="lb-hero"><h1>Leaderboard</h1><p class="sub">Top affiliate managers, ranked by swaps and reviews.</p></div>'+
-      '<div class="lb-tabs"><button class="lb-tab '+(LB_STATE.period==='all'?'on':'')+'" onclick="LB_STATE.period=\'all\';hydrateLeaderboard()">All time</button><button class="lb-tab '+(LB_STATE.period==='month'?'on':'')+'" onclick="LB_STATE.period=\'month\';hydrateLeaderboard()">This month</button></div>'+
-      (entries.length?'<div class="podium">'+podium+'</div>'+(rows?'<h2 class="section-h" style="margin:24px 0 12px;font-size:20px">Rankings</h2>'+rows:'') : '<div class="sw-empty">No swaps or reviews yet — be the first to climb the leaderboard.</div>')+
-      '<div class="loy-card" style="margin-top:24px"><div style="font-weight:700;margin-bottom:6px">Your position</div><div style="color:var(--ink-mute);font-size:14px">'+yourRank+'</div></div>';
-  }).catch(function(){document.getElementById('v-leaderboard').innerHTML='<div style="padding:24px;color:var(--ink-mute)">Couldn\'t load leaderboard.</div>';});
-}
-
 /* ==================== STUB VIEWS (alerts, chat) ==================== */
 function renderStub(name){
   document.getElementById('v-stub').innerHTML='<div class="stub"><h2>'+h(name)+'</h2><p>This section is on the way — the nav and routing all work; content lands next.</p><button class="btn" style="margin-top:20px" onclick="go(\'#/markets\')">Browse markets</button></div>';
@@ -2279,7 +2227,7 @@ function route(){
   else if(s==='login'){renderLogin();switchTo('v-login')}
   else if(s==='privacy'){renderPrivacy();switchTo('v-privacy')}
   else if(s==='terms'){renderTerms();switchTo('v-terms')}
-  else if(s==='leaderboard'){renderLeaderboard();hydrateLeaderboard();switchTo('v-leaderboard')}
+  else if(s==='leaderboard'){go('#/home');return;}
   else if(s==='payments'||s==='billing'||s==='plans'){renderPayments();hydratePayments();switchTo('v-payments')}
   else if(s==='chat'){renderStub('Chat');switchTo('v-stub')}
   else{renderHome();hydrateHome();switchTo('v-home')}

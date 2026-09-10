@@ -143,43 +143,6 @@ def api_account_update(conn, mid, payload):
     return {"ok": True}
 
 
-def api_leaderboard(conn, mid, period="all"):
-    """Rank verified managers by (swaps*2 + approved_reviews), all-time or 30d."""
-    if period == "month":
-        clause_sw = "WHERE transferred_at >= datetime('now', '-30 days')"
-        clause_rv = "AND resolved_at >= datetime('now', '-30 days')"
-    else:
-        clause_sw = clause_rv = ""
-    swap_counts: dict = {}
-    for r in conn.execute(f"""
-        SELECT mid, COUNT(*) n FROM (
-            SELECT from_manager mid FROM swap_ledger {clause_sw}
-            UNION ALL
-            SELECT to_manager   mid FROM swap_ledger {clause_sw}
-        ) t GROUP BY mid
-    """):
-        swap_counts[r["mid"]] = r["n"]
-    review_counts = {r["manager_id"]: r["n"] for r in conn.execute(f"""
-        SELECT manager_id, COUNT(*) n FROM reviews WHERE status='approved' {clause_rv}
-        GROUP BY manager_id
-    """)}
-    managers = list(conn.execute(
-        "SELECT id, handle, company FROM chat_managers WHERE status='verified'"))
-    entries = []
-    for m in managers:
-        sw = swap_counts.get(m["id"], 0)
-        rv = review_counts.get(m["id"], 0)
-        entries.append({
-            "id": m["id"], "handle": m["handle"], "company": m["company"],
-            "swaps": sw, "reviews": rv, "score": sw * 2 + rv,
-            "is_you": m["id"] == mid,
-        })
-    entries.sort(key=lambda e: (-e["score"], -e["swaps"], e["handle"] or ""))
-    you_rank = next((i + 1 for i, e in enumerate(entries) if e["is_you"]), None)
-    return {"period": period, "total": len(entries), "you_rank": you_rank,
-            "entries": entries[:20]}
-
-
 def api_swaps(conn, mid):
     full = swaps.ledger(conn)
     mine = [e for e in full if e.get("from_id") == mid or e.get("to_id") == mid]
@@ -609,8 +572,6 @@ class _H(BaseHTTPRequestHandler):
                 self._json(api_lists(conn, mid))
             elif u.path == "/api/share/status":
                 self._json(api_share_status(conn, mid))
-            elif u.path == "/api/leaderboard":
-                self._json(api_leaderboard(conn, mid, g("period", "all") or "all"))
             elif u.path == "/api/me":
                 a = swaps.access(conn, mid)
                 row = conn.execute(
