@@ -318,6 +318,39 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .loy-progress{background:#E9F0F9;border-radius:8px;height:12px;overflow:hidden;margin-bottom:8px}
 .loy-progress i{background:var(--grad);height:100%;display:block;transition:width .4s}
 
+/* LOYALTY — stamp card */
+.stamp-card{background:linear-gradient(135deg,#FFFFFF 0%,#FBF7EF 100%);border:1px solid rgba(230,138,82,0.35);border-radius:20px;padding:32px;box-shadow:var(--glow-warm);position:relative;overflow:hidden;margin-bottom:32px}
+.stamp-card::before{content:"";position:absolute;top:-50%;right:-20%;width:60%;height:200%;background:radial-gradient(circle at center,rgba(232,182,47,0.14) 0%,transparent 60%);pointer-events:none}
+.stamp-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:28px;position:relative}
+.stamp-eyebrow{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:#B47B00;margin-bottom:8px}
+.stamp-title{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1;margin-bottom:8px}
+.stamp-sub{color:var(--ink-2);font-size:15px;max-width:44ch}
+.stamp-badge{background:var(--card);border:1px solid rgba(230,138,82,0.4);border-radius:16px;padding:14px 20px;text-align:center;box-shadow:0 4px 16px rgba(255,138,66,0.16);min-width:130px}
+.stamp-badge-n{font-size:44px;font-weight:800;letter-spacing:-0.04em;color:var(--up);line-height:1}
+.stamp-badge-l{font-family:var(--f-mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-mute);font-weight:600;margin-top:4px;line-height:1.3}
+.stamps-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:8px 0;position:relative}
+.stamp{aspect-ratio:1/1;background:var(--card);border:2px dashed rgba(230,138,82,0.32);border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;transition:transform .3s ease}
+.stamp-n{font-family:var(--f-mono);font-size:20px;font-weight:600;color:rgba(230,138,82,0.55)}
+.stamp.on{background:linear-gradient(135deg,#FFE7A6,#FFB84D);border-style:solid;border-color:transparent;color:#7A4A00;box-shadow:0 8px 22px rgba(255,168,66,0.4), 0 0 0 3px rgba(255,255,255,0.7) inset;transform:rotate(-6deg)}
+.stamp.on svg{width:60%;height:60%}
+.stamp.on:nth-child(even){transform:rotate(5deg)}
+.stamp-legend{display:flex;align-items:center;gap:16px;margin-top:24px;padding-top:20px;border-top:1px dashed rgba(230,138,82,0.28);font-size:13.5px;color:var(--ink-2)}
+.stamp-legend b{color:var(--ink);font-weight:700}
+.stamp-legend-sep{color:var(--ink-faint)}
+.tick-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--up);margin-right:4px;vertical-align:middle;box-shadow:0 0 0 3px rgba(20,184,122,0.16)}
+.loy-earn{margin-bottom:24px}
+.loy-earn-head{margin-bottom:20px}
+.loy-earn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.loy-earn-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow-sm);position:relative;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.loy-earn-card:hover{border-color:var(--blue);box-shadow:0 8px 24px rgba(61,124,255,0.14);transform:translateY(-2px)}
+.loy-earn-ico{width:44px;height:44px;border-radius:12px;background:var(--blue-soft);color:var(--blue);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px}
+.loy-earn-ico svg{width:22px;height:22px}
+.loy-earn-worth{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--up);background:var(--up-soft);padding:4px 10px;border-radius:999px;letter-spacing:-0.005em}
+.loy-earn-card h4{font-size:16px;font-weight:700;letter-spacing:-0.015em;color:var(--ink);margin-bottom:6px}
+.loy-earn-card p{color:var(--ink-2);font-size:13.5px;line-height:1.5;margin-bottom:14px}
+.loy-earn-cta{color:var(--blue);font-weight:600;font-size:13.5px;cursor:pointer}
+.loy-earn-cta:hover{color:var(--blue-hi)}
+
 /* ACCOUNT / SIGNUP form */
 .form-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;box-shadow:var(--shadow-sm);max-width:640px}
 .field{margin-bottom:16px}
@@ -330,7 +363,10 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 
 /* ACCOUNT (rich) */
 .acct-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
-.acct-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm)}
+.acct-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:box-shadow .2s ease}
+.acct-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);opacity:0;transition:opacity .2s ease}
+.acct-card:hover{box-shadow:var(--shadow-md)}
+.acct-card:hover::before{opacity:1}
 .acct-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
 .acct-card-head h2{font-size:18px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-bottom:4px}
 .acct-card-head p{color:var(--ink-mute);font-size:13px;line-height:1.45}
@@ -438,6 +474,13 @@ footer{padding:56px 0 40px}
   .acct-form{grid-template-columns:1fr}
   .alerts-grid{grid-template-columns:1fr}
   .acct-arow{grid-template-columns:1fr}
+  .stamp-card-head{flex-direction:column}
+  .loy-earn-grid{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .stamps-row{grid-template-columns:repeat(5,1fr);gap:6px}
+  .stamp-title{font-size:28px}
+  .stamp-card{padding:22px}
 }
 @media (max-width:640px){
   .wrap{padding:0 16px}
@@ -872,23 +915,81 @@ function renderLoyalty(){document.getElementById('v-loyalty').innerHTML='<div st
 function hydrateLoyalty(){
   apiGet('/api/loyalty').then(function(l){
     var contrib=l.contributions||{};
-    var progressPct = l.reviews_to_next_swap>0 ? Math.min(100,Math.round((l.approved_reviews||0)/((l.approved_reviews||0)+l.reviews_to_next_swap)*100)) : 100;
+    var approved = l.approved_reviews||0;
+    var currentStamps = approved % 5;
+    var freeSwapsEarned = l.free_swaps_earned||0;
+    var toNext = 5 - currentStamps;
+    if(currentStamps===0 && approved>0) currentStamps=5; // full card ready to redeem
     var plan = String(l.plan||'standard');plan=plan.charAt(0).toUpperCase()+plan.slice(1);
+    var stamps = '';
+    for(var i=0;i<5;i++){
+      var filled = i<currentStamps;
+      stamps += '<div class="stamp'+(filled?' on':'')+'">'+
+        (filled ? '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2 L14.4 9 L22 9.5 L16 14.5 L18 22 L12 18 L6 22 L8 14.5 L2 9.5 L9.6 9 Z" fill="currentColor"/></svg>' : '<span class="stamp-n">'+(i+1)+'</span>')+
+      '</div>';
+    }
     document.getElementById('v-loyalty').innerHTML =
-      '<div class="loy-hero"><h1>Loyalty</h1><p class="sub">Earn free swaps by contributing to the network.</p></div>'+
-      '<div class="sw-stats">'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" style="font-size:22px">'+plan+'</span></div><span class="stat-lab">Current plan</span></div></div>'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><path d="M3 6 L15 6 L12 3 M15 12 L3 12 L6 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num">'+(l.swaps_left||0)+'</span></div><span class="stat-lab">Swaps left</span></div></div>'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><path d="M4 8 L4 14 L14 14 L14 8" stroke="currentColor" stroke-width="1.6"/><path d="M2 8 L2 5 L16 5 L16 8" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num">'+(l.free_swaps_earned||0)+'</span></div><span class="stat-lab">Free swaps earned</span></div></div>'+
-        '<div class="stat g"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><path d="M4 9 L8 12 L14 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num">'+(l.approved_reviews||0)+'</span></div><span class="stat-lab">Approved reviews</span></div></div>'+
+      '<div class="loy-hero"><h1>Loyalty</h1><p class="sub">Earn free swaps by contributing to the network — reviews, referrals, site suggestions.</p></div>'+
+
+      /* Loyalty stamp card — the hero moment */
+      '<div class="stamp-card">'+
+        '<div class="stamp-card-head">'+
+          '<div>'+
+            '<div class="stamp-eyebrow">Loyalty card</div>'+
+            '<h2 class="stamp-title">'+currentStamps+' of 5 stamps</h2>'+
+            '<p class="stamp-sub">'+(toNext===0 && approved>0 ? 'Card full — your free swap has been added.' : 'Earn '+toNext+' more '+(toNext===1?'review':'reviews')+' to unlock your next free swap.')+'</p>'+
+          '</div>'+
+          '<div class="stamp-badge">'+
+            '<div class="stamp-badge-n">'+freeSwapsEarned+'</div>'+
+            '<div class="stamp-badge-l">free swaps<br>earned</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="stamps-row">'+stamps+'</div>'+
+        '<div class="stamp-legend">'+
+          '<div class="stamp-legend-item"><span class="tick-dot"></span> <b>'+approved+'</b> approved '+(approved===1?'review':'reviews')+'</div>'+
+          '<div class="stamp-legend-sep">·</div>'+
+          '<div class="stamp-legend-item">Every <b>5</b> = <b style="color:var(--up)">1 free swap</b></div>'+
+        '</div>'+
       '</div>'+
-      '<div class="loy-card">'+
-        '<div style="font-weight:700;margin-bottom:10px">Next free swap</div>'+
-        '<div class="loy-progress"><i style="width:'+progressPct+'%"></i></div>'+
-        '<div style="display:flex;justify-content:space-between;color:var(--ink-mute);font-size:13px"><span>Progress</span><b style="color:var(--blue)">'+(l.approved_reviews||0)+' / '+((l.approved_reviews||0)+(l.reviews_to_next_swap||0))+'</b></div>'+
-        '<p style="color:var(--ink-mute);font-size:13.5px;margin-top:12px">Every 5 approved reviews earns you a free swap. Submit reviews from any site profile.</p>'+
+
+      /* Ways to earn */
+      '<div class="loy-earn">'+
+        '<div class="loy-earn-head">'+
+          '<div><div class="section-eye">Ways to earn</div><h2 class="section-h" style="font-size:24px;margin-top:4px">Fill your card faster.</h2></div>'+
+        '</div>'+
+        '<div class="loy-earn-grid">'+
+          '<div class="loy-earn-card">'+
+            '<div class="loy-earn-ico"><svg viewBox="0 0 22 22" fill="none"><path d="M4 11 L9 15 L18 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
+            '<div class="loy-earn-worth">+1 stamp</div>'+
+            '<h4>Approved review</h4>'+
+            '<p>Post an honest review on any site profile. It stamps the card once an admin approves it.</p>'+
+            '<a class="loy-earn-cta" onclick="go(\'#/markets\')">Browse sites &rarr;</a>'+
+          '</div>'+
+          '<div class="loy-earn-card">'+
+            '<div class="loy-earn-ico"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="9" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 20 C 4 15, 7 13, 11 13 C 15 13, 18 15, 18 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>'+
+            '<div class="loy-earn-worth">+3 stamps</div>'+
+            '<h4>Referred manager approved</h4>'+
+            '<p>Share your referral link. When a manager you referred gets verified, you get three stamps.</p>'+
+            '<a class="loy-earn-cta" onclick="toast(\'Referral link — coming soon\')">Copy referral link &rarr;</a>'+
+          '</div>'+
+          '<div class="loy-earn-card">'+
+            '<div class="loy-earn-ico"><svg viewBox="0 0 22 22" fill="none"><path d="M11 3 L13.5 9 L20 9.5 L15 13.5 L16.5 20 L11 16.5 L5.5 20 L7 13.5 L2 9.5 L8.5 9 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>'+
+            '<div class="loy-earn-worth">+2 stamps</div>'+
+            '<h4>Suggested site approved</h4>'+
+            '<p>Spot an affiliate site we&rsquo;re missing? Suggest it from your account — two stamps on approval.</p>'+
+            '<a class="loy-earn-cta" onclick="go(\'#/account\')">Suggest a site &rarr;</a>'+
+          '</div>'+
+        '</div>'+
       '</div>'+
-      '<div class="loy-card"><div style="font-weight:700;margin-bottom:10px">Contributions</div><div style="display:flex;gap:24px;color:var(--ink-mute);font-size:13.5px"><div><b style="color:var(--ink);font-size:20px;display:block">'+(contrib.approved||0)+'</b>approved</div><div><b style="color:var(--ink);font-size:20px;display:block">'+(contrib.pending||0)+'</b>pending</div></div><p style="color:var(--ink-mute);font-size:13.5px;margin-top:12px">Suggest a new site to the network via the back office — approved suggestions add to your loyalty score.</p></div>';
+
+      /* Contributions log */
+      '<div class="loy-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px"><div><h3 style="font-size:18px;font-weight:700;margin-bottom:4px">Your contributions</h3><p style="color:var(--ink-mute);font-size:13px">Everything you\'ve given the network so far.</p></div></div>'+
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">'+
+          '<div style="padding:14px;background:var(--up-soft);border-radius:10px"><div style="font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#0E9760;font-weight:600;margin-bottom:6px">Approved reviews</div><div style="font-size:28px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)">'+approved+'</div></div>'+
+          '<div style="padding:14px;background:var(--blue-softer);border-radius:10px"><div style="font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--blue);font-weight:600;margin-bottom:6px">Suggested sites</div><div style="font-size:28px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)">'+(contrib.approved||0)+'</div><div style="font-size:11.5px;color:var(--ink-mute);margin-top:2px">'+(contrib.pending||0)+' pending review</div></div>'+
+          '<div style="padding:14px;background:linear-gradient(135deg,#F5EFFF,#EAF1FA);border-radius:10px"><div style="font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--violet-hi);font-weight:600;margin-bottom:6px">Free swaps earned</div><div style="font-size:28px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)">'+freeSwapsEarned+'</div></div>'+
+        '</div>'+
+      '</div>';
   }).catch(function(){document.getElementById('v-loyalty').innerHTML='<div style="padding:24px;color:var(--ink-mute)">Couldn\'t load loyalty data.</div>';});
 }
 
