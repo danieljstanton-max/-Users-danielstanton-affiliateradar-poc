@@ -17,15 +17,17 @@ import os
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import config, reviews, swaps, views
+from . import auth, config, reviews, swaps, views
 from .db import connect, now_iso
 from .locations import flag, name
 
 DEMO_UID = "app_demo_user"
 
 
-def _me(conn) -> int:
-    """The signed-in demo member (verified, standard plan). Idempotent."""
+def _ensure_demo(conn) -> int:
+    """The fallback demo member — anyone who's not logged in sees this account.
+    Kept for pages the marketing site links to (home, markets) so a fresh
+    visitor still sees a signed-in-looking app."""
     row = conn.execute("SELECT id FROM chat_managers WHERE cc_uid=?", (DEMO_UID,)).fetchone()
     if row:
         swaps.ensure_account(conn, row["id"])
@@ -37,6 +39,29 @@ def _me(conn) -> int:
     swaps.ensure_account(conn, mid, plan="standard")
     conn.commit()
     return mid
+
+
+def _me_from_session(conn, cookies) -> int | None:
+    """Resolve the current member from the signed session cookie, or None."""
+    cookie = cookies.get(auth.COOKIE_NAME)
+    mid = auth.read_session_cookie(cookie)
+    if mid is None:
+        return None
+    # Make sure the row actually exists (a stale cookie for a deleted user is None).
+    row = conn.execute("SELECT id FROM chat_managers WHERE id=?", (mid,)).fetchone()
+    if not row:
+        return None
+    swaps.ensure_account(conn, mid)
+    return mid
+
+
+def _me(conn, cookies=None) -> int:
+    """Current member id: session cookie if present and valid, else the demo."""
+    if cookies is not None:
+        mid = _me_from_session(conn, cookies)
+        if mid is not None:
+            return mid
+    return _ensure_demo(conn)
 
 
 def _shot_url(image_ref):
@@ -165,6 +190,78 @@ def api_signup(conn, payload):
     return {"ok": True, "id": cur.lastrowid, "status": "pending"}
 
 
+def api_register(conn, payload):
+    """Full registration with password. On success: creates a verified member,
+    logs them in immediately, returns the session cookie header.
+
+    Returns (json_body, cookie_header_or_None).
+    """
+    email = (payload.get("work_email") or payload.get("email") or "").strip().lower()
+    pw = payload.get("password") or ""
+    handle = (payload.get("handle") or "").strip()
+    if not email or "@" not in email:
+        return {"ok": False, "error": "valid_email_required"}, None
+    if not handle:
+        return {"ok": False, "error": "handle_required"}, None
+    if len(pw) < 6:
+        return {"ok": False, "error": "password_min_6_chars"}, None
+    existing = conn.execute(
+        "SELECT id, password_hash FROM chat_managers WHERE lower(work_email)=?",
+        (email,)).fetchone()
+    if existing and existing["password_hash"]:
+        return {"ok": False, "error": "email_already_registered"}, None
+    ph = auth.hash_password(pw)
+    when = now_iso()
+    if existing:
+        # Someone previously applied without a password — attach one now.
+        conn.execute(
+            "UPDATE chat_managers SET password_hash=?, status='verified', "
+            "approved_at=?, last_login_at=? WHERE id=?",
+            (ph, when, when, existing["id"]))
+        mid = existing["id"]
+    else:
+        real_name = (payload.get("real_name") or "").strip() or None
+        company = (payload.get("company") or "").strip() or None
+        linkedin = (payload.get("linkedin_url") or "").strip() or None
+        site_url = (payload.get("site_url") or "").strip() or None
+        sector = (payload.get("sector") or "casino").strip() or "casino"
+        cur = conn.execute(
+            "INSERT INTO chat_managers "
+            "(cc_uid, handle, real_name, company, work_email, linkedin_url, site_url, "
+            " sector, password_hash, status, applied_at, approved_at, last_login_at, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?, 'verified', ?,?,?,?)",
+            (f"web_{when}_{handle[:20]}", handle, real_name, company, email, linkedin, site_url,
+             sector, ph, when, when, when, when))
+        mid = cur.lastrowid
+    swaps.ensure_account(conn, mid, plan="standard")
+    conn.commit()
+    return ({"ok": True, "id": mid, "handle": handle},
+            auth.set_cookie_header(auth.make_session_cookie(mid)))
+
+
+def api_login(conn, payload):
+    """Email + password login. Returns (json_body, cookie_header_or_None)."""
+    email = (payload.get("work_email") or payload.get("email") or "").strip().lower()
+    pw = payload.get("password") or ""
+    if not email or not pw:
+        return {"ok": False, "error": "email_and_password_required"}, None
+    row = conn.execute(
+        "SELECT id, handle, password_hash, status FROM chat_managers "
+        "WHERE lower(work_email)=?", (email,)).fetchone()
+    if not row or not row["password_hash"]:
+        return {"ok": False, "error": "invalid_credentials"}, None
+    if not auth.verify_password(pw, row["password_hash"]):
+        return {"ok": False, "error": "invalid_credentials"}, None
+    if row["status"] == "banned":
+        return {"ok": False, "error": "account_banned"}, None
+    conn.execute("UPDATE chat_managers SET last_login_at=? WHERE id=?",
+                 (now_iso(), row["id"]))
+    swaps.ensure_account(conn, row["id"])
+    conn.commit()
+    return ({"ok": True, "id": row["id"], "handle": row["handle"]},
+            auth.set_cookie_header(auth.make_session_cookie(row["id"])))
+
+
 def api_geo(conn, iso, vertical, mid):
     d = views.country_list(conn, iso, vertical=vertical or None, sort="traffic")
     cards = d.get("cards") or []
@@ -217,11 +314,16 @@ class _H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-    def _json(self, obj, code=200):
+    def _cookies(self) -> dict:
+        return auth.parse_cookie_header(self.headers.get("Cookie"))
+
+    def _json(self, obj, code=200, set_cookie: str | None = None):
         b = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(b)))
+        if set_cookie:
+            self.send_header("Set-Cookie", set_cookie)
         self.end_headers()
         self.wfile.write(b)
 
@@ -255,7 +357,9 @@ class _H(BaseHTTPRequestHandler):
             self.send_response(404); self.end_headers(); return
         conn = connect()
         try:
-            mid = _me(conn)
+            cookies = self._cookies()
+            mid = _me(conn, cookies)
+            authed = _me_from_session(conn, cookies) is not None
             if u.path == "/api/home":
                 self._json(api_home(conn))
             elif u.path == "/api/geo":
@@ -278,8 +382,20 @@ class _H(BaseHTTPRequestHandler):
                 self._json(api_leaderboard(conn, mid, g("period", "all") or "all"))
             elif u.path == "/api/me":
                 a = swaps.access(conn, mid)
-                self._json({"handle": "You", "plan": a.get("plan", "standard"),
-                            "swaps": a.get("swaps"), "unlimited": a.get("unlimited")})
+                row = conn.execute(
+                    "SELECT handle, real_name, work_email, company FROM chat_managers WHERE id=?",
+                    (mid,)).fetchone()
+                handle = row["handle"] if row else "You"
+                self._json({
+                    "handle": handle,
+                    "authed": authed,
+                    "real_name": row["real_name"] if row else None,
+                    "company": row["company"] if row else None,
+                    "work_email": row["work_email"] if row else None,
+                    "plan": a.get("plan", "standard"),
+                    "swaps": a.get("swaps"),
+                    "unlimited": a.get("unlimited"),
+                })
             else:
                 self._json({"error": "not_found"}, 404)
         finally:
@@ -294,7 +410,20 @@ class _H(BaseHTTPRequestHandler):
             payload = {}
         conn = connect()
         try:
-            mid = _me(conn)
+            cookies = self._cookies()
+            mid = _me(conn, cookies)
+            # Auth-mutating endpoints handled first (they set their own cookies).
+            if u.path == "/api/register":
+                res, cookie_hdr = api_register(conn, payload)
+                self._json(res, 200 if res.get("ok") else 400, set_cookie=cookie_hdr)
+                return
+            if u.path == "/api/login":
+                res, cookie_hdr = api_login(conn, payload)
+                self._json(res, 200 if res.get("ok") else 401, set_cookie=cookie_hdr)
+                return
+            if u.path == "/api/logout":
+                self._json({"ok": True}, set_cookie=auth.clear_cookie_header())
+                return
             if u.path == "/api/review":
                 try:
                     res = reviews.submit(conn, mid, payload.get("domain"),

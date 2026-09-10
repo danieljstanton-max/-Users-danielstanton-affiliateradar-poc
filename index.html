@@ -558,6 +558,7 @@ footer{padding:56px 0 40px}
         <svg viewBox="0 0 14 14" fill="none"><path d="M2 4 L11 4 L9 2 M12 10 L3 10 L5 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span id="swaps-count">—</span> swaps left
       </span>
+      <a id="auth-link" onclick="authAction()" style="font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer;padding:6px 0">Sign in</a>
       <button class="avatar-btn" onclick="go('#/account')"><span class="avatar-30">SK</span><span class="caret">▾</span></button>
     </div>
   </div>
@@ -572,6 +573,7 @@ footer{padding:56px 0 40px}
   <section id="v-loyalty" class="view"></section>
   <section id="v-account" class="view"></section>
   <section id="v-signup" class="view"></section>
+  <section id="v-login" class="view"></section>
   <section id="v-leaderboard" class="view"></section>
   <section id="v-stub" class="view"></section>
 </main>
@@ -611,11 +613,32 @@ function updateNav(active){
   }).join('');
 }
 
+var ME=null;
 function updateMeChip(){
-  apiGet('/api/me').then(function(m){
+  return apiGet('/api/me').then(function(m){
+    ME=m;
     var el=document.getElementById('swaps-count');
     if(el) el.textContent = m.unlimited ? '∞' : (m.swaps==null?'—':m.swaps);
+    // Refresh avatar in the nav to real initials.
+    var av=document.querySelector('.avatar-30');
+    if(av){
+      var handle = m.handle || 'You';
+      var parts = handle.split(' ');
+      var inits = parts.length>1 ? (parts[0].charAt(0)+parts[parts.length-1].charAt(0)) : (handle.charAt(0)+ (handle.charAt(1)||''));
+      av.textContent = inits.toUpperCase();
+    }
+    // Show login link if not authed, or hide if authed.
+    var authLink=document.getElementById('auth-link');
+    if(authLink) authLink.textContent = m.authed ? 'Sign out' : 'Sign in';
   }).catch(function(){});
+}
+function authAction(){
+  if(!ME) return;
+  if(ME.authed){
+    fetch('/api/logout',{method:'POST'}).then(function(){toast('Signed out');updateMeChip().then(function(){go('#/home')});});
+  } else {
+    go('#/login');
+  }
 }
 
 /* ==================== HOME ==================== */
@@ -1196,6 +1219,7 @@ function hydrateAccount(){
             '<div class="field"><label>Site URL</label><div class="inp"><input id="sugg-url" placeholder="example.com"></div></div>'+
             '<button class="btn" style="width:100%" onclick="suggestSite()">Submit for review</button>'+
           '</div>'+
+          (me.authed ? '<button class="btn btn-gho" style="width:100%;margin-top:16px;color:var(--warn);border-color:rgba(229,72,77,0.28)" onclick="authAction()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:6px"><path d="M9 3 L11 3 L11 11 L9 11 M8 7 L2 7 M4 5 L2 7 L4 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Sign out</button>' : '')+
         '</div>'+
       '</div>';
 
@@ -1233,30 +1257,75 @@ function suggestSite(){var u=document.getElementById('sugg-url');if(!u||!u.value
 /* ==================== SIGNUP ==================== */
 function renderSignup(){
   document.getElementById('v-signup').innerHTML =
-    '<div class="loy-hero"><h1>Apply for access</h1><p class="sub">The verified network for iGaming affiliate managers.</p></div>'+
+    '<div class="loy-hero"><h1>Create your account</h1><p class="sub">Join the verified network for iGaming affiliate managers. Sign in above the fold if you already have an account.</p></div>'+
     '<div class="form-card">'+
       '<form onsubmit="event.preventDefault();signupSubmit();return false" style="display:flex;flex-direction:column;gap:14px">'+
         '<div class="field"><label>Display name *</label><div class="inp"><input id="su-handle" required placeholder="Sam K."></div></div>'+
         '<div class="field"><label>Full name</label><div class="inp"><input id="su-name" placeholder="Sam Knight"></div></div>'+
+        '<div class="field"><label>Work email *</label><div class="inp"><input id="su-email" type="email" required placeholder="you@company.com" autocomplete="email"></div></div>'+
+        '<div class="field"><label>Password * <span style="color:var(--ink-mute);font-weight:400">(min 6 characters)</span></label><div class="inp"><input id="su-password" type="password" required placeholder="••••••••" autocomplete="new-password" minlength="6"></div></div>'+
         '<div class="field"><label>Company</label><div class="inp"><input id="su-company" placeholder="Growth Media Ltd"></div></div>'+
-        '<div class="field"><label>Work email</label><div class="inp"><input id="su-email" type="email" placeholder="you@company.com"></div></div>'+
         '<div class="field"><label>LinkedIn URL</label><div class="inp"><input id="su-linkedin" placeholder="linkedin.com/in/samknight"></div></div>'+
         '<div class="field"><label>Affiliate site you manage</label><div class="inp"><input id="su-site" placeholder="growthmedia.co"></div></div>'+
         '<div class="field"><label>Focus</label><div class="inp"><select id="su-sector"><option value="casino">Casino</option><option value="sportsbook">Sportsbook</option><option value="bingo">Bingo</option><option value="poker">Poker</option></select></div></div>'+
-        '<button type="submit" class="btn" style="width:100%;margin-top:6px">Submit application →</button>'+
+        '<button type="submit" class="btn" style="width:100%;margin-top:6px">Create account →</button>'+
       '</form>'+
       '<p id="signup-msg" class="form-msg"></p>'+
-      '<p style="color:var(--ink-mute);font-size:12.5px;margin-top:4px">An admin verifies each application. You\'ll get 2 free swaps once approved.</p>'+
+      '<p style="color:var(--ink-mute);font-size:13px;margin-top:12px;text-align:center">Already a member? <a onclick="go(\'#/login\')" style="color:var(--blue);cursor:pointer;font-weight:600">Sign in</a></p>'+
     '</div>';
 }
 function signupSubmit(){
   var msg=document.getElementById('signup-msg');
-  var payload={handle:document.getElementById('su-handle').value.trim(),real_name:document.getElementById('su-name').value.trim(),company:document.getElementById('su-company').value.trim(),work_email:document.getElementById('su-email').value.trim(),linkedin_url:document.getElementById('su-linkedin').value.trim(),site_url:document.getElementById('su-site').value.trim(),sector:document.getElementById('su-sector').value};
+  var payload={
+    handle:document.getElementById('su-handle').value.trim(),
+    real_name:document.getElementById('su-name').value.trim(),
+    company:document.getElementById('su-company').value.trim(),
+    work_email:document.getElementById('su-email').value.trim(),
+    password:document.getElementById('su-password').value,
+    linkedin_url:document.getElementById('su-linkedin').value.trim(),
+    site_url:document.getElementById('su-site').value.trim(),
+    sector:document.getElementById('su-sector').value
+  };
   if(!payload.handle){msg.className='form-msg err';msg.textContent='Please enter a display name.';return;}
-  msg.className='form-msg';msg.textContent='Submitting…';
-  apiPost('/api/signup',payload).then(function(j){
-    if(j.ok===false){msg.className='form-msg err';msg.textContent=j.error||'Application could not be submitted.';return;}
-    document.querySelector('#v-signup .form-card').innerHTML='<div style="text-align:center;padding:32px"><div style="width:56px;height:56px;background:var(--up-soft);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--up);margin-bottom:16px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 12 L10 17 L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3 style="margin-bottom:8px">Application submitted</h3><p style="color:var(--ink-mute)">An admin will review your application shortly.</p></div>';
+  if(!payload.work_email||payload.work_email.indexOf('@')<0){msg.className='form-msg err';msg.textContent='Please enter a valid work email.';return;}
+  if(!payload.password||payload.password.length<6){msg.className='form-msg err';msg.textContent='Password must be at least 6 characters.';return;}
+  msg.className='form-msg';msg.textContent='Creating your account…';
+  apiPost('/api/register',payload).then(function(j){
+    if(j.ok===false){
+      var errs={email_already_registered:'That email is already registered. Try signing in.',valid_email_required:'Please enter a valid email.',handle_required:'Please enter a display name.',password_min_6_chars:'Password must be at least 6 characters.'};
+      msg.className='form-msg err';msg.textContent=errs[j.error]||j.error||'Account could not be created.';return;
+    }
+    toast('Welcome to Affswap, '+j.handle);
+    updateMeChip().then(function(){go('#/home')});
+  }).catch(function(){msg.className='form-msg err';msg.textContent='Network error — please try again.'});
+}
+
+/* ==================== LOGIN ==================== */
+function renderLogin(){
+  document.getElementById('v-login').innerHTML =
+    '<div class="loy-hero"><h1>Welcome back</h1><p class="sub">Sign in to your Affswap account.</p></div>'+
+    '<div class="form-card">'+
+      '<form onsubmit="event.preventDefault();loginSubmit();return false" style="display:flex;flex-direction:column;gap:14px">'+
+        '<div class="field"><label>Work email</label><div class="inp"><input id="li-email" type="email" required placeholder="you@company.com" autocomplete="email"></div></div>'+
+        '<div class="field"><label>Password</label><div class="inp"><input id="li-password" type="password" required placeholder="••••••••" autocomplete="current-password"></div></div>'+
+        '<button type="submit" class="btn" style="width:100%;margin-top:6px">Sign in →</button>'+
+      '</form>'+
+      '<p id="login-msg" class="form-msg"></p>'+
+      '<p style="color:var(--ink-mute);font-size:13px;margin-top:12px;text-align:center">New here? <a onclick="go(\'#/signup\')" style="color:var(--blue);cursor:pointer;font-weight:600">Create an account</a></p>'+
+    '</div>';
+  setTimeout(function(){var el=document.getElementById('li-email');if(el)el.focus();},50);
+}
+function loginSubmit(){
+  var msg=document.getElementById('login-msg');
+  var payload={work_email:document.getElementById('li-email').value.trim(),password:document.getElementById('li-password').value};
+  if(!payload.work_email||!payload.password){msg.className='form-msg err';msg.textContent='Please enter your email and password.';return;}
+  msg.className='form-msg';msg.textContent='Signing in…';
+  apiPost('/api/login',payload).then(function(j){
+    if(j.ok===false){
+      msg.className='form-msg err';msg.textContent=j.error==='invalid_credentials'?'Email or password is wrong.':(j.error||'Sign in failed.');return;
+    }
+    toast('Welcome back, '+j.handle);
+    updateMeChip().then(function(){go('#/home')});
   }).catch(function(){msg.className='form-msg err';msg.textContent='Network error — please try again.'});
 }
 
@@ -1303,6 +1372,7 @@ function route(){
   else if(s==='loyalty'){renderLoyalty();hydrateLoyalty();switchTo('v-loyalty')}
   else if(s==='account'){renderAccount();hydrateAccount();switchTo('v-account')}
   else if(s==='signup'){renderSignup();switchTo('v-signup')}
+  else if(s==='login'){renderLogin();switchTo('v-login')}
   else if(s==='leaderboard'){renderLeaderboard();hydrateLeaderboard();switchTo('v-leaderboard')}
   else if(s==='alerts'){renderStub('Alerts');switchTo('v-stub')}
   else if(s==='chat'){renderStub('Chat');switchTo('v-stub')}

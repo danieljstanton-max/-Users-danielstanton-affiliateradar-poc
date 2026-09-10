@@ -34,6 +34,16 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
         conn.execute(
             "ALTER TABLE site_verticals ADD COLUMN source TEXT NOT NULL DEFAULT 'auto'")
         applied.append("site_verticals.source")
+    # chat_managers.password_hash — pbkdf2 password store. Nullable so members
+    # created by the old flow (or by invitation without a password) still work.
+    if not _column_exists(conn, "chat_managers", "password_hash"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN password_hash TEXT")
+        applied.append("chat_managers.password_hash")
+    # chat_managers.last_login_at — for the account view; also useful in the
+    # back office. Nullable.
+    if not _column_exists(conn, "chat_managers", "last_login_at"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN last_login_at TEXT")
+        applied.append("chat_managers.last_login_at")
     # reviews: individual peer reviews (site_reviews above stays an aggregate cache)
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reviews'").fetchone() is None:
         conn.executescript(
