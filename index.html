@@ -411,6 +411,17 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .form-msg{font-size:13.5px;color:var(--ink-mute);margin-top:12px;min-height:1.2em}
 .form-msg.err{color:var(--warn)}
 
+/* LinkedIn button + separator */
+.btn-linkedin{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 20px;background:#0A66C2;color:#fff;font-family:var(--f-body);font-weight:600;font-size:14.5px;border:0;border-radius:12px;cursor:pointer;text-decoration:none;box-shadow:0 4px 14px rgba(10,102,194,0.35);transition:background .16s ease,box-shadow .16s ease,transform .06s ease;margin-bottom:16px}
+.btn-linkedin:hover{background:#08528E;box-shadow:0 6px 20px rgba(10,102,194,0.5)}
+.btn-linkedin:active{transform:translateY(1px)}
+.btn-linkedin svg{flex:0 0 18px}
+.li-hint{color:var(--ink-mute);font-size:12.5px;line-height:1.5;margin-bottom:20px;text-align:center;max-width:44ch;margin-left:auto;margin-right:auto}
+.li-warn{background:#FEF6E7;border:1px solid #F5C67B;border-radius:10px;padding:12px 14px;font-size:13px;color:#7A5000;margin-bottom:16px}
+.or-sep{display:flex;align-items:center;gap:14px;margin:8px 0 20px;color:var(--ink-mute);font-size:12px;font-weight:600;letter-spacing:0.02em;text-transform:uppercase}
+.or-sep::before,.or-sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.or-sep span{padding:0 4px}
+
 /* ACCOUNT (rich) */
 .acct-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
 .acct-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:box-shadow .2s ease}
@@ -1256,9 +1267,22 @@ function suggestSite(){var u=document.getElementById('sugg-url');if(!u||!u.value
 
 /* ==================== SIGNUP ==================== */
 function renderSignup(){
+  var params = new URLSearchParams(location.hash.split('?')[1]||'');
+  var liWarn = '';
+  if(params.get('li')){
+    var msg = {unconfigured:'LinkedIn sign-in isn\'t configured yet — try email + password below.',state:'That LinkedIn sign-in link expired — please try again.',failed:'We couldn\'t verify with LinkedIn. Please try again or use email + password.'}[params.get('li')] || 'LinkedIn sign-in failed.';
+    liWarn = '<div class="li-warn">'+h(msg)+'</div>';
+  }
   document.getElementById('v-signup').innerHTML =
-    '<div class="loy-hero"><h1>Create your account</h1><p class="sub">Join the verified network for iGaming affiliate managers. Sign in above the fold if you already have an account.</p></div>'+
+    '<div class="loy-hero"><h1>Create your account</h1><p class="sub">Join the verified network for iGaming affiliate managers. Signing in with LinkedIn is fastest — it verifies your identity automatically.</p></div>'+
     '<div class="form-card">'+
+      liWarn +
+      '<a class="btn-linkedin" href="/api/oauth/linkedin/start">'+
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>'+
+        'Continue with LinkedIn'+
+      '</a>'+
+      '<div class="li-hint">Faster verification &mdash; LinkedIn confirms your identity, employer and email in one step.</div>'+
+      '<div class="or-sep"><span>or with email</span></div>'+
       '<form onsubmit="event.preventDefault();signupSubmit();return false" style="display:flex;flex-direction:column;gap:14px">'+
         '<div class="field"><label>Display name *</label><div class="inp"><input id="su-handle" required placeholder="Sam K."></div></div>'+
         '<div class="field"><label>Full name</label><div class="inp"><input id="su-name" placeholder="Sam Knight"></div></div>'+
@@ -1305,6 +1329,11 @@ function renderLogin(){
   document.getElementById('v-login').innerHTML =
     '<div class="loy-hero"><h1>Welcome back</h1><p class="sub">Sign in to your Affswap account.</p></div>'+
     '<div class="form-card">'+
+      '<a class="btn-linkedin" href="/api/oauth/linkedin/start">'+
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>'+
+        'Continue with LinkedIn'+
+      '</a>'+
+      '<div class="or-sep"><span>or with email</span></div>'+
       '<form onsubmit="event.preventDefault();loginSubmit();return false" style="display:flex;flex-direction:column;gap:14px">'+
         '<div class="field"><label>Work email</label><div class="inp"><input id="li-email" type="email" required placeholder="you@company.com" autocomplete="email"></div></div>'+
         '<div class="field"><label>Password</label><div class="inp"><input id="li-password" type="password" required placeholder="••••••••" autocomplete="current-password"></div></div>'+

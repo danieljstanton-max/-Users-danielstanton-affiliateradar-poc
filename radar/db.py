@@ -44,6 +44,13 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     if not _column_exists(conn, "chat_managers", "last_login_at"):
         conn.execute("ALTER TABLE chat_managers ADD COLUMN last_login_at TEXT")
         applied.append("chat_managers.last_login_at")
+    # chat_managers.linkedin_sub — the stable LinkedIn user id (OIDC 'sub')
+    # returned by their userinfo endpoint. Lets a returning LinkedIn user
+    # land back on the same row even if they change their email. Nullable.
+    if not _column_exists(conn, "chat_managers", "linkedin_sub"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN linkedin_sub TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_linkedin_sub ON chat_managers(linkedin_sub)")
+        applied.append("chat_managers.linkedin_sub")
     # reviews: individual peer reviews (site_reviews above stays an aggregate cache)
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reviews'").fetchone() is None:
         conn.executescript(

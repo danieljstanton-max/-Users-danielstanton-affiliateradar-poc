@@ -239,6 +239,62 @@ def api_register(conn, payload):
             auth.set_cookie_header(auth.make_session_cookie(mid)))
 
 
+def linkedin_land(conn, ui: dict) -> int:
+    """Land a LinkedIn userinfo response into chat_managers:
+      - existing linkedin_sub  -> that row (return visit)
+      - existing work_email    -> attach linkedin_sub + linkedin_verified
+      - else                   -> create new verified member
+    Returns the manager_id. Commits."""
+    sub = (ui.get("sub") or "").strip()
+    email = (ui.get("email") or "").strip().lower()
+    name = (ui.get("name") or "").strip()
+    given = (ui.get("given_name") or "").strip()
+    family = (ui.get("family_name") or "").strip()
+    email_verified = 1 if ui.get("email_verified") else 0
+    when = now_iso()
+    if not sub:
+        raise ValueError("missing_linkedin_sub")
+
+    # 1. Existing LinkedIn identity.
+    row = conn.execute(
+        "SELECT id FROM chat_managers WHERE linkedin_sub=?", (sub,)).fetchone()
+    if row:
+        conn.execute("UPDATE chat_managers SET last_login_at=? WHERE id=?",
+                     (when, row["id"]))
+        conn.commit()
+        return row["id"]
+
+    # 2. Existing email — attach the LinkedIn identity.
+    if email:
+        row = conn.execute(
+            "SELECT id FROM chat_managers WHERE lower(work_email)=?",
+            (email,)).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE chat_managers SET linkedin_sub=?, linkedin_verified=1, "
+                "work_email_confirmed=?, status='verified', approved_at=?, "
+                "last_login_at=? WHERE id=?",
+                (sub, email_verified, when, when, row["id"]))
+            swaps.ensure_account(conn, row["id"])
+            conn.commit()
+            return row["id"]
+
+    # 3. New member.
+    handle = given or (name.split(" ")[0] if name else "member")
+    cur = conn.execute(
+        "INSERT INTO chat_managers "
+        "(cc_uid, handle, real_name, work_email, linkedin_sub, "
+        " linkedin_verified, work_email_confirmed, sector, status, "
+        " applied_at, approved_at, last_login_at, created_at) "
+        "VALUES (?,?,?,?,?, 1,?, 'casino', 'verified', ?,?,?,?)",
+        (f"li_{sub[:24]}", handle, name or None, email or None, sub,
+         email_verified, when, when, when, when))
+    mid = cur.lastrowid
+    swaps.ensure_account(conn, mid, plan="standard")
+    conn.commit()
+    return mid
+
+
 def api_login(conn, payload):
     """Email + password login. Returns (json_body, cookie_header_or_None)."""
     email = (payload.get("work_email") or payload.get("email") or "").strip().lower()
@@ -327,6 +383,20 @@ class _H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b)
 
+    def _redirect(self, location: str, cookies: list | None = None):
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        for c in (cookies or []):
+            self.send_header("Set-Cookie", c)
+        self.end_headers()
+
+    def _forwarded_host(self) -> str:
+        # Behind serve.py's reverse proxy, the real host is in X-Forwarded-Host.
+        return (self.headers.get("X-Forwarded-Host")
+                or self.headers.get("Host", "")).split(",", 1)[0].strip()
+
     def _html(self, s):
         b = s.encode()
         self.send_response(200)
@@ -341,6 +411,37 @@ class _H(BaseHTTPRequestHandler):
         g = lambda k, d="": (qs.get(k, [d])[0])
         if u.path == "/":
             return self._html(APP_HTML)
+        # LinkedIn OAuth: redirect flows, not JSON, so handled here in do_GET.
+        if u.path == "/api/oauth/linkedin/start":
+            if not auth.linkedin_configured():
+                return self._redirect("/#/signup?li=unconfigured")
+            host = self._forwarded_host() or "127.0.0.1"
+            url, state = auth.linkedin_start(host)
+            return self._redirect(url, cookies=[auth.linkedin_state_cookie(state)])
+        if u.path == "/api/oauth/linkedin/callback":
+            code = (qs.get("code", [""])[0] or "").strip()
+            state = (qs.get("state", [""])[0] or "").strip()
+            expected = self._cookies().get(auth.LI_STATE_COOKIE)
+            if not code or not state or state != expected:
+                return self._redirect("/#/signup?li=state",
+                                      cookies=[auth.linkedin_clear_state_cookie()])
+            host = self._forwarded_host() or "127.0.0.1"
+            conn = connect()
+            try:
+                try:
+                    ui = auth.linkedin_exchange(code, host)
+                    mid = linkedin_land(conn, ui)
+                except Exception:
+                    return self._redirect("/#/signup?li=failed",
+                                          cookies=[auth.linkedin_clear_state_cookie()])
+                return self._redirect(
+                    "/#/home?welcome=linkedin",
+                    cookies=[
+                        auth.set_cookie_header(auth.make_session_cookie(mid)),
+                        auth.linkedin_clear_state_cookie(),
+                    ])
+            finally:
+                conn.close()
         if u.path.startswith("/shot/"):
             fn = os.path.basename(u.path[len("/shot/"):])
             fp = config.SCREENSHOT_DIR / fn
