@@ -167,8 +167,34 @@ class Proxy(BaseHTTPRequestHandler):
             self._proxy(self.app_port)
         elif path.startswith("/preview/"):
             self._serve_preview(path[len("/preview/"):])
+        elif path.startswith("/assets/"):
+            self._serve_asset(path[len("/assets/"):])
         else:
             self._serve_index()
+
+    def _serve_asset(self, name: str) -> None:
+        """Serve static assets from /assets/<name>. Images, fonts, whatever."""
+        safe = name.strip("/").split("/")[0]
+        if not safe or ".." in safe:
+            self.send_response(404); self.end_headers(); return
+        fp = ROOT / "assets" / safe
+        if not fp.exists() or not fp.is_file():
+            self.send_response(404); self.end_headers(); return
+        data = fp.read_bytes()
+        ext = safe.rsplit(".", 1)[-1].lower() if "." in safe else ""
+        ct = {
+            "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+            "svg": "image/svg+xml", "webp": "image/webp", "gif": "image/gif",
+            "woff": "font/woff", "woff2": "font/woff2",
+            "css": "text/css", "js": "application/javascript",
+        }.get(ext, "application/octet-stream")
+        self.send_response(200)
+        self.send_header("Content-Type", ct)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=86400")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(data)
 
     def _serve_preview(self, name: str) -> None:
         """Serve static preview mockup pages from /preview/<name>.html.
