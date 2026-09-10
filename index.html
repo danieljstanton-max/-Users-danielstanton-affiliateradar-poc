@@ -421,6 +421,28 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .or-sep{display:flex;align-items:center;gap:14px;margin:8px 0 20px;color:var(--ink-mute);font-size:12px;font-weight:600;letter-spacing:0.02em;text-transform:uppercase}
 .or-sep::before,.or-sep::after{content:"";flex:1;height:1px;background:var(--line)}
 .or-sep span{padding:0 4px}
+.legal-hint{color:var(--ink-mute);font-size:12px;line-height:1.5;text-align:center;margin-top:16px}
+.legal-hint a{color:var(--blue);font-weight:600;cursor:pointer;text-decoration:none}
+.legal-hint a:hover{text-decoration:underline}
+
+/* Long-form legal / policy pages */
+.doc{max-width:720px;margin:0 auto;padding:48px 0 80px}
+.doc-eyebrow{font-family:var(--f-mono);font-size:11.5px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--blue);margin-bottom:16px}
+.doc-h1{font-size:clamp(32px,4vw,44px);font-weight:700;letter-spacing:-0.035em;color:var(--ink);line-height:1.05;margin-bottom:18px;text-wrap:balance}
+.doc-lede{font-size:17.5px;line-height:1.55;color:var(--ink-2);max-width:60ch;margin-bottom:12px}
+.doc-meta{color:var(--ink-mute);font-size:13px;padding-bottom:24px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.doc h2{font-size:22px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin:36px 0 12px}
+.doc h3{font-size:16px;font-weight:700;color:var(--ink);margin:20px 0 8px}
+.doc p{color:var(--ink-2);font-size:15.5px;line-height:1.7;margin-bottom:12px;max-width:65ch}
+.doc p b{color:var(--ink);font-weight:600}
+.doc a{color:var(--blue);font-weight:500}
+.doc a:hover{color:var(--blue-hi)}
+.doc-list{padding-left:22px;margin-bottom:14px}
+.doc-list li{color:var(--ink-2);font-size:15.5px;line-height:1.65;margin-bottom:8px;list-style:disc;max-width:60ch}
+.doc-list li b{color:var(--ink);font-weight:600}
+.doc code{font-family:var(--f-mono);font-size:13px;background:var(--blue-softer);padding:2px 6px;border-radius:4px;color:var(--ink)}
+.doc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:1px solid var(--line);gap:24px}
+.doc-foot span{color:var(--ink-mute);font-size:13px}
 
 /* ACCOUNT (rich) */
 .acct-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
@@ -585,6 +607,8 @@ footer{padding:56px 0 40px}
   <section id="v-account" class="view"></section>
   <section id="v-signup" class="view"></section>
   <section id="v-login" class="view"></section>
+  <section id="v-privacy" class="view"></section>
+  <section id="v-terms" class="view"></section>
   <section id="v-leaderboard" class="view"></section>
   <section id="v-stub" class="view"></section>
 </main>
@@ -596,7 +620,7 @@ footer{padding:56px 0 40px}
       Aff<em>swap</em>
     </a>
     <nav class="foot-links">
-      <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/swaps')">Swaps</a><a onclick="go('#/leaderboard')">Leaderboard</a><a onclick="go('#/loyalty')">Loyalty</a><a onclick="go('#/account')">Account</a>
+      <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/swaps')">Swaps</a><a onclick="go('#/leaderboard')">Leaderboard</a><a onclick="go('#/loyalty')">Loyalty</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
     </nav>
     <span class="foot-tag">Real people. Real opportunities. Bigger networks.</span>
   </div>
@@ -1296,6 +1320,7 @@ function renderSignup(){
       '</form>'+
       '<p id="signup-msg" class="form-msg"></p>'+
       '<p style="color:var(--ink-mute);font-size:13px;margin-top:12px;text-align:center">Already a member? <a onclick="go(\'#/login\')" style="color:var(--blue);cursor:pointer;font-weight:600">Sign in</a></p>'+
+      '<p class="legal-hint">By creating an account you agree to Affswap\'s <a onclick="go(\'#/terms\')">Terms of use</a> and <a onclick="go(\'#/privacy\')">Privacy policy</a>.</p>'+
     '</div>';
 }
 function signupSubmit(){
@@ -1341,9 +1366,136 @@ function renderLogin(){
       '</form>'+
       '<p id="login-msg" class="form-msg"></p>'+
       '<p style="color:var(--ink-mute);font-size:13px;margin-top:12px;text-align:center">New here? <a onclick="go(\'#/signup\')" style="color:var(--blue);cursor:pointer;font-weight:600">Create an account</a></p>'+
+      '<p class="legal-hint">See our <a onclick="go(\'#/privacy\')">Privacy policy</a> and <a onclick="go(\'#/terms\')">Terms of use</a>.</p>'+
     '</div>';
   setTimeout(function(){var el=document.getElementById('li-email');if(el)el.focus();},50);
 }
+/* ==================== PRIVACY ==================== */
+function renderPrivacy(){
+  document.getElementById('v-privacy').innerHTML =
+    '<div class="doc">'+
+      '<div class="doc-eyebrow">Privacy policy</div>'+
+      '<h1 class="doc-h1">How Affswap handles your data.</h1>'+
+      '<p class="doc-lede">This page explains what we collect, why, who sees it, and the controls you have. Written in plain English; the shorter it is, the more honest it is.</p>'+
+      '<p class="doc-meta">Last updated 10 September 2026 &middot; Effective on all Affswap accounts.</p>'+
+
+      '<h2>1. Who we are</h2>'+
+      '<p>Affswap is a private trading network for verified iGaming affiliate managers. This policy covers the members-only web app at <b>affswap.com</b> and the back office it plugs into. Data controller: Affswap Ltd, contact <a href="mailto:privacy@affswap.com">privacy@affswap.com</a>.</p>'+
+
+      '<h2>2. What we collect</h2>'+
+      '<p>Only what we need to run the network. Three buckets:</p>'+
+      '<h3>a. Account &amp; identity</h3>'+
+      '<ul class="doc-list">'+
+        '<li><b>Email address and password.</b> Passwords are hashed with PBKDF2-SHA256 (100,000 iterations) &mdash; nobody at Affswap can read them.</li>'+
+        '<li><b>Display name, real name, company, LinkedIn URL, and the affiliate site you manage.</b> Used to verify you and to introduce you to a matched member.</li>'+
+        '<li><b>LinkedIn identity (optional).</b> If you sign in with LinkedIn we receive your LinkedIn subject id, name, profile picture URL, and confirmed email. We use it to skip the manual verification step. We do not post to your LinkedIn or read your connections.</li>'+
+      '</ul>'+
+      '<h3>b. What you do on the site</h3>'+
+      '<ul class="doc-list">'+
+        '<li><b>Have / Want lists</b> and the sites you review. Held so we can find matches for you.</li>'+
+        '<li><b>Swap history</b> (who you swapped with, which site, and when). Retained for dispute handling for 24 months, then anonymised.</li>'+
+        '<li><b>Session cookie.</b> A single first-party <code>affswap_sid</code> cookie, signed with HMAC-SHA256, valid for 30 days. It contains only your member id and issue time; no third-party tracking cookies.</li>'+
+      '</ul>'+
+      '<h3>c. Site catalogue &amp; SEO data</h3>'+
+      '<ul class="doc-list">'+
+        '<li>Traffic, authority and market data for the affiliate sites in the network comes from DataForSEO and is public web signal. This is information <b>about sites</b>, not about you.</li>'+
+      '</ul>'+
+
+      '<h2>3. What we do not collect</h2>'+
+      '<ul class="doc-list">'+
+        '<li>We do not sell your data. Ever.</li>'+
+        '<li>We do not run advertising trackers on the app.</li>'+
+        '<li>We do not read your LinkedIn connections, email inbox, or calendar.</li>'+
+        '<li>We do not store credit card details ourselves &mdash; if we take payments in future, they will be handled by a PCI-compliant processor (Stripe) and only their token will reach our servers.</li>'+
+      '</ul>'+
+
+      '<h2>4. Why we hold it</h2>'+
+      '<ul class="doc-list">'+
+        '<li><b>Legitimate interest</b> &mdash; running a private, moderated professional network for iGaming affiliate managers, including matching, review moderation, and the swap ledger.</li>'+
+        '<li><b>Contract</b> &mdash; providing you with the account you signed up for.</li>'+
+        '<li><b>Consent</b> &mdash; email alerts you switch on from the Account page. You can switch them off any time in the same place.</li>'+
+      '</ul>'+
+
+      '<h2>5. Who sees your data</h2>'+
+      '<ul class="doc-list">'+
+        '<li><b>You.</b> Everything on your Account page.</li>'+
+        '<li><b>The other party in a swap you agreed to.</b> When both sides agree to a match, we hand over the contact snapshot each side stored on their site. Nothing else is shared.</li>'+
+        '<li><b>The Affswap moderation team.</b> Only for verification, dispute handling, and abuse review.</li>'+
+        '<li><b>Third parties we rely on:</b> Render (hosting), DataForSEO (site catalogue), LinkedIn (only if you use LinkedIn sign-in). Data processors, contractually bound.</li>'+
+      '</ul>'+
+
+      '<h2>6. Where it lives</h2>'+
+      '<p>Data is stored in a SQLite database on our Render infrastructure. Backups are encrypted. We aim for EU/UK-hosted infrastructure by default; specific region will be posted here once fixed.</p>'+
+
+      '<h2>7. Your rights</h2>'+
+      '<p>You can access, correct, export, or delete any of your data at any time. Two options:</p>'+
+      '<ul class="doc-list">'+
+        '<li>Use the Account page controls where available.</li>'+
+        '<li>Email <a href="mailto:privacy@affswap.com">privacy@affswap.com</a>. We reply within 30 days as a hard cap; usually the same week.</li>'+
+      '</ul>'+
+      '<p>If you\'re in the UK / EU, you can also complain to the ICO or your local supervisory authority.</p>'+
+
+      '<h2>8. Retention</h2>'+
+      '<ul class="doc-list">'+
+        '<li>Active accounts: while your account is open.</li>'+
+        '<li>Swap ledger entries: 24 months after the swap, then anonymised.</li>'+
+        '<li>Closed accounts: 30 days for reactivation, then hard-deleted (swap-ledger anonymisation preserved).</li>'+
+        '<li>Server access logs: 30 days.</li>'+
+      '</ul>'+
+
+      '<h2>9. Changes to this policy</h2>'+
+      '<p>If we materially change how we handle your data, we\'ll update this page and notify signed-in members by email at least 14 days before the change takes effect.</p>'+
+
+      '<div class="doc-foot">'+
+        '<a class="btn btn-gho" onclick="go(\'#/home\')">← Back to Affswap</a>'+
+        '<span>Questions? <a href="mailto:privacy@affswap.com">privacy@affswap.com</a></span>'+
+      '</div>'+
+    '</div>';
+}
+function renderTerms(){
+  document.getElementById('v-terms').innerHTML =
+    '<div class="doc">'+
+      '<div class="doc-eyebrow">Terms of use</div>'+
+      '<h1 class="doc-h1">The rules of the network.</h1>'+
+      '<p class="doc-lede">Short version: be a real iGaming affiliate manager, don\'t abuse the swap or review system, and don\'t share member contact details outside a swap you agreed to.</p>'+
+      '<p class="doc-meta">Last updated 10 September 2026.</p>'+
+
+      '<h2>1. Who can join</h2>'+
+      '<p>Affswap is for verified iGaming affiliate managers over the age of 18, operating a real affiliate site or working for an affiliate business. We reserve the right to reject or remove any account we can\'t verify as such.</p>'+
+
+      '<h2>2. Verification</h2>'+
+      '<p>We verify identity through some combination of: a confirmed work email, a LinkedIn account, and the affiliate site you manage. Sign in with LinkedIn is the fastest path.</p>'+
+
+      '<h2>3. Reviews</h2>'+
+      '<p>Reviews you post must be your honest opinion, based on real experience with the site. Fake, malicious, or paid reviews get you removed and the reviews scrubbed.</p>'+
+
+      '<h2>4. Swaps</h2>'+
+      '<p>When you agree to a swap, both parties consent to exchanging the contact details stored on their side. The contact you receive is for the introduction only &mdash; do not share it further, add it to a mailing list without explicit consent, or use it for cold outreach outside the swap context.</p>'+
+
+      '<h2>5. Prohibited</h2>'+
+      '<ul class="doc-list">'+
+        '<li>Scraping the site catalogue or member list.</li>'+
+        '<li>Creating multiple accounts to game the swap or loyalty system.</li>'+
+        '<li>Using swap contacts for anything other than the introduction they were shared for.</li>'+
+        '<li>Anything illegal in the jurisdiction you or the counterparty are in.</li>'+
+      '</ul>'+
+
+      '<h2>6. Termination</h2>'+
+      '<p>We can suspend or remove accounts that break these terms. You can delete yours at any time (see the <a onclick="go(\'#/privacy\')" style="color:var(--blue);cursor:pointer;font-weight:600">Privacy policy</a>).</p>'+
+
+      '<h2>7. Liability</h2>'+
+      '<p>Affswap provides the network and the data catalogue; the commercial arrangements between members are between those members. We aren\'t liable for outcomes of connections you make on the platform.</p>'+
+
+      '<h2>8. Changes</h2>'+
+      '<p>Material changes to these terms will be notified to signed-in members by email at least 14 days before they take effect.</p>'+
+
+      '<div class="doc-foot">'+
+        '<a class="btn btn-gho" onclick="go(\'#/home\')">← Back to Affswap</a>'+
+        '<span>Questions? <a href="mailto:hello@affswap.com">hello@affswap.com</a></span>'+
+      '</div>'+
+    '</div>';
+}
+
 function loginSubmit(){
   var msg=document.getElementById('login-msg');
   var payload={work_email:document.getElementById('li-email').value.trim(),password:document.getElementById('li-password').value};
@@ -1402,6 +1554,8 @@ function route(){
   else if(s==='account'){renderAccount();hydrateAccount();switchTo('v-account')}
   else if(s==='signup'){renderSignup();switchTo('v-signup')}
   else if(s==='login'){renderLogin();switchTo('v-login')}
+  else if(s==='privacy'){renderPrivacy();switchTo('v-privacy')}
+  else if(s==='terms'){renderTerms();switchTo('v-terms')}
   else if(s==='leaderboard'){renderLeaderboard();hydrateLeaderboard();switchTo('v-leaderboard')}
   else if(s==='alerts'){renderStub('Alerts');switchTo('v-stub')}
   else if(s==='chat'){renderStub('Chat');switchTo('v-stub')}
