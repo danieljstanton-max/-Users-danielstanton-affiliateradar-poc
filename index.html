@@ -707,6 +707,23 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .plan-card.current{border-color:var(--up);background:linear-gradient(180deg,#F6FCF9 0%,#FFFFFF 60%)}
 .plan-flag{position:absolute;top:-11px;left:22px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:0.02em;text-transform:uppercase;box-shadow:0 3px 10px rgba(61,124,255,0.28)}
 .plan-card.current .plan-flag{left:auto;right:22px}
+/* Early-bird Unlimited: warm ribbon, dual-price with strikethrough, seats meter */
+.plan-card.earlybird{border-color:transparent;background:linear-gradient(180deg,#FFF7ED 0%,#FFFFFF 60%);box-shadow:0 0 0 1px rgba(217,119,6,0.32),0 14px 34px rgba(217,119,6,0.14)}
+.plan-card.earlybird:hover{border-color:transparent;box-shadow:0 0 0 1px rgba(217,119,6,0.44),0 18px 40px rgba(217,119,6,0.18)}
+.plan-flag-eb{background:linear-gradient(135deg,#F97316,#EA580C);box-shadow:0 3px 10px rgba(234,88,12,0.32);letter-spacing:0.02em;text-transform:uppercase}
+.plan-price-eb{padding:8px 0 20px;border-bottom:1px solid var(--line);margin-bottom:14px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.plan-price-was{display:flex;flex-direction:column;align-items:flex-start;padding-top:4px}
+.plan-price-was s{color:var(--ink-mute);font-size:22px;font-weight:600;letter-spacing:-0.02em;line-height:1;text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(72,86,110,0.55)}
+.plan-price-was span{color:var(--ink-mute);font-size:10.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-top:6px}
+.plan-price-now{display:flex;align-items:baseline;gap:8px}
+.plan-price-now b{font-size:38px;font-weight:700;letter-spacing:-0.03em;color:#C2410C;line-height:1}
+.plan-price-now span{color:var(--ink-mute);font-size:13px;font-weight:500}
+.eb-seats{margin-bottom:18px;padding:12px 14px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.20);border-radius:10px}
+.eb-seats-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.eb-seats-row b{color:#9A3412;font-size:12.5px;font-weight:700;letter-spacing:-0.005em}
+.eb-seats-row span{color:var(--ink-mute);font-size:11px;font-weight:500}
+.eb-meter{height:6px;background:rgba(217,119,6,0.14);border-radius:999px;overflow:hidden}
+.eb-meter i{display:block;height:100%;background:linear-gradient(90deg,#F97316,#EA580C,#C2410C);border-radius:999px;transition:width .6s ease}
 .plan-head h3{font-size:18px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-bottom:6px}
 .plan-head p{color:var(--ink-mute);font-size:13px;line-height:1.5;margin-bottom:16px;min-height:44px}
 .plan-price{padding:12px 0 20px;border-bottom:1px solid var(--line);margin-bottom:18px}
@@ -2110,9 +2127,15 @@ function hydratePayments(){
   Promise.all([
     apiGet('/api/me'),
     apiGet('/api/swaps').catch(function(){return{ledger:[]};}),
-    apiGet('/api/loyalty').catch(function(){return{};})
+    apiGet('/api/loyalty').catch(function(){return{};}),
+    apiGet('/api/pricing').catch(function(){return null;})
   ]).then(function(res){
-    var me=res[0]||{}, sw=res[1]||{ledger:[]}, l=res[2]||{};
+    var me=res[0]||{}, sw=res[1]||{ledger:[]}, l=res[2]||{}, pricing=res[3]||null;
+    var unlim = (pricing && pricing.unlimited) || {price:'£79',standard_price:'£79',earlybird_price:'£49.99',is_earlybird:false,seats_left:0,seats_total:100,seats_taken:100};
+    if(pricing && pricing.swap_topup && pricing.swap_topup.unit_price){
+      var m = String(pricing.swap_topup.unit_price).replace(/[^0-9.]/g,'');
+      var n = parseFloat(m); if(isFinite(n) && n>0) SWAP_UNIT_PRICE = n;
+    }
     var ledger = sw.ledger||[];
     var plan = (me.plan||'standard').toLowerCase();
     var swapsLeft = me.unlimited ? '∞' : (me.swaps==null?'—':me.swaps);
@@ -2137,7 +2160,15 @@ function hydratePayments(){
       '<div class="plans-grid">'+
         planCard({key:'standard',name:'Standard',price:'£0',cadence:'forever',blurb:'Get started. Earn extra swaps by reviewing, sharing and suggesting sites.',current:plan==='standard'&&!me.unlimited,features:['2 swaps included','Earn +1 swap per 5 approved reviews','+1 swap per LinkedIn share (7-day cooldown)','+1 swap per approved suggested site','Full Markets access']})+
         planCard({key:'pro',name:'Pro',price:'£29',cadence:'per month',blurb:'For managers doing a handful of deals a month. Predictable monthly allowance.',current:plan==='pro',popular:true,features:['10 swaps per month','Rollover unused swaps for 3 months','Priority match alerts (instant email)','Reviewer badge on your profile','Everything in Standard']})+
-        planCard({key:'unlimited',name:'Unlimited',price:'£79',cadence:'per month',blurb:'Do as many deals as you can close. No swap counter, no thinking about it.',current:!!me.unlimited,features:['Unlimited swaps','Priority match alerts','Verified Unlimited badge on your profile','Chat priority queue','Everything in Pro']})+
+        planCard({
+          key:'unlimited',name:'Unlimited',
+          price: unlim.is_earlybird ? unlim.earlybird_price : unlim.standard_price,
+          cadence:'per month',
+          blurb:'Do as many deals as you can close. No swap counter, no thinking about it.',
+          current:!!me.unlimited,
+          features:['Unlimited swaps','Priority match alerts','Verified Unlimited badge on your profile','Chat priority queue','Everything in Pro'],
+          earlybird: unlim.is_earlybird ? unlim : null
+        })+
       '</div>'+
 
       /* Top-up — flat £2.99 per swap, pick your quantity */
@@ -2192,17 +2223,35 @@ function hydratePayments(){
 }
 
 function planCard(p){
-  return '<div class="plan-card'+(p.current?' current':'')+(p.popular?' popular':'')+'">'+
-    (p.popular?'<span class="plan-flag">Most popular</span>':'')+
-    (p.current?'<span class="plan-flag" style="background:var(--up);color:#fff">Your plan</span>':'')+
+  var eb = p.earlybird;
+  var isEB = !!eb;
+  var pct = isEB ? Math.max(3, Math.round(((eb.seats_total-eb.seats_left)/eb.seats_total)*100)) : 0;
+  var priceBlock = isEB
+    ? '<div class="plan-price plan-price-eb">'+
+        '<div class="plan-price-was"><s>'+h(eb.standard_price)+'</s><span>then</span></div>'+
+        '<div class="plan-price-now"><b>'+h(eb.earlybird_price)+'</b><span>'+h(p.cadence)+'</span></div>'+
+      '</div>'+
+      '<div class="eb-seats">'+
+        '<div class="eb-seats-row"><b>'+eb.seats_left+' of '+eb.seats_total+' founder seats left</b><span>Locks in your rate for life</span></div>'+
+        '<div class="eb-meter"><i style="width:'+pct+'%"></i></div>'+
+      '</div>'
+    : '<div class="plan-price"><b>'+h(p.price)+'</b><span>'+h(p.cadence)+'</span></div>';
+  var flag =
+    (isEB && !p.current ? '<span class="plan-flag plan-flag-eb">🔥 Early bird</span>' : '')+
+    (p.popular && !isEB ? '<span class="plan-flag">Most popular</span>' : '')+
+    (p.current ? '<span class="plan-flag" style="background:var(--up);color:#fff">Your plan</span>' : '');
+  var ctaLabel = isEB ? 'Claim founder seat →' : ('Upgrade to '+p.name+' →');
+  var cta = p.current
+    ? '<button class="btn btn-gho" disabled style="width:100%">You\'re on this plan</button>'
+    : (p.key==='standard'
+        ? '<button class="btn btn-gho" onclick="downgradePlan()" style="width:100%">Downgrade</button>'
+        : '<button class="btn'+(p.popular||p.key==='unlimited'?' btn-glow':'')+'" onclick="upgradePlan(\''+p.key+'\')" style="width:100%">'+h(ctaLabel)+'</button>');
+  return '<div class="plan-card'+(p.current?' current':'')+(p.popular?' popular':'')+(isEB?' earlybird':'')+'">'+
+    flag+
     '<div class="plan-head"><h3>'+h(p.name)+'</h3><p>'+h(p.blurb)+'</p></div>'+
-    '<div class="plan-price"><b>'+h(p.price)+'</b><span>'+h(p.cadence)+'</span></div>'+
+    priceBlock+
     '<ul class="plan-feats">'+ p.features.map(function(f){return '<li><svg viewBox="0 0 14 14" fill="none"><path d="M3 7 L6 10 L11 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'+h(f)+'</li>';}).join('') +'</ul>'+
-    (p.current
-      ? '<button class="btn btn-gho" disabled style="width:100%">You\'re on this plan</button>'
-      : (p.key==='standard'
-          ? '<button class="btn btn-gho" onclick="downgradePlan()" style="width:100%">Downgrade</button>'
-          : '<button class="btn'+(p.popular||p.key==='unlimited'?' btn-glow':'')+'" onclick="upgradePlan(\''+p.key+'\')" style="width:100%">Upgrade to '+h(p.name)+' →</button>'))+
+    cta+
   '</div>';
 }
 

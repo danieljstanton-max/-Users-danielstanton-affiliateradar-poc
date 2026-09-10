@@ -143,6 +143,33 @@ def api_account_update(conn, mid, payload):
     return {"ok": True}
 
 
+def api_pricing(conn):
+    """Live pricing for the Payments page. Returns the Unlimited
+    early-bird status: how many founder seats are taken vs. total,
+    and which price the next signup would pay. Also returns the
+    Standard / Pro prices so the frontend has one source of truth."""
+    taken = conn.execute(
+        "SELECT COUNT(*) c FROM swap_accounts WHERE plan='unlimited'").fetchone()["c"]
+    total = int(config.UNLIMITED_EARLYBIRD_SEATS)
+    seats_left = max(0, total - int(taken))
+    is_early = seats_left > 0
+    return {
+        "standard":  {"price": config.SWAP_PLANS["standard"]["price"]},
+        "pro":       {"price": config.SWAP_PLANS["pro"]["price"]},
+        "unlimited": {
+            "price": (config.UNLIMITED_EARLYBIRD_PRICE if is_early
+                      else config.UNLIMITED_STANDARD_PRICE),
+            "standard_price": config.UNLIMITED_STANDARD_PRICE,
+            "earlybird_price": config.UNLIMITED_EARLYBIRD_PRICE,
+            "is_earlybird":    is_early,
+            "seats_left":      seats_left,
+            "seats_total":     total,
+            "seats_taken":     int(taken),
+        },
+        "swap_topup": {"unit_price": config.SWAP_TOPUP_PRICE},
+    }
+
+
 def api_swaps(conn, mid):
     full = swaps.ledger(conn)
     mine = [e for e in full if e.get("from_id") == mid or e.get("to_id") == mid]
@@ -563,6 +590,8 @@ class _H(BaseHTTPRequestHandler):
                 self._json(reviews.loyalty_progress(conn, mid))
             elif u.path == "/api/plans":
                 self._json({"plans": PLANS, "topup": config.SWAP_TOPUP_PRICE})
+            elif u.path == "/api/pricing":
+                self._json(api_pricing(conn))
             elif u.path == "/api/account":
                 a = api_account(conn, mid)
                 self._json(a) if a else self._json({"error": "not_found"}, 404)

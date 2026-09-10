@@ -68,11 +68,18 @@ TRIAL_HOURS = 48
 # completed mutual trade — each side spends one swap when a match completes.
 # swaps=None means unlimited. Top-ups are bought at SWAP_TOPUP_PRICE a go.
 SWAP_PLANS = {
-    "standard":  {"label": "Standard",  "price": "£9.99",  "swaps": 3},
-    "pro":       {"label": "Pro",       "price": "£19.99", "swaps": 10},
-    "unlimited": {"label": "Unlimited", "price": "£49.99", "swaps": None},
+    "standard":  {"label": "Standard",  "price": "£0",     "swaps": 2},
+    "pro":       {"label": "Pro",       "price": "£29",    "swaps": 10},
+    "unlimited": {"label": "Unlimited", "price": "£79",    "swaps": None},
 }
-SWAP_TOPUP_PRICE = "£3.99"
+SWAP_TOPUP_PRICE = "£2.99"
+
+# Early-bird launch pricing on Unlimited: first N seats get the founder
+# price, then it flips to the standard Unlimited price for everyone after.
+# Counted against every swap_accounts row currently on the unlimited plan.
+UNLIMITED_EARLYBIRD_SEATS = 100
+UNLIMITED_EARLYBIRD_PRICE = "£49.99"
+UNLIMITED_STANDARD_PRICE = "£79"
 
 # Review loyalty: this many APPROVED reviews earns 1 free swap (skipped for the
 # unlimited plan, which already has infinite swaps).
