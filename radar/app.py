@@ -115,7 +115,8 @@ def api_markets(conn):
 
 def api_account(conn, mid):
     row = conn.execute(
-        "SELECT handle, real_name, company, work_email, linkedin_url, site_url, sector, status, created_at "
+        "SELECT handle, real_name, company, work_email, linkedin_url, avatar_url, "
+        "site_url, sector, status, linkedin_verified, created_at, last_login_at "
         "FROM chat_managers WHERE id=?", (mid,)
     ).fetchone()
     if not row:
@@ -244,27 +245,36 @@ def linkedin_land(conn, ui: dict) -> int:
       - existing linkedin_sub  -> that row (return visit)
       - existing work_email    -> attach linkedin_sub + linkedin_verified
       - else                   -> create new verified member
-    Returns the manager_id. Commits."""
+    Returns the manager_id. Commits.
+
+    Note: LinkedIn's OpenID Connect scope returns sub, name, given_name,
+    family_name, email, email_verified, picture, locale — nothing else.
+    Job title, current employer, position dates etc. require the
+    Marketing Developer Platform partnership, which we don't have. Members
+    fill those in manually on the Account view.
+    """
     sub = (ui.get("sub") or "").strip()
     email = (ui.get("email") or "").strip().lower()
     name = (ui.get("name") or "").strip()
     given = (ui.get("given_name") or "").strip()
     family = (ui.get("family_name") or "").strip()
+    picture = (ui.get("picture") or "").strip() or None
     email_verified = 1 if ui.get("email_verified") else 0
     when = now_iso()
     if not sub:
         raise ValueError("missing_linkedin_sub")
 
-    # 1. Existing LinkedIn identity.
+    # 1. Existing LinkedIn identity — refresh picture in case they updated it.
     row = conn.execute(
         "SELECT id FROM chat_managers WHERE linkedin_sub=?", (sub,)).fetchone()
     if row:
-        conn.execute("UPDATE chat_managers SET last_login_at=? WHERE id=?",
-                     (when, row["id"]))
+        conn.execute(
+            "UPDATE chat_managers SET last_login_at=?, avatar_url=COALESCE(?, avatar_url) WHERE id=?",
+            (when, picture, row["id"]))
         conn.commit()
         return row["id"]
 
-    # 2. Existing email — attach the LinkedIn identity.
+    # 2. Existing email — attach the LinkedIn identity, backfill picture.
     if email:
         row = conn.execute(
             "SELECT id FROM chat_managers WHERE lower(work_email)=?",
@@ -272,9 +282,9 @@ def linkedin_land(conn, ui: dict) -> int:
         if row:
             conn.execute(
                 "UPDATE chat_managers SET linkedin_sub=?, linkedin_verified=1, "
-                "work_email_confirmed=?, status='verified', approved_at=?, "
-                "last_login_at=? WHERE id=?",
-                (sub, email_verified, when, when, row["id"]))
+                "work_email_confirmed=?, avatar_url=COALESCE(?, avatar_url), "
+                "status='verified', approved_at=?, last_login_at=? WHERE id=?",
+                (sub, email_verified, picture, when, when, row["id"]))
             swaps.ensure_account(conn, row["id"])
             conn.commit()
             return row["id"]
@@ -283,11 +293,11 @@ def linkedin_land(conn, ui: dict) -> int:
     handle = given or (name.split(" ")[0] if name else "member")
     cur = conn.execute(
         "INSERT INTO chat_managers "
-        "(cc_uid, handle, real_name, work_email, linkedin_sub, "
+        "(cc_uid, handle, real_name, work_email, linkedin_sub, avatar_url, "
         " linkedin_verified, work_email_confirmed, sector, status, "
         " applied_at, approved_at, last_login_at, created_at) "
-        "VALUES (?,?,?,?,?, 1,?, 'casino', 'verified', ?,?,?,?)",
-        (f"li_{sub[:24]}", handle, name or None, email or None, sub,
+        "VALUES (?,?,?,?,?,?, 1,?, 'casino', 'verified', ?,?,?,?)",
+        (f"li_{sub[:24]}", handle, name or None, email or None, sub, picture,
          email_verified, when, when, when, when))
     mid = cur.lastrowid
     swaps.ensure_account(conn, mid, plan="standard")
@@ -484,7 +494,8 @@ class _H(BaseHTTPRequestHandler):
             elif u.path == "/api/me":
                 a = swaps.access(conn, mid)
                 row = conn.execute(
-                    "SELECT handle, real_name, work_email, company FROM chat_managers WHERE id=?",
+                    "SELECT handle, real_name, work_email, company, avatar_url "
+                    "FROM chat_managers WHERE id=?",
                     (mid,)).fetchone()
                 handle = row["handle"] if row else "You"
                 self._json({
@@ -493,6 +504,7 @@ class _H(BaseHTTPRequestHandler):
                     "real_name": row["real_name"] if row else None,
                     "company": row["company"] if row else None,
                     "work_email": row["work_email"] if row else None,
+                    "avatar_url": row["avatar_url"] if row else None,
                     "plan": a.get("plan", "standard"),
                     "swaps": a.get("swaps"),
                     "unlimited": a.get("unlimited"),

@@ -51,6 +51,12 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
         conn.execute("ALTER TABLE chat_managers ADD COLUMN linkedin_sub TEXT")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_linkedin_sub ON chat_managers(linkedin_sub)")
         applied.append("chat_managers.linkedin_sub")
+    # chat_managers.avatar_url — LinkedIn 'picture' claim, or any future
+    # avatar upload we support. Nullable; the app falls back to gradient
+    # initials when this is empty.
+    if not _column_exists(conn, "chat_managers", "avatar_url"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN avatar_url TEXT")
+        applied.append("chat_managers.avatar_url")
     # reviews: individual peer reviews (site_reviews above stays an aggregate cache)
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reviews'").fetchone() is None:
         conn.executescript(
