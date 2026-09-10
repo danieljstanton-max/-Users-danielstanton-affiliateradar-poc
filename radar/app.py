@@ -190,6 +190,58 @@ def api_swaps(conn, mid):
     }
 
 
+SHARE_COOLDOWN_DAYS = 7
+SHARE_REWARD_SWAPS = 1
+
+
+def api_share_status(conn, mid):
+    """When was the last share, and can this member claim now?"""
+    row = conn.execute(
+        "SELECT created_at FROM share_events WHERE manager_id=? "
+        "ORDER BY created_at DESC LIMIT 1", (mid,)).fetchone()
+    total = conn.execute(
+        "SELECT COUNT(*) c, COALESCE(SUM(reward_swaps),0) s FROM share_events WHERE manager_id=?",
+        (mid,)).fetchone()
+    from datetime import datetime, timezone, timedelta
+    can_claim = True
+    next_claim_at = None
+    if row and row["created_at"]:
+        try:
+            last = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
+            eligible = last + timedelta(days=SHARE_COOLDOWN_DAYS)
+            can_claim = datetime.now(timezone.utc) >= eligible
+            if not can_claim:
+                next_claim_at = eligible.isoformat()
+        except Exception:
+            pass
+    return {
+        "can_claim": can_claim,
+        "next_claim_at": next_claim_at,
+        "total_shares": total["c"] or 0,
+        "total_swaps_earned": total["s"] or 0,
+        "cooldown_days": SHARE_COOLDOWN_DAYS,
+        "reward_swaps": SHARE_REWARD_SWAPS,
+    }
+
+
+def api_share_claim(conn, mid):
+    """Honor-system claim: user says they shared to LinkedIn; we grant a
+    bonus swap if they're past the cooldown. Real verification (posting
+    via LinkedIn API) would need the Marketing Developer Platform
+    partnership — deferred; this is the growth-loop MVP."""
+    status = api_share_status(conn, mid)
+    if not status["can_claim"]:
+        return {"ok": False, "error": "cooldown_active",
+                "next_claim_at": status["next_claim_at"]}
+    conn.execute(
+        "INSERT INTO share_events (manager_id, kind, reward_swaps, created_at) "
+        "VALUES (?, 'linkedin', ?, ?)",
+        (mid, SHARE_REWARD_SWAPS, now_iso()))
+    swaps.grant_swaps(conn, mid, SHARE_REWARD_SWAPS)
+    conn.commit()
+    return {"ok": True, "granted": SHARE_REWARD_SWAPS}
+
+
 def api_lists(conn, mid):
     """The current member's Want and Have lists, with site info attached."""
     def _fetch(table):
@@ -533,6 +585,8 @@ class _H(BaseHTTPRequestHandler):
                 self._json(api_swaps(conn, mid))
             elif u.path == "/api/lists":
                 self._json(api_lists(conn, mid))
+            elif u.path == "/api/share/status":
+                self._json(api_share_status(conn, mid))
             elif u.path == "/api/leaderboard":
                 self._json(api_leaderboard(conn, mid, g("period", "all") or "all"))
             elif u.path == "/api/me":
@@ -624,6 +678,12 @@ class _H(BaseHTTPRequestHandler):
             elif u.path == "/api/account":
                 try:
                     self._json(api_account_update(conn, mid, payload))
+                except Exception as e:
+                    self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/share/claim":
+                try:
+                    res = api_share_claim(conn, mid)
+                    self._json(res, 200 if res.get("ok") else 400)
                 except Exception as e:
                     self._json({"ok": False, "error": str(e)}, 400)
             else:

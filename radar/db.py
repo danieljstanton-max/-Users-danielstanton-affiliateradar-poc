@@ -57,6 +57,19 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     if not _column_exists(conn, "chat_managers", "avatar_url"):
         conn.execute("ALTER TABLE chat_managers ADD COLUMN avatar_url TEXT")
         applied.append("chat_managers.avatar_url")
+    # share_events — tracks the "share on LinkedIn" growth loop. Each row is
+    # one honor-system claim; the /api/share/claim endpoint checks the
+    # cooldown before inserting.
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='share_events'").fetchone() is None:
+        conn.executescript(
+            "CREATE TABLE share_events ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " manager_id INTEGER NOT NULL REFERENCES chat_managers(id) ON DELETE CASCADE,"
+            " kind TEXT NOT NULL DEFAULT 'linkedin',"
+            " reward_swaps INTEGER NOT NULL DEFAULT 1,"
+            " created_at TEXT NOT NULL);"
+            "CREATE INDEX idx_share_events_mgr ON share_events(manager_id, created_at DESC);")
+        applied.append("share_events")
     # Non-affiliate domains that made it in as 'affiliate' but shouldn't be
     # in the network. Flip them to 'rejected' — one of the values the
     # existing CHECK constraint on sites.classification allows. Idempotent:
