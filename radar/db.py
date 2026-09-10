@@ -57,6 +57,20 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     if not _column_exists(conn, "chat_managers", "avatar_url"):
         conn.execute("ALTER TABLE chat_managers ADD COLUMN avatar_url TEXT")
         applied.append("chat_managers.avatar_url")
+    # Non-affiliate domains that made it in as 'affiliate' but shouldn't be
+    # in the network. Delete them once — idempotent, so a fresh clone will
+    # get the same result. Add new entries to this tuple as needed.
+    _NOT_AFFILIATES = ("fotmob.com",)
+    for dom in _NOT_AFFILIATES:
+        # Check by classification so we don't re-delete on every start.
+        row = conn.execute(
+            "SELECT id FROM sites WHERE domain=? AND classification='affiliate'",
+            (dom,)).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE sites SET classification='excluded' WHERE domain=?",
+                (dom,))
+            applied.append(f"excluded {dom}")
     # reviews: individual peer reviews (site_reviews above stays an aggregate cache)
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reviews'").fetchone() is None:
         conn.executescript(

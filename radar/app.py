@@ -124,6 +124,25 @@ def api_account(conn, mid):
     return {k: row[k] for k in row.keys()}
 
 
+def api_account_update(conn, mid, payload):
+    """Member-editable profile fields. Only the ones a user should be able to
+    change themselves — not handle, work_email, status, linkedin_verified,
+    or created_at."""
+    editable = {
+        "real_name": (payload.get("real_name") or "").strip() or None,
+        "company":   (payload.get("company") or "").strip() or None,
+        "linkedin_url": (payload.get("linkedin_url") or "").strip() or None,
+        "site_url":  (payload.get("site_url") or "").strip() or None,
+        "sector":    (payload.get("sector") or "").strip() or None,
+    }
+    sets = ", ".join(f"{k}=?" for k in editable)
+    conn.execute(
+        f"UPDATE chat_managers SET {sets} WHERE id=?",
+        (*editable.values(), mid))
+    conn.commit()
+    return {"ok": True}
+
+
 def api_leaderboard(conn, mid, period="all"):
     """Rank verified managers by (swaps*2 + approved_reviews), all-time or 30d."""
     if period == "month":
@@ -562,6 +581,11 @@ class _H(BaseHTTPRequestHandler):
                 try:
                     res = api_signup(conn, payload)
                     self._json(res, 200 if res.get("ok") else 400)
+                except Exception as e:
+                    self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/account":
+                try:
+                    self._json(api_account_update(conn, mid, payload))
                 except Exception as e:
                     self._json({"ok": False, "error": str(e)}, 400)
             else:

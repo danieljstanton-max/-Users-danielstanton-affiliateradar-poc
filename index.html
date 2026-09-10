@@ -1216,9 +1216,10 @@ function hydrateAccount(){
               '<div class="field"><label>Work email</label><div class="inp"><input id="acct-email" type="email" value="'+h(a.work_email||'')+'" placeholder="you@company.com"></div></div>'+
               '<div class="field-row">'+
                 '<div class="field"><label>LinkedIn URL</label><div class="inp"><input id="acct-linkedin" value="'+h(a.linkedin_url||'')+'" placeholder="linkedin.com/in/samknight"></div></div>'+
-                '<div class="field"><label>Site you manage</label><div class="inp"><input id="acct-site" value="'+h(a.site_url||'')+'" placeholder="growthmedia.co"></div></div>'+
+                '<div class="field"><label>Site you manage</label><div class="inp"><input id="acct-site" value="'+h(a.site_url||'')+'" placeholder="yourdomain.com"></div></div>'+
               '</div>'+
               '<div class="field"><label>Markets of interest</label><div class="chipbox" id="acct-mkchips"></div></div>'+
+              '<button class="btn" style="margin-top:8px;width:fit-content" onclick="saveProfile(this)">Save profile</button>'+
             '</div>'+
           '</div>'+
         '</div>'+
@@ -1294,6 +1295,23 @@ function addAcctMk(btn){
   setTimeout(function(){document.addEventListener('click',function h(){menu.remove();document.removeEventListener('click',h);},{once:true});},0);
 }
 function saveAlertPrefs(btn){var orig=btn.textContent;btn.textContent='Saved ✓';btn.disabled=true;setTimeout(function(){btn.textContent=orig;btn.disabled=false;},1600);toast('Preferences saved');}
+function saveProfile(btn){
+  var orig=btn.textContent; btn.disabled=true; btn.textContent='Saving…';
+  var payload={
+    real_name:document.getElementById('acct-name').value.trim(),
+    company:document.getElementById('acct-company').value.trim(),
+    linkedin_url:document.getElementById('acct-linkedin').value.trim(),
+    site_url:(document.getElementById('acct-site')||{}).value ? document.getElementById('acct-site').value.trim() : null,
+    sector:'casino'
+  };
+  apiPost('/api/account',payload).then(function(j){
+    if(j.ok===false){toast(j.error||'Save failed');btn.disabled=false;btn.textContent=orig;return;}
+    btn.textContent='Saved ✓';
+    setTimeout(function(){btn.textContent=orig;btn.disabled=false;},1600);
+    toast('Profile saved');
+    updateMeChip();
+  }).catch(function(){toast('Network error');btn.disabled=false;btn.textContent=orig;});
+}
 function openUpgrade(){toast('Plan upgrade — checkout coming soon');}
 function openTopup(){toast('Swap top-up — checkout coming soon');}
 function suggestSite(){var u=document.getElementById('sugg-url');if(!u||!u.value.trim()){toast('Enter a site URL');return;}document.getElementById('sugg-form').innerHTML='<div style="padding:16px;background:var(--up-soft);border:1px solid rgba(20,184,122,0.28);border-radius:10px;color:#0E9760;font-weight:600;display:flex;align-items:center;gap:10px"><span style="width:24px;height:24px;background:var(--up);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">✓</span>Submitted for review — you\'ll earn a swap when it\'s approved.</div>';}
