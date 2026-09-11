@@ -63,7 +63,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:20px;letter-spacing:-0.02em;color:var(--ink)}
 .brand svg{width:26px;height:26px}
 .brand em{font-style:normal;color:var(--blue);font-weight:700}
-.brand-logo{height:30px;width:auto;display:block}
+.brand-logo{height:42px;width:auto;display:block}
 .nav-links{display:flex;gap:26px;margin:0 auto;font-size:14.5px;font-weight:500;color:var(--ink-2)}
 .nav-links a{position:relative;padding:6px 0;cursor:pointer}
 .nav-links a:hover{color:var(--ink)}
@@ -1213,7 +1213,7 @@ function hydrateMarket(iso){
   MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
   apiGet('/api/geo?iso='+encodeURIComponent(iso)).then(function(d){
     MKD_STATE.rows = (d.cards||[]).map(function(c){
-      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:c.trend_pct,spark:c.spark||[]};
+      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:c.trend_pct,spark:c.spark||[],landing:c.landing_url};
     });
     var country = d.country||{iso:iso,name:iso,flag:''};
     var totalEtv = MKD_STATE.rows.reduce(function(s,r){return s+r.etv;},0);
@@ -1390,7 +1390,7 @@ function renderMkdRows(){
         '<td><div class="mkd-trend">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div></td>'+
         '<td>'+verts+'</td>'+
         '<td><div class="mkd-acts" onclick="event.stopPropagation()">'+
-          '<a class="mkd-visit" href="https://'+encodeURI(r.domain)+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
+          '<a class="mkd-visit" href="'+(r.landing||('https://'+encodeURI(r.domain)+'/'))+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
           '<button class="mkd-btn have'+(r.have?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button>'+
           '<button class="mkd-btn want'+(r.want?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted':'Want')+'</button>'+
         '</div></td>'+
@@ -1469,7 +1469,7 @@ function hydrateSite(domain){
         '<div class="sp-shot-lg">'+shot+'</div>'+
         '<div>'+
           '<div class="sp-name-row"><span class="sp-name2">'+h(p.name||domain)+'</span>'+verts+'</div>'+
-          '<div class="sp-sub"><span class="mq-flag">'+prim.flag+'</span> Primarily '+h(prim.name||'—')+' · live in '+mktCount+' markets · <a class="sp-visit" href="https://'+encodeURI(domain)+'" target="_blank" rel="noopener">'+h(domain)+' →</a></div>'+
+          '<div class="sp-sub"><span class="mq-flag">'+prim.flag+'</span> Primarily '+h(prim.name||'—')+' · live in '+mktCount+' markets · <a class="sp-visit" href="'+(p.landing_url||('https://'+encodeURI(domain)+'/'))+'" target="_blank" rel="noopener">'+h(domain)+' →</a></div>'+
           '<div class="sp-cta">'+
             '<button class="sp-btn want'+(p.you_want?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'want\',this)">'+(p.you_want?'✓ On your Want list':'I want this')+'</button>'+
             '<button class="sp-btn have'+(p.you_have?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'have\',this)">'+(p.you_have?'✓ On your Have list':'I have this')+'</button>'+

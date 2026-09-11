@@ -178,6 +178,10 @@ def _nav(active: str, queue_count: int) -> str:
                 "SELECT COUNT(*) n FROM chat_managers WHERE status='pending' "
                 "AND linkedin_verified=1 AND work_email_confirmed=1"))
             + tab("sites", "/sites", "All sites")
+            + tab("curation", "/curation", "Curation", _count_badge(
+                "SELECT COUNT(*) n FROM site_signals sg JOIN sites s ON s.id=sg.site_id "
+                "WHERE s.classification='affiliate' AND (sg.review IS NULL OR sg.review='') "
+                "AND sg.flagged=1"))
             + tab("shots", "/screenshots", "Homepages", _count_badge(
                 "SELECT COUNT(*) n FROM sites s WHERE s.classification='affiliate' "
                 "AND s.id NOT IN (SELECT site_id FROM blacklist) "
@@ -956,6 +960,84 @@ def _members_page(conn, flash: str = "") -> bytes:
     return _page("".join(body), title="Member approvals")
 
 
+def _curation_page(conn, flash: str = "") -> bytes:
+    """Quality-review queue: sites the keyword-profile signals flagged as likely
+    OPERATORS (rank mostly for their own brand) or LOW gambling relevance. Flags,
+    not verdicts — a human confirms Keep or Remove. Nothing is auto-deleted."""
+    import json as _json
+    import re as _re
+    from . import config
+    for col in ("review TEXT", "flagged INTEGER"):
+        try:
+            conn.execute(f"ALTER TABLE site_signals ADD COLUMN {col}")
+        except Exception:
+            pass
+    try:
+        rows = conn.execute("""
+            SELECT s.id, s.domain, s.etv, s.top_country,
+                   sg.gambling_pct, sg.self_brand_pct, sg.is_operator, sg.landing_url
+            FROM site_signals sg JOIN sites s ON s.id = sg.site_id
+            WHERE s.classification='affiliate'
+              AND (sg.review IS NULL OR sg.review='')
+              AND sg.flagged=1
+            ORDER BY sg.gambling_pct ASC, sg.self_brand_pct DESC
+        """).fetchall()
+    except Exception:
+        rows = []
+    body = [
+        "<div class='eyebrow'>Affswap · Back office</div>",
+        "<h1>Curation · quality review</h1>",
+        "<p class='sub'>Sites the keyword-profile signals flagged — likely <b>operators</b> "
+        "(rank mostly for their own brand) or <b>low gambling relevance</b>. These are flags, "
+        "not verdicts: a sports-betting site can read low because it ranks for team names. "
+        "Open the gambling page to check, then Keep or Remove. Nothing is deleted automatically.</p>",
+        _nav("curation", 0),
+    ]
+    if flash:
+        body.append(f"<div class='note'>{_esc(flash)}</div>")
+    if not rows:
+        body.append("<div class='empty'><div class='big'>✓</div>No flagged sites to review "
+                    "(or the analysis hasn't run yet).</div>")
+    for r in rows:
+        etv = f"{int(r['etv']):,}/mo" if r["etv"] else "no traffic"
+        fl = flag(r["top_country"]) if r["top_country"] else ""
+        reasons = []
+        if r["is_operator"]:
+            reasons.append(f"<span class='ev' style='color:#C53034'>likely operator · "
+                           f"{r['self_brand_pct']}% own-brand searches</span>")
+        if (r["gambling_pct"] or 0) < 40:
+            reasons.append(f"<span class='ev' style='color:#B45309'>gambling relevance "
+                           f"{r['gambling_pct']}%</span>")
+        kwline = ""
+        try:
+            safe = _re.sub(r"[^A-Za-z0-9._-]", "_", r["domain"]) + ".json"
+            kws = _json.loads((config.DATA_DIR / "kw_cache" / safe).read_text())
+            kws.sort(key=lambda k: k.get("etv", 0), reverse=True)
+            top = ", ".join(_esc(k["keyword"]) for k in kws[:4])
+            kwline = (f"<div class='freason' style='margin-top:8px;font-size:12px;color:var(--ink3)'>"
+                      f"ranks for: {top}</div>")
+        except Exception:
+            pass
+        land = r["landing_url"] or ("https://" + r["domain"] + "/")
+        body.append(
+            f"<div class='qcard'>"
+            f"<div class='qthumb'>{_esc(r['domain'][0].upper())}</div>"
+            f"<div class='qmain'><div class='qdomain'>{_esc(r['domain'])} "
+            f"<a href='{_esc(land)}' target='_blank' rel='noopener' "
+            f"style='font-size:12px;font-weight:600'>↗ gambling page</a></div>"
+            f"<div class='qmeta'><span>{fl} <b>{etv}</b></span>{''.join(reasons)}</div>{kwline}</div>"
+            f"<div class='qactions'>"
+            f"<form method='post' action='/curation-act?id={r['id']}'>"
+            f"<input type='hidden' name='action' value='keep'>"
+            f"<button class='btn approve' type='submit'>✓ Keep</button></form>"
+            f"<form method='post' action='/curation-act?id={r['id']}'>"
+            f"<input type='hidden' name='action' value='remove'>"
+            f"<button class='btn reject' type='submit'>Remove</button></form>"
+            f"<a class='btn secondary' href='/site?id={r['id']}'>Details</a>"
+            f"</div></div>")
+    return _page("".join(body), title="Curation")
+
+
 class _Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # quiet
         pass
@@ -986,6 +1068,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(_queue_page(conn, "submitted", flash=flash))
             elif parsed.path == "/sites":
                 self._send(_list_page(conn, flash=flash))
+            elif parsed.path == "/curation":
+                self._send(_curation_page(conn, flash=flash))
             elif parsed.path == "/screenshots":
                 self._send(_screenshots_page(conn, flash=flash))
             elif parsed.path == "/site":
@@ -1045,6 +1129,31 @@ class _Handler(BaseHTTPRequestHandler):
                     conn.commit()
                 self._send(b"ok" if ok else b"fail", code=(200 if ok else 400),
                            content_type="text/plain")
+                return
+            # --- curation: keep / remove a flagged site -------------------
+            if parsed.path == "/curation-act":
+                try:
+                    sid = int(qs.get("id", ["0"])[0])
+                except ValueError:
+                    sid = 0
+                action = form.get("action", [""])[0]
+                if sid:
+                    try:
+                        conn.execute("ALTER TABLE site_signals ADD COLUMN review TEXT")
+                    except Exception:
+                        pass
+                    if action == "remove":
+                        ownership.set_classification(conn, sid, "rejected", admin="curation")
+                        conn.execute("UPDATE site_signals SET review='rejected' WHERE site_id=?", (sid,))
+                        msg = "Removed from the network."
+                    else:
+                        conn.execute("UPDATE site_signals SET review='kept' WHERE site_id=?", (sid,))
+                        msg = "Kept in the network."
+                    conn.commit()
+                else:
+                    msg = "No site selected."
+                self._send(b"", code=303,
+                           headers={"Location": "/curation?flash=" + urllib.parse.quote(msg)})
                 return
             # --- CSV bulk import (no site id) ------------------------------
             if parsed.path == "/import/preview":

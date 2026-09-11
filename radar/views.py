@@ -147,6 +147,17 @@ def _market_highlight(conn: sqlite3.Connection, site_id: int, primary_iso: str,
             "pct": best["pct"], "etv": best["etv"], "months": months}
 
 
+def _landing_url(conn: sqlite3.Connection, site_id: int, domain: str) -> str:
+    """The site's gambling landing page (from site_signals) for 'Visit site';
+    falls back to the homepage if not analysed yet."""
+    try:
+        r = conn.execute("SELECT landing_url FROM site_signals WHERE site_id=?",
+                         (site_id,)).fetchone()
+    except sqlite3.OperationalError:
+        r = None
+    return (r["landing_url"] if r and r["landing_url"] else f"https://{domain}/")
+
+
 def country_list(conn: sqlite3.Connection, country: str,
                  vertical: str | None = None, sort: str = "traffic",
                  published_only: bool = True) -> dict:
@@ -224,6 +235,7 @@ def country_list(conn: sqlite3.Connection, country: str,
             "trend_dir": r["trend_dir"],
             "trend_pct": r["trend_pct"],
             "spark": _spark(conn, r["id"]),
+            "landing_url": _landing_url(conn, r["id"], r["domain"]),
             "rating": r["rating"],
             "review_count": r["review_count"] or 0,
             "verticals": verts,
@@ -383,6 +395,7 @@ def site_profile(conn: sqlite3.Connection, domain: str,
         "rating": rev["rating"] if rev else None,
         "review_count": (rev["review_count"] if rev else 0) or 0,
         "traffic_history": history,
+        "landing_url": _landing_url(conn, s["id"], s["domain"]),
         "market_highlight": _market_highlight(conn, s["id"], s["top_country"]),
         "last_updated": (conn.execute(
             "SELECT MAX(captured_at) FROM traffic_snapshots WHERE site_id=?",

@@ -368,6 +368,37 @@ class DataForSEOClient:
         }
 
     # ======================================================================
+    # 2c) RANKED KEYWORDS — what a domain actually ranks for (quality + deep-link)
+    # ======================================================================
+    def ranked_keywords(self, target: str, location_code: int,
+                        language_code: str = "en", limit: int = 100) -> list[dict]:
+        """[{keyword, etv, url}] the domain ranks for, ordered by etv desc. Used
+        to score a site's gambling relevance, find its gambling landing page, and
+        detect operators (rank mostly for their own brand)."""
+        if not self.live:
+            return []
+        raw = self._post(
+            "/v3/dataforseo_labs/google/ranked_keywords/live",
+            [{"target": target, "location_code": location_code,
+              "language_code": language_code, "limit": int(limit),
+              "order_by": ["ranked_serp_element.serp_item.etv,desc"]}])
+        return self._parse_ranked_keywords(raw)
+
+    @staticmethod
+    def _parse_ranked_keywords(raw: dict) -> list[dict]:
+        out: list[dict] = []
+        for task in DataForSEOClient._ok_tasks(raw):
+            for result in task.get("result") or []:
+                for item in result.get("items") or []:
+                    kw = (item.get("keyword_data") or {}).get("keyword")
+                    se = (item.get("ranked_serp_element") or {}).get("serp_item") or {}
+                    if kw:
+                        out.append({"keyword": kw,
+                                    "etv": float(se.get("etv") or 0),
+                                    "url": se.get("url")})
+        return out
+
+    # ======================================================================
     # 3) ENRICHMENT — Business Data (third-party reputation; NOT peer reviews)
     # ======================================================================
     def business_data(self, domain: str) -> dict | None:
