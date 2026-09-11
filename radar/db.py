@@ -85,6 +85,42 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             "CREATE INDEX idx_chat_room_id ON chat_messages(room, id DESC);"
             "CREATE INDEX idx_chat_mgr ON chat_messages(manager_id);")
         applied.append("chat_messages")
+    # Stripe billing columns — added lazily as we wire real payments.
+    # We store the Stripe customer id on the manager (one per person)
+    # and the current subscription's id + status + expiry on the swap
+    # account (which already holds plan / swaps_used etc.).
+    if not _column_exists(conn, "chat_managers", "stripe_customer_id"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN stripe_customer_id TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_stripe_customer "
+                     "ON chat_managers(stripe_customer_id)")
+        applied.append("chat_managers.stripe_customer_id")
+    for col, sql in [
+        ("stripe_subscription_id",
+         "ALTER TABLE swap_accounts ADD COLUMN stripe_subscription_id TEXT"),
+        ("stripe_status",
+         "ALTER TABLE swap_accounts ADD COLUMN stripe_status TEXT"),
+        ("current_period_end",
+         "ALTER TABLE swap_accounts ADD COLUMN current_period_end TEXT"),
+    ]:
+        if not _column_exists(conn, "swap_accounts", col):
+            conn.execute(sql)
+            applied.append(f"swap_accounts.{col}")
+    # Payment events — an idempotent-safe audit of every Stripe webhook
+    # we've processed. Lets us dedupe on event id (Stripe retries on
+    # non-2xx) and gives support a receipt log to work from.
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='billing_events'").fetchone() is None:
+        conn.executescript(
+            "CREATE TABLE billing_events ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " stripe_event_id TEXT NOT NULL UNIQUE,"
+            " kind TEXT NOT NULL,"
+            " manager_id INTEGER REFERENCES chat_managers(id) ON DELETE SET NULL,"
+            " amount_cents INTEGER,"
+            " currency TEXT,"
+            " raw TEXT NOT NULL,"
+            " created_at TEXT NOT NULL);"
+            "CREATE INDEX idx_billing_events_mgr ON billing_events(manager_id, created_at DESC);")
+        applied.append("billing_events")
     # WAL — many-readers-one-writer without blocking. Chat polling means
     # ~150 read requests/sec at 500 concurrent viewers; a rolled-back
     # default journal would serialize them behind every write. Safe to

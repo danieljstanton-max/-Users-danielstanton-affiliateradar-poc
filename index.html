@@ -2606,6 +2606,18 @@ function hydratePayments(){
           '</div>')+
       '</div>'+
 
+      /* Manage subscription — only visible when the member is on a
+         paid plan. Opens the Stripe-hosted portal. */
+      ((me.plan && me.plan!=='standard') || me.unlimited
+        ? '<div class="pay-security" style="justify-content:space-between;margin-top:16px">'+
+            '<div style="display:flex;align-items:center;gap:14px">'+
+              '<span class="pay-security-ico" style="background:var(--blue-softer);color:var(--blue)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3 A7 7 0 1 1 3 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M10 3 L14 3 L14 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'+
+              '<div><b>Manage subscription</b><span>Cancel, switch plan or update your card — hosted by Stripe.</span></div>'+
+            '</div>'+
+            '<button class="btn btn-gho" onclick="manageSubscription()">Open portal →</button>'+
+          '</div>'
+        : '')+
+
       /* Security note */
       '<div class="pay-security">'+
         '<span class="pay-security-ico"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2 L16 5 V10 C16 13.5, 13.5 16, 10 18 C 6.5 16, 4 13.5, 4 10 V5 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10 L9 12 L13 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'+
@@ -2661,12 +2673,59 @@ function onBuySwapsInput(){var inp=document.getElementById('buyswaps-input');_bs
 function buySwapsFlat(){
   var inp=document.getElementById('buyswaps-input');
   var q=_bsSanitizeQty((inp&&inp.value)||1);
-  var total=(q*SWAP_UNIT_PRICE).toFixed(2);
-  toast('Buy '+q+' '+(q===1?'swap':'swaps')+' for £'+total+' — Stripe checkout coming soon');
+  var btn=document.getElementById('buyswaps-cta');
+  var orig=btn?btn.textContent:'';
+  if(btn){btn.disabled=true; btn.textContent='Redirecting…';}
+  apiPost('/api/checkout/topup',{quantity:q}).then(function(j){
+    if(!j||j.ok===false){
+      var msg = j.error==='not_authenticated' ? 'Please sign in first'
+              : j.error==='stripe_not_configured' ? 'Payments not enabled yet — reach out to hello@affswap.com'
+              : (j.error||'Could not start checkout');
+      toast(msg);
+      if(btn){btn.disabled=false; btn.textContent=orig;}
+      if(j.error==='not_authenticated') go('#/login');
+      return;
+    }
+    if(j.url){ window.location.href = j.url; }
+    else{ toast('No checkout URL returned'); if(btn){btn.disabled=false; btn.textContent=orig;} }
+  }).catch(function(){toast('Network error'); if(btn){btn.disabled=false; btn.textContent=orig;}});
 }
 
-function upgradePlan(plan){toast('Upgrade to '+plan.charAt(0).toUpperCase()+plan.slice(1)+' — Stripe checkout coming soon');}
-function downgradePlan(){toast('You\'re downgrading to Standard — coming soon');}
+function upgradePlan(plan){
+  var btn = event && event.currentTarget;
+  if(btn){var orig=btn.innerHTML; btn.disabled=true; btn.innerHTML='Redirecting…';
+    var restore=function(){btn.disabled=false; btn.innerHTML=orig;};}
+  apiPost('/api/checkout/plan',{plan:plan}).then(function(j){
+    if(!j || j.ok===false){
+      var msg = j.error==='not_authenticated' ? 'Please sign in first'
+              : j.error==='stripe_not_configured' ? 'Payments not enabled yet — reach out to hello@affswap.com'
+              : (j.error||'Could not start checkout');
+      toast(msg);
+      if(j.error==='not_authenticated') go('#/login');
+      if(btn) restore();
+      return;
+    }
+    if(j.url){ window.location.href = j.url; }
+    else{ toast('No checkout URL returned'); if(btn) restore(); }
+  }).catch(function(){toast('Network error'); if(btn) restore();});
+}
+function downgradePlan(){
+  // Downgrade = open the Stripe portal so the member cancels there.
+  apiPost('/api/checkout/portal',{}).then(function(j){
+    if(!j||j.ok===false){
+      var msg = j.error==='not_authenticated' ? 'Please sign in first'
+              : j.error==='stripe_not_configured' ? 'Payments not enabled yet'
+              : (j.error||'Could not open portal');
+      toast(msg);
+      if(j.error==='not_authenticated') go('#/login');
+      return;
+    }
+    if(j.url) window.location.href = j.url;
+  }).catch(function(){toast('Network error');});
+}
+/* Manage-subscription link — anywhere in the app can call this to
+   pop the Stripe Customer Portal for cancel/update. */
+function manageSubscription(){downgradePlan();}
 /* Keep the old handlers pointing at the new page so any lingering
    callers still work; they redirect the user to Payments. */
 function openUpgrade(){go('#/payments');}
@@ -3014,6 +3073,18 @@ function route(){
   // Post-OAuth toast — surfaced from route() so it fires no matter
   // which section owns the URL.
   if(window.ROUTE_QS.li==='synced'){setTimeout(function(){toast('Profile synced from LinkedIn');},250);}
+  if(window.ROUTE_QS.checkout==='success'){
+    setTimeout(function(){
+      var msg = window.ROUTE_QS.kind==='topup'
+        ? 'Payment received — swaps will land in a moment'
+        : 'Welcome aboard — your plan is active';
+      toast(msg);
+      if(typeof updateMeChip==='function') updateMeChip();
+    },250);
+  }
+  if(window.ROUTE_QS.checkout==='cancel'){
+    setTimeout(function(){toast('Checkout cancelled — no charge');},250);
+  }
   if(s==='home'){renderHome();hydrateHome();switchTo('v-home')}
   else if(s==='markets'){renderMarkets();hydrateMarkets();switchTo('v-markets')}
   else if(s==='market'){var iso=(parts[1]||'US').toUpperCase();gateOr('v-market','market',function(){renderMarket(iso);hydrateMarket(iso);});}

@@ -17,7 +17,7 @@ import os
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import auth, config, reviews, swaps, views
+from . import auth, config, reviews, stripe_client, swaps, views
 from .db import connect, now_iso
 from .locations import flag, name
 
@@ -207,6 +207,255 @@ def api_account_update(conn, mid, payload):
         (*editable.values(), mid))
     conn.commit()
     return {"ok": True}
+
+
+# --- Stripe / billing ------------------------------------------------------- #
+def _public_base(host: str) -> str:
+    """Preferred public URL for building return links Stripe redirects
+    to. Falls back to the request's own scheme/host."""
+    override = os.environ.get("STRIPE_PUBLIC_URL") or os.environ.get("PUBLIC_URL")
+    if override:
+        return override.rstrip("/")
+    scheme = "https" if not host.startswith(("localhost", "127.")) else "http"
+    return f"{scheme}://{host}"
+
+
+def _stripe_customer_for(conn, mid) -> tuple[str, dict]:
+    """Get (or create) a Stripe customer id for this member. Second
+    return value is the member row we looked up along the way — reused
+    so we don't re-query for name / email in the caller."""
+    row = conn.execute(
+        "SELECT id, handle, real_name, work_email, stripe_customer_id "
+        "FROM chat_managers WHERE id=?", (mid,)).fetchone()
+    if not row:
+        raise RuntimeError("member_not_found")
+    if row["stripe_customer_id"]:
+        return row["stripe_customer_id"], dict(row)
+    cust = stripe_client.create_customer(
+        email=row["work_email"],
+        name=row["real_name"] or row["handle"],
+        manager_id=mid)
+    cid = cust.get("id")
+    conn.execute("UPDATE chat_managers SET stripe_customer_id=? WHERE id=?",
+                 (cid, mid))
+    conn.commit()
+    return cid, dict(row)
+
+
+def api_checkout_plan(conn, mid, payload, host) -> tuple[dict, int]:
+    """Start a subscription Checkout Session. payload = {plan}
+    where plan is 'pro' | 'unlimited'. Uses the early-bird Unlimited
+    price while seats remain, then the standard one."""
+    if not stripe_client.configured():
+        return {"ok": False, "error": "stripe_not_configured"}, 503
+    plan = (payload.get("plan") or "").strip().lower()
+    if plan == "pro":
+        pid = stripe_client.price_id("pro")
+    elif plan == "unlimited":
+        # Check the live earlybird counter (same source of truth as
+        # /api/pricing) so a member trying to claim the founder rate
+        # gets the founder price without a race.
+        pricing = api_pricing(conn)
+        if pricing["unlimited"]["is_earlybird"]:
+            pid = stripe_client.price_id("unlimited_earlybird")
+        else:
+            pid = stripe_client.price_id("unlimited_standard")
+    else:
+        return {"ok": False, "error": "unknown_plan"}, 400
+    if not pid:
+        return {"ok": False, "error": "price_id_missing_for_" + plan}, 503
+    cid, row = _stripe_customer_for(conn, mid)
+    base = _public_base(host)
+    try:
+        sess = stripe_client.create_checkout(
+            customer_id=cid, mode="subscription", price=pid,
+            success_url=f"{base}/#/payments?checkout=success",
+            cancel_url=f"{base}/#/payments?checkout=cancel",
+            metadata={"manager_id": str(mid), "plan": plan})
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 400
+    return {"ok": True, "url": sess.get("url"),
+            "id": sess.get("id")}, 200
+
+
+def api_checkout_topup(conn, mid, payload, host) -> tuple[dict, int]:
+    """Start a one-time Checkout Session for N swap top-ups."""
+    if not stripe_client.configured():
+        return {"ok": False, "error": "stripe_not_configured"}, 503
+    try:
+        qty = max(1, min(int(payload.get("quantity") or 1), 500))
+    except Exception:
+        return {"ok": False, "error": "bad_quantity"}, 400
+    pid = stripe_client.price_id("swap_topup")
+    if not pid:
+        return {"ok": False, "error": "price_id_missing_for_topup"}, 503
+    cid, row = _stripe_customer_for(conn, mid)
+    base = _public_base(host)
+    try:
+        sess = stripe_client.create_checkout(
+            customer_id=cid, mode="payment", price=pid, quantity=qty,
+            success_url=f"{base}/#/payments?checkout=success&kind=topup",
+            cancel_url=f"{base}/#/payments?checkout=cancel",
+            metadata={"manager_id": str(mid), "kind": "topup",
+                      "quantity": str(qty)})
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 400
+    return {"ok": True, "url": sess.get("url"), "quantity": qty}, 200
+
+
+def api_checkout_portal(conn, mid, host) -> tuple[dict, int]:
+    """Open the Stripe Customer Portal — cancel / switch plan /
+    update card, all rendered by Stripe."""
+    if not stripe_client.configured():
+        return {"ok": False, "error": "stripe_not_configured"}, 503
+    cid, _ = _stripe_customer_for(conn, mid)
+    if not cid:
+        return {"ok": False, "error": "no_stripe_customer"}, 400
+    base = _public_base(host)
+    try:
+        sess = stripe_client.create_portal(cid, f"{base}/#/payments")
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 400
+    return {"ok": True, "url": sess.get("url")}, 200
+
+
+def _find_manager_by_customer(conn, customer_id: str | None) -> int | None:
+    if not customer_id:
+        return None
+    row = conn.execute(
+        "SELECT id FROM chat_managers WHERE stripe_customer_id=?",
+        (customer_id,)).fetchone()
+    return row["id"] if row else None
+
+
+def _plan_from_price(price_id: str | None) -> str | None:
+    """Reverse-lookup: which of our internal plan slugs does this
+    Stripe Price ID belong to? Returns None if it isn't ours."""
+    if not price_id:
+        return None
+    if price_id == stripe_client.price_id("pro"):
+        return "pro"
+    if price_id == stripe_client.price_id("unlimited_earlybird"):
+        return "unlimited"
+    if price_id == stripe_client.price_id("unlimited_standard"):
+        return "unlimited"
+    return None
+
+
+def _handle_stripe_event(conn, event: dict) -> None:
+    """Sync DB state for one webhook event. Idempotent — the caller
+    dedupes by event id before invoking us."""
+    kind = event.get("type", "")
+    obj = ((event.get("data") or {}).get("object") or {})
+    # Which member?
+    mid = _find_manager_by_customer(conn, obj.get("customer"))
+    if mid is None:
+        # Best-effort fallback via metadata on the object.
+        try:
+            mid = int(((obj.get("metadata") or {}).get("manager_id") or 0))
+        except Exception:
+            mid = 0
+        mid = mid or None
+    if kind == "checkout.session.completed":
+        mode = obj.get("mode")
+        if mode == "payment":
+            # One-time top-up. Grant swaps == quantity of first line item
+            # if we can find it; otherwise fall back to metadata.
+            qty = 0
+            try:
+                qty = int(((obj.get("metadata") or {}).get("quantity") or 0))
+            except Exception:
+                pass
+            if not qty:
+                # Look up the session's line items if we don't have qty
+                # in metadata — a Stripe API call would be needed to
+                # expand line_items, so lean on metadata we set at
+                # checkout creation. If missing, no-op safely.
+                qty = 0
+            if mid and qty > 0:
+                swaps.grant_swaps(conn, mid, qty)
+        # For subscription mode, the subscription.updated event that
+        # follows will carry the plan info — we don't need to act here.
+    elif kind in ("customer.subscription.updated",
+                  "customer.subscription.created"):
+        sub_id = obj.get("id")
+        status = obj.get("status", "")
+        period_end = obj.get("current_period_end")  # unix seconds
+        # First price on the first item drives the plan.
+        items = ((obj.get("items") or {}).get("data") or [])
+        first_price = None
+        if items:
+            price = (items[0].get("price") or {})
+            first_price = price.get("id")
+        plan = _plan_from_price(first_price)
+        if mid:
+            swaps.ensure_account(conn, mid)
+            if plan:
+                conn.execute("UPDATE swap_accounts SET plan=?, updated_at=? "
+                             "WHERE manager_id=?",
+                             (plan, now_iso(), mid))
+            period_end_iso = None
+            if period_end:
+                from datetime import datetime, timezone as _tz
+                period_end_iso = datetime.fromtimestamp(
+                    int(period_end), _tz.utc).replace(microsecond=0).isoformat()
+            conn.execute(
+                "UPDATE swap_accounts SET "
+                "stripe_subscription_id=?, stripe_status=?, current_period_end=? "
+                "WHERE manager_id=?",
+                (sub_id, status, period_end_iso, mid))
+    elif kind == "customer.subscription.deleted":
+        if mid:
+            swaps.ensure_account(conn, mid)
+            conn.execute("UPDATE swap_accounts SET plan='standard', "
+                         "stripe_status='canceled', updated_at=? "
+                         "WHERE manager_id=?", (now_iso(), mid))
+    elif kind == "invoice.payment_failed":
+        if mid:
+            conn.execute("UPDATE swap_accounts SET stripe_status='past_due', "
+                         "updated_at=? WHERE manager_id=?",
+                         (now_iso(), mid))
+
+
+def api_stripe_webhook(conn, payload_bytes: bytes,
+                       sig_header: str) -> tuple[dict, int]:
+    """Verify and process a Stripe webhook. Dedupe on event id."""
+    try:
+        event = stripe_client.verify_webhook(payload_bytes, sig_header)
+    except stripe_client.WebhookError as e:
+        return {"ok": False, "error": str(e)}, 400
+    evt_id = event.get("id") or ""
+    # Idempotency: Stripe retries on non-2xx and we don't want to
+    # double-grant swaps.
+    already = conn.execute(
+        "SELECT 1 FROM billing_events WHERE stripe_event_id=?",
+        (evt_id,)).fetchone()
+    if already:
+        return {"ok": True, "duplicate": True}, 200
+    obj = ((event.get("data") or {}).get("object") or {})
+    mid = _find_manager_by_customer(conn, obj.get("customer"))
+    try:
+        _handle_stripe_event(conn, event)
+    except Exception as e:
+        # Store the event anyway so future retries dedupe, but flag it
+        # so we can investigate. Return 200 to stop Stripe retrying —
+        # a bad payload isn't recoverable by retrying the same thing.
+        conn.execute(
+            "INSERT INTO billing_events (stripe_event_id, kind, manager_id,"
+            " amount_cents, currency, raw, created_at) VALUES (?,?,?,?,?,?,?)",
+            (evt_id, event.get("type", "") + " [handler_error: " + str(e) + "]",
+             mid, obj.get("amount_total"), obj.get("currency"),
+             json.dumps(event)[:8000], now_iso()))
+        conn.commit()
+        return {"ok": True, "handled": False}, 200
+    conn.execute(
+        "INSERT INTO billing_events (stripe_event_id, kind, manager_id,"
+        " amount_cents, currency, raw, created_at) VALUES (?,?,?,?,?,?,?)",
+        (evt_id, event.get("type", ""), mid,
+         obj.get("amount_total"), obj.get("currency"),
+         json.dumps(event)[:8000], now_iso()))
+    conn.commit()
+    return {"ok": True}, 200
 
 
 def api_pricing(conn):
@@ -823,8 +1072,20 @@ class _H(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
         length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(length) if length else b""
+        # The Stripe webhook signature is over the RAW body bytes, so
+        # short-circuit before we JSON-parse.
+        if u.path == "/api/stripe/webhook":
+            conn = connect()
+            try:
+                sig = self.headers.get("Stripe-Signature", "")
+                res, code = api_stripe_webhook(conn, raw, sig)
+                self._json(res, code)
+            finally:
+                conn.close()
+            return
         try:
-            payload = json.loads(self.rfile.read(length).decode() or "{}")
+            payload = json.loads(raw.decode() or "{}")
         except ValueError:
             payload = {}
         conn = connect()
@@ -832,6 +1093,7 @@ class _H(BaseHTTPRequestHandler):
             cookies = self._cookies()
             mid = _me(conn, cookies)
             authed = _me_from_session(conn, cookies) is not None
+            host = self._forwarded_host() or self.headers.get("Host", "127.0.0.1")
             # Auth-mutating endpoints handled first (they set their own cookies).
             if u.path == "/api/register":
                 res, cookie_hdr = api_register(conn, payload)
@@ -911,6 +1173,22 @@ class _H(BaseHTTPRequestHandler):
                     self._json(res, 200 if res.get("ok") else 400)
                 except Exception as e:
                     self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path in ("/api/checkout/plan",
+                            "/api/checkout/topup",
+                            "/api/checkout/portal"):
+                if not authed:
+                    self._json({"ok": False, "error": "not_authenticated"}, 401)
+                else:
+                    try:
+                        if u.path == "/api/checkout/plan":
+                            res, code = api_checkout_plan(conn, mid, payload, host)
+                        elif u.path == "/api/checkout/topup":
+                            res, code = api_checkout_topup(conn, mid, payload, host)
+                        else:
+                            res, code = api_checkout_portal(conn, mid, host)
+                        self._json(res, code)
+                    except Exception as e:
+                        self._json({"ok": False, "error": str(e)}, 400)
             else:
                 self._json({"error": "not_found"}, 404)
         finally:
