@@ -1023,6 +1023,23 @@ class _H(BaseHTTPRequestHandler):
                 self._json({"plans": PLANS, "topup": config.SWAP_TOPUP_PRICE})
             elif u.path == "/api/pricing":
                 self._json(api_pricing(conn))
+            elif u.path == "/api/_stripe_check":
+                # Diagnostic — never exposes secret values, just their
+                # presence + length. Delete this route once billing is
+                # confirmed working.
+                def _has(name):
+                    v = os.environ.get(name, "")
+                    return {"set": bool(v), "len": len(v),
+                            "starts": (v[:7] if v else "")}
+                self._json({
+                    "STRIPE_SECRET_KEY":                _has("STRIPE_SECRET_KEY"),
+                    "STRIPE_WEBHOOK_SECRET":            _has("STRIPE_WEBHOOK_SECRET"),
+                    "STRIPE_PRICE_PRO":                 _has("STRIPE_PRICE_PRO"),
+                    "STRIPE_PRICE_UNLIMITED_STANDARD":  _has("STRIPE_PRICE_UNLIMITED_STANDARD"),
+                    "STRIPE_PRICE_UNLIMITED_EARLYBIRD": _has("STRIPE_PRICE_UNLIMITED_EARLYBIRD"),
+                    "STRIPE_PRICE_SWAP_TOPUP":          _has("STRIPE_PRICE_SWAP_TOPUP"),
+                    "stripe_client.configured": stripe_client.configured(),
+                })
             elif u.path == "/api/account":
                 a = api_account(conn, mid)
                 self._json(a) if a else self._json({"error": "not_found"}, 404)
