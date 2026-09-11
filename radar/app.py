@@ -142,6 +142,54 @@ def api_account(conn, mid):
     return {k: row[k] for k in row.keys()}
 
 
+def _normalize_linkedin_url(raw: str | None) -> str | None:
+    """Accept anything a member is likely to paste and canonicalize it
+    to https://www.linkedin.com/in/<slug>. Empty / clearly-not-linkedin
+    inputs come back as None. This runs on save, not on save-time
+    validation — a copy-paste from the LinkedIn address bar is common
+    (trailing slash, tracking query, mobile subdomain, www or bare)."""
+    if not raw:
+        return None
+    s = raw.strip()
+    if not s:
+        return None
+    # Strip scheme + www / m / mobile subdomain
+    for pref in ("https://", "http://"):
+        if s.lower().startswith(pref):
+            s = s[len(pref):]
+            break
+    if s.lower().startswith("www."):
+        s = s[4:]
+    elif s.lower().startswith("m."):
+        s = s[2:]
+    elif s.lower().startswith("mobile."):
+        s = s[7:]
+    # Only keep if it points at linkedin.com/in/... or linkedin.com/pub/...
+    lower = s.lower()
+    if not lower.startswith("linkedin.com/"):
+        # Bare "in/<slug>" is a common paste too — accept it.
+        if lower.startswith("in/") or lower.startswith("/in/"):
+            s = "linkedin.com/" + s.lstrip("/")
+            lower = s.lower()
+        else:
+            # Bare "<slug>" — treat it as a vanity name.
+            if "/" not in s and "." not in s:
+                s = "linkedin.com/in/" + s
+                lower = s.lower()
+            else:
+                return None
+    if not (lower.startswith("linkedin.com/in/")
+            or lower.startswith("linkedin.com/pub/")):
+        return None
+    # Drop query string, fragment, trailing slash
+    for cut in ("?", "#"):
+        i = s.find(cut)
+        if i >= 0:
+            s = s[:i]
+    s = s.rstrip("/")
+    return "https://www." + s
+
+
 def api_account_update(conn, mid, payload):
     """Member-editable profile fields. Only the ones a user should be able to
     change themselves — not handle, work_email, status, linkedin_verified,
@@ -149,7 +197,7 @@ def api_account_update(conn, mid, payload):
     editable = {
         "real_name": (payload.get("real_name") or "").strip() or None,
         "company":   (payload.get("company") or "").strip() or None,
-        "linkedin_url": (payload.get("linkedin_url") or "").strip() or None,
+        "linkedin_url": _normalize_linkedin_url(payload.get("linkedin_url")),
         "site_url":  (payload.get("site_url") or "").strip() or None,
         "sector":    (payload.get("sector") or "").strip() or None,
     }
