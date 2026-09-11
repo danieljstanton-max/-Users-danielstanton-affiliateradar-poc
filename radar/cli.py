@@ -239,7 +239,7 @@ def cmd_grant_swap(args) -> None:
     from . import swaps
     if not (args.email or args.handle):
         raise SystemExit("grant-swap: pass --email or --handle")
-    conn = db.connect()
+    conn = connect()
     try:
         if args.email:
             row = conn.execute(
