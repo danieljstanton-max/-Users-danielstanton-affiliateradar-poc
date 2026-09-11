@@ -69,8 +69,8 @@ TRIAL_HOURS = 48
 # swaps=None means unlimited. Top-ups are bought at SWAP_TOPUP_PRICE a go.
 SWAP_PLANS = {
     "standard":  {"label": "Standard",  "price": "£0",     "swaps": 2},
-    "pro":       {"label": "Pro",       "price": "£29",    "swaps": 10},
-    "unlimited": {"label": "Unlimited", "price": "£79",    "swaps": None},
+    "pro":       {"label": "Pro",       "price": "£29.99", "swaps": 10},
+    "unlimited": {"label": "Unlimited", "price": "£79.99", "swaps": None},
 }
 SWAP_TOPUP_PRICE = "£2.99"
 
@@ -79,7 +79,7 @@ SWAP_TOPUP_PRICE = "£2.99"
 # Counted against every swap_accounts row currently on the unlimited plan.
 UNLIMITED_EARLYBIRD_SEATS = 100
 UNLIMITED_EARLYBIRD_PRICE = "£49.99"
-UNLIMITED_STANDARD_PRICE = "£79"
+UNLIMITED_STANDARD_PRICE = "£79.99"
 
 # Review loyalty: this many APPROVED reviews earns 1 free swap (skipped for the
 # unlimited plan, which already has infinite swaps).

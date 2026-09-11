@@ -2523,7 +2523,8 @@ function hydratePayments(){
     apiGet('/api/pricing').catch(function(){return null;})
   ]).then(function(res){
     var me=res[0]||{}, sw=res[1]||{ledger:[]}, l=res[2]||{}, pricing=res[3]||null;
-    var unlim = (pricing && pricing.unlimited) || {price:'£79',standard_price:'£79',earlybird_price:'£49.99',is_earlybird:false,seats_left:0,seats_total:100,seats_taken:100};
+    var unlim = (pricing && pricing.unlimited) || {price:'£79.99',standard_price:'£79.99',earlybird_price:'£49.99',is_earlybird:false,seats_left:0,seats_total:100,seats_taken:100};
+    var proPrice = (pricing && pricing.pro && pricing.pro.price) || '£29.99';
     if(pricing && pricing.swap_topup && pricing.swap_topup.unit_price){
       var m = String(pricing.swap_topup.unit_price).replace(/[^0-9.]/g,'');
       var n = parseFloat(m); if(isFinite(n) && n>0) SWAP_UNIT_PRICE = n;
@@ -2551,7 +2552,7 @@ function hydratePayments(){
       '<div class="pay-sec-head"><h2>Choose a plan</h2><p>Swaps are the currency of Affswap. Every completed contact exchange uses one.</p></div>'+
       '<div class="plans-grid">'+
         planCard({key:'standard',name:'Standard',price:'£0',cadence:'forever',blurb:'Get started. Earn extra swaps by reviewing, sharing and suggesting sites.',current:plan==='standard'&&!me.unlimited,features:['2 swaps included','Earn +1 swap per 5 approved reviews','+1 swap per LinkedIn share (7-day cooldown)','+1 swap per approved suggested site','Full Markets access']})+
-        planCard({key:'pro',name:'Pro',price:'£29',cadence:'per month',blurb:'For managers doing a handful of deals a month. Predictable monthly allowance.',current:plan==='pro',popular:true,features:['10 swaps per month','Rollover unused swaps for 3 months','Priority match alerts (instant email)','Reviewer badge on your profile','Everything in Standard']})+
+        planCard({key:'pro',name:'Pro',price:proPrice,cadence:'per month',blurb:'For managers doing a handful of deals a month. Predictable monthly allowance.',current:plan==='pro',popular:true,features:['10 swaps per month','Rollover unused swaps for 3 months','Priority match alerts (instant email)','Reviewer badge on your profile','Everything in Standard']})+
         planCard({
           key:'unlimited',name:'Unlimited',
           price: unlim.is_earlybird ? unlim.earlybird_price : unlim.standard_price,
