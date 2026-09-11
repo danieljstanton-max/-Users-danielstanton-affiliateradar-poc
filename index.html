@@ -63,6 +63,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:20px;letter-spacing:-0.02em;color:var(--ink)}
 .brand svg{width:26px;height:26px}
 .brand em{font-style:normal;color:var(--blue);font-weight:700}
+.brand-logo{height:30px;width:auto;display:block}
 .nav-links{display:flex;gap:26px;margin:0 auto;font-size:14.5px;font-weight:500;color:var(--ink-2)}
 .nav-links a{position:relative;padding:6px 0;cursor:pointer}
 .nav-links a:hover{color:var(--ink)}
@@ -912,8 +913,7 @@ footer{padding:56px 0 40px}
 <div class="wrap nav-outer">
   <div class="nav">
     <a class="brand" onclick="go('#/home')">
-      <svg viewBox="0 0 26 26" fill="none"><path d="M2 4 L10 13 L2 22" stroke="#3D7CFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 4 L16 13 L24 22" stroke="#1A3FCC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Aff<em>swap</em>
+      <img class="brand-logo" src="/assets/affswap-logo.png" alt="Affswap">
     </a>
     <nav class="nav-links" id="nlinks"></nav>
     <div class="nav-right">
@@ -946,8 +946,7 @@ footer{padding:56px 0 40px}
 <footer class="wrap">
   <div class="foot-row">
     <a class="brand" onclick="go('#/home')">
-      <svg viewBox="0 0 26 26" fill="none"><path d="M2 4 L10 13 L2 22" stroke="#3D7CFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 4 L16 13 L24 22" stroke="#1A3FCC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Aff<em>swap</em>
+      <img class="brand-logo" src="/assets/affswap-logo.png" alt="Affswap">
     </a>
     <nav class="foot-links">
       <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/payments')">Payments</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
