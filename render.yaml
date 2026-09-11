@@ -38,6 +38,30 @@ services:
         sync: false
       - key: DATAFORSEO_PASSWORD
         sync: false
+      # LinkedIn OAuth (sign-in "Continue with LinkedIn"). Set in dashboard.
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_REDIRECT_URI
+        sync: false
+      # Signed session-cookie secret (any long random string).
+      - key: AFFSWAP_SECRET
+        sync: false
+      # Stripe billing — dashboard-only. sync:false keeps the Blueprint
+      # sync from wiping these on every git push.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
+      - key: STRIPE_PRICE_UNLIMITED_STANDARD
+        sync: false
+      - key: STRIPE_PRICE_UNLIMITED_EARLYBIRD
+        sync: false
+      - key: STRIPE_PRICE_SWAP_TOPUP
+        sync: false
       # --- durable-data mode (paired with plan: starter + disk below) ---
       # - key: AFFSWAP_DB_PATH
       #   value: /var/data/affiliateradar.db
