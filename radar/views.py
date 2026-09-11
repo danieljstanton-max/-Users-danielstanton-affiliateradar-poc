@@ -95,6 +95,26 @@ def _trend_chip(pct, direction) -> str:
     return f"{arrow} {sign}{pct}%"
 
 
+def _spark(conn: sqlite3.Connection, site_id: int, n: int = 12) -> list:
+    """Compact monthly etv series (oldest→newest) for a sparkline in listings."""
+    rows = conn.execute(
+        "SELECT etv FROM traffic_snapshots WHERE site_id=? ORDER BY iso_week DESC LIMIT ?",
+        (site_id, n)).fetchall()
+    return [int(r["etv"] or 0) for r in reversed(rows)]
+
+
+def _market_history(conn: sqlite3.Connection, iso: str, n: int = 12) -> list:
+    """Market-level aggregate monthly traffic (built from the history cache into
+    the market_history table). Empty if not built yet."""
+    try:
+        rows = conn.execute(
+            "SELECT iso_week, etv FROM market_history WHERE country=? ORDER BY iso_week DESC LIMIT ?",
+            (iso, n)).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [{"week": r["iso_week"], "etv": int(r["etv"] or 0)} for r in reversed(rows)]
+
+
 def country_list(conn: sqlite3.Connection, country: str,
                  vertical: str | None = None, sort: str = "traffic",
                  published_only: bool = True) -> dict:
@@ -108,7 +128,8 @@ def country_list(conn: sqlite3.Connection, country: str,
     iso = country.upper()
     sort = sort if sort in ("traffic", "reviews", "blacklisted") else "traffic"
     header = {"country": {"iso": iso, "flag": flag(iso), "name": name(iso)},
-              "vertical": vertical, "sort": sort}
+              "vertical": vertical, "sort": sort,
+              "history": _market_history(conn, iso)}
 
     if sort == "blacklisted":
         rows = conn.execute(
@@ -169,6 +190,8 @@ def country_list(conn: sqlite3.Connection, country: str,
                                "flag": flag(r["top_country"]) if r["top_country"] else "🏳️"},
             "trend": _trend_chip(r["trend_pct"], r["trend_dir"]),
             "trend_dir": r["trend_dir"],
+            "trend_pct": r["trend_pct"],
+            "spark": _spark(conn, r["id"]),
             "rating": r["rating"],
             "review_count": r["review_count"] or 0,
             "verticals": verts,

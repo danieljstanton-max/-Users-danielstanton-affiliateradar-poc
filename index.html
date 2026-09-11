@@ -412,6 +412,31 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .sp-rev-item{padding:12px 0;border-top:1px solid var(--line);color:var(--ink-2);font-size:13.5px}
 @media(max-width:820px){.sp-stats{grid-template-columns:repeat(3,1fr)}.sp-main{grid-template-columns:1fr}.sp-top{grid-template-columns:1fr}.sp-shot-lg{width:100%}}
 
+/* ---- Listing row trend + market intelligence ---- */
+.mkd-trend{display:flex;align-items:center;gap:9px}
+.mkd-spark{width:62px;height:22px;flex:none}
+.mkd-tr{font-family:var(--f-mono);font-size:11.5px;font-weight:700;white-space:nowrap}
+.mkd-tr.up{color:#0E9760}.mkd-tr.down{color:#E5484D}.mkd-tr.flat{color:var(--ink-mute)}
+.mkd-intel{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px;margin-top:20px}
+.mkd-intel-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow-sm)}
+.mkd-intel-card h4{font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:var(--ink-mute);font-family:var(--f-mono);margin-bottom:12px;font-weight:500}
+.mkd-intel-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.mkd-intel-n{font-size:24px;font-weight:800;letter-spacing:-0.02em;color:var(--ink)}
+.mkd-mchart{height:92px;margin-top:8px}
+.mv-row{display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer}
+.mv-row:hover .mv-nm{color:var(--blue)}
+.mv-fav{width:20px;height:20px;border-radius:5px;flex:none;object-fit:contain;background:#fff}
+.mv-nm{flex:1;font-size:13px;color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mv-pct{font-family:var(--f-mono);font-size:12px;font-weight:700}
+.mv-pct.up{color:#0E9760}.mv-pct.down{color:#E5484D}
+.mv-sub{font-family:var(--f-mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-mute);margin:10px 0 2px}
+.mv-sub:first-child{margin-top:0}
+.cmix-row{display:grid;grid-template-columns:76px 1fr 30px;gap:9px;align-items:center;padding:5px 0;font-size:12.5px;color:var(--ink)}
+.cmix-bar{background:var(--line);height:6px;border-radius:6px;overflow:hidden}
+.cmix-bar i{display:block;height:100%}
+.cmix-n{text-align:right;font-family:var(--f-mono);font-size:12px;color:var(--ink-mute)}
+@media(max-width:900px){.mkd-intel{grid-template-columns:1fr}}
+
 /* SWAPS */
 .sw-hero{padding:32px 0 24px}
 .sw-hero h1{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1.05}
@@ -1174,7 +1199,7 @@ function hydrateMarket(iso){
   MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
   apiGet('/api/geo?iso='+encodeURIComponent(iso)).then(function(d){
     MKD_STATE.rows = (d.cards||[]).map(function(c){
-      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0};
+      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:c.trend_pct,spark:c.spark||[]};
     });
     var country = d.country||{iso:iso,name:iso,flag:''};
     var totalEtv = MKD_STATE.rows.reduce(function(s,r){return s+r.etv;},0);
@@ -1183,6 +1208,24 @@ function hydrateMarket(iso){
     var avgAuth = MKD_STATE.rows.length ? Math.round(MKD_STATE.rows.reduce(function(s,r){return s+r.authority;},0)/MKD_STATE.rows.length) : 0;
     var topVert = Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];})[0];
     var topVertLabel = topVert.charAt(0).toUpperCase()+topVert.slice(1);
+
+    // --- market intelligence: aggregate trend, biggest movers, category mix ---
+    var mh=d.history||[];
+    var mLast=mh.length?mh[mh.length-1].etv:totalEtv, mFirst=mh.length?mh[0].etv:0;
+    var mYoy=mFirst>0?Math.round((mLast-mFirst)/mFirst*100):null;
+    var mBadge=mYoy===null?'':'<span class="sp-delta '+(mYoy>=0?'up':'down')+'">'+(mYoy>=0?'▲ +':'▼ ')+mYoy+'% yr</span>';
+    var mov=MKD_STATE.rows.filter(function(r){return r.tpct!=null && r.etv>=1000;});
+    var risers=mov.slice().sort(function(a,b){return b.tpct-a.tpct;}).filter(function(r){return r.tpct>1;}).slice(0,3);
+    var fallers=mov.slice().sort(function(a,b){return a.tpct-b.tpct;}).filter(function(r){return r.tpct<-1;}).slice(0,3);
+    function moverRow(r){var up=r.tpct>0;return '<div class="mv-row" onclick="go(\'#/site/'+r.domain+'\')"><img class="mv-fav" src="https://www.google.com/s2/favicons?domain='+encodeURIComponent(r.domain)+'&sz=32" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility=\'hidden\'"><span class="mv-nm">'+h(r.name)+'</span><span class="mv-pct '+(up?'up':'down')+'">'+(up?'+':'')+(Math.abs(r.tpct)>999?'999+':Math.round(r.tpct))+'%</span></div>';}
+    var catTotal=(cats.casino+cats.sportsbook+cats.bingo+cats.poker)||1;
+    var catCol={casino:'#3D7CFF',sportsbook:'#8B5CF6',bingo:'#EC4899',poker:'#F59E0B'};
+    function cmixRow(k){var pct=Math.round(cats[k]/catTotal*100);return '<div class="cmix-row"><span style="text-transform:capitalize">'+k+'</span><span class="cmix-bar"><i style="width:'+Math.max(2,pct)+'%;background:'+catCol[k]+'"></i></span><span class="cmix-n">'+cats[k]+'</span></div>';}
+    var intelHtml='<div class="mkd-intel">'+
+      '<div class="mkd-intel-card"><h4>Market traffic · 12 months</h4><div class="mkd-intel-top"><span class="mkd-intel-n">'+fmt(mLast||totalEtv)+'</span>'+mBadge+'</div><div class="mkd-mchart" id="mkd-mchart"></div></div>'+
+      '<div class="mkd-intel-card"><h4>Biggest movers</h4><div class="mv-sub">▲ Rising</div>'+(risers.length?risers.map(moverRow).join(''):'<div style="color:var(--ink-mute);font-size:12px;padding:2px 0">Not enough data yet</div>')+'<div class="mv-sub">▼ Falling</div>'+(fallers.length?fallers.map(moverRow).join(''):'<div style="color:var(--ink-mute);font-size:12px;padding:2px 0">Not enough data yet</div>')+'</div>'+
+      '<div class="mkd-intel-card"><h4>Category mix</h4>'+cmixRow('casino')+cmixRow('sportsbook')+cmixRow('bingo')+cmixRow('poker')+'</div>'+
+    '</div>';
 
     var el=document.getElementById('v-market');
     el.innerHTML =
@@ -1210,6 +1253,7 @@ function hydrateMarket(iso){
         '<div class="mkd-stat"><div class="mkd-stat-ico k"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M11 6 L11 11 L14 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="mkd-stat-l">Avg authority</div><div class="mkd-stat-n">'+avgAuth+'</div></div></div>'+
         '<div class="mkd-stat"><div class="mkd-stat-ico g"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M3 20 C 3 15, 6 12, 11 12 C 16 12, 19 15, 19 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="mkd-stat-l">Managers here</div><div class="mkd-stat-n">—</div></div></div>'+
       '</div>'+
+      intelHtml+
 
       /* Toolbar — search + sort + view toggle */
       '<div class="mk-toolbar" style="margin-top:24px;grid-template-columns:minmax(0,1fr) auto auto auto">'+
@@ -1231,7 +1275,7 @@ function hydrateMarket(iso){
       '</div>'+
 
       /* Site rows — table (list) or cards (grid), swapped by view toggle */
-      '<div id="mkd-list-wrap" class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th>Monthly traffic</th><th>Authority</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
+      '<div id="mkd-list-wrap" class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th>Monthly traffic</th><th>Authority</th><th>Trend</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
       '<div id="mkd-grid-wrap" class="mkd-cards" hidden></div>'+
 
       /* Footer callout */
@@ -1240,6 +1284,7 @@ function hydrateMarket(iso){
         '<button class="btn" onclick="go(\'#/loyalty\')">See how loyalty works →</button>'+
       '</div>';
 
+    drawMarketChart(d.history);
     // Wire pills
     document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(x){x.classList.remove('on');});b.classList.add('on');MKD_STATE.cat=b.dataset.c;renderMkdRows();});});
     // Wire search + sort
@@ -1252,6 +1297,31 @@ function hydrateMarket(iso){
 }
 
 var MKD_PALETTE=['#3D7CFF','#8B5CF6','#EC4899','#F59E0B','#14B87A','#00D9FF'];
+
+function miniSpark(vals){
+  if(!vals||vals.length<2) return '<span style="color:var(--ink-mute);font-size:11px">—</span>';
+  var w=62,hh=22,mx=Math.max.apply(null,vals),mn=Math.min.apply(null,vals),rng=(mx-mn)||1;
+  var pts=vals.map(function(v,i){return (i/(vals.length-1)*w).toFixed(1)+','+(hh-2-((v-mn)/rng)*(hh-4)).toFixed(1);});
+  var up=vals[vals.length-1]>=vals[0],col=up?'#0E9760':'#E5484D';
+  return '<svg class="mkd-spark" viewBox="0 0 '+w+' '+hh+'" preserveAspectRatio="none"><polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function trendArrow(tpct){
+  if(tpct==null||Math.abs(tpct)<1) return '<span class="mkd-tr flat">–</span>';
+  var up=tpct>0;
+  return '<span class="mkd-tr '+(up?'up':'down')+'">'+(up?'▲':'▼')+(Math.abs(tpct)>999?'999+':Math.abs(Math.round(tpct)))+'%</span>';
+}
+function drawMarketChart(history){
+  var el=document.getElementById('mkd-mchart');if(!el||!history||history.length<2)return;
+  var vals=history.map(function(x){return x.etv||0;}),N=vals.length;
+  var W=460,H=92,T=8,B=8,L=6,R=6,pw=W-L-R,ph=H-T-B,mx=Math.max.apply(null,vals)*1.1||1;
+  var x=function(i){return L+i/(N-1)*pw},y=function(v){return T+ph-v/mx*ph};
+  var pts=vals.map(function(v,i){return x(i).toFixed(1)+','+y(v).toFixed(1);});
+  var up=vals[N-1]>=vals[0],col=up?'#0E9760':'#3D7CFF';
+  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:100%" preserveAspectRatio="none"><defs><linearGradient id="mcg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+col+'" stop-opacity=".18"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="M'+x(0).toFixed(1)+','+(T+ph)+' L'+pts.join(' L')+' L'+x(N-1).toFixed(1)+','+(T+ph)+' Z" fill="url(#mcg)"/>'+
+    '<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+  '</svg>';
+}
 
 function setMkdView(v){
   MKD_STATE.view = v;
@@ -1290,7 +1360,7 @@ function renderMkdRows(){
   var body=document.getElementById('mkd-body');
   var grid=document.getElementById('mkd-grid-wrap');
   if(!rows.length){
-    if(body) body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:48px;color:var(--ink-mute)">No sites match your filters.</td></tr>';
+    if(body) body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--ink-mute)">No sites match your filters.</td></tr>';
     if(grid) grid.innerHTML='<div style="padding:48px;text-align:center;color:var(--ink-mute);grid-column:1/-1">No sites match your filters.</div>';
     return;
   }
@@ -1303,6 +1373,7 @@ function renderMkdRows(){
         '<td><div class="mkd-site">'+mkdFavHtml(r,color)+'<div class="mkd-site-info"><b>'+h(r.name)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
         '<td><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
         '<td><span class="mkd-auth">'+r.authority+'</span></td>'+
+        '<td><div class="mkd-trend">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div></td>'+
         '<td>'+verts+'</td>'+
         '<td><div class="mkd-acts" onclick="event.stopPropagation()">'+
           '<a class="mkd-visit" href="https://'+encodeURI(r.domain)+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
@@ -1323,6 +1394,7 @@ function renderMkdRows(){
           '<div class="mkd-card-metric"><b>'+fmt(r.etv)+'</b><span>Monthly traffic</span></div>'+
           '<div class="mkd-card-metric"><b>'+r.authority+'</b><span>Authority</span></div>'+
         '</div>'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 2px">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div>'+
         '<div class="mkd-card-acts" onclick="event.stopPropagation()">'+
           '<button class="mkd-btn have'+(r.have?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button>'+
           '<button class="mkd-btn want'+(r.want?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted ✓':'Want')+'</button>'+

@@ -273,8 +273,51 @@ def build_history(conn: sqlite3.Connection, months: int = 12,
         updated += 1
 
     conn.commit()
+    build_market_history(conn, cache_dir=str(cache), months=months)
     return {"sites_seen": len(sites), "months": len(target_months),
             "window": f"{target_months[0][0]}-{target_months[0][1]:02d} … "
                       f"{target_months[-1][0]}-{target_months[-1][1]:02d}",
             "snapshots": snapshotted, "updated": updated,
             "markets_done": done, "markets_total": len(market_codes)}
+
+
+def build_market_history(conn: sqlite3.Connection, cache_dir: str | None = None,
+                         months: int = 12) -> dict:
+    """Aggregate each market's monthly traffic from the per-market history cache
+    (data/history_cache/hist_<code>.json) into the market_history table — FREE
+    (reads the cache the history run already saved, no API calls). Powers the
+    market-level traffic trend chart."""
+    cache = Path(cache_dir) if cache_dir else (config.DATA_DIR / "history_cache")
+    conn.execute("CREATE TABLE IF NOT EXISTS market_history ("
+                 "country TEXT NOT NULL, iso_week TEXT NOT NULL, etv REAL NOT NULL, "
+                 "UNIQUE(country, iso_week))")
+    conn.execute("DELETE FROM market_history")
+    # match the market page's scale: only PUBLISHED affiliates (the cache holds
+    # every domain, incl. rejected non-affiliates like imdb/play.google).
+    affiliates = {r["domain"] for r in
+                  conn.execute("SELECT domain FROM sites WHERE classification='affiliate'")}
+    totals: dict[str, dict] = {}          # iso -> {(y,m): summed etv}
+    files = sorted(cache.glob("hist_*.json"))
+    for f in files:
+        try:
+            code = int(f.stem.split("_")[1])
+        except (IndexError, ValueError):
+            continue
+        iso = iso_for(code)
+        if not iso:
+            continue
+        data = json.loads(f.read_text())
+        acc = totals.setdefault(iso, {})
+        for dom, series in data.items():
+            if dom not in affiliates:
+                continue
+            for k, v in series.items():
+                y, m = k.split("-")
+                key = (int(y), int(m))
+                acc[key] = acc.get(key, 0.0) + (v or 0)
+    for iso, acc in totals.items():
+        for (y, m) in sorted(acc)[-months:]:
+            conn.execute("INSERT OR REPLACE INTO market_history(country, iso_week, etv) "
+                         "VALUES (?,?,?)", (iso, f"{y:04d}-{m:02d}-01", round(acc[(y, m)], 1)))
+    conn.commit()
+    return {"markets": len(totals), "cache_files": len(files)}
