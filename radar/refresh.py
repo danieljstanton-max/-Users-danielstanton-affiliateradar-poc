@@ -274,6 +274,7 @@ def build_history(conn: sqlite3.Connection, months: int = 12,
 
     conn.commit()
     build_market_history(conn, cache_dir=str(cache), months=months)
+    build_site_region_history(conn, cache_dir=str(cache), months=months + 3)
     return {"sites_seen": len(sites), "months": len(target_months),
             "window": f"{target_months[0][0]}-{target_months[0][1]:02d} … "
                       f"{target_months[-1][0]}-{target_months[-1][1]:02d}",
@@ -321,3 +322,39 @@ def build_market_history(conn: sqlite3.Connection, cache_dir: str | None = None,
                          "VALUES (?,?,?)", (iso, f"{y:04d}-{m:02d}-01", round(acc[(y, m)], 1)))
     conn.commit()
     return {"markets": len(totals), "cache_files": len(files)}
+
+
+def build_site_region_history(conn: sqlite3.Connection, cache_dir: str | None = None,
+                              months: int = 15) -> dict:
+    """Per-site, per-market monthly traffic — from the history cache (FREE, no
+    API). Powers the profile's per-market momentum highlight ('one to watch').
+    Published affiliates only (the only sites with public profiles)."""
+    cache = Path(cache_dir) if cache_dir else (config.DATA_DIR / "history_cache")
+    conn.execute("CREATE TABLE IF NOT EXISTS site_region_history ("
+                 "site_id INTEGER NOT NULL, country TEXT NOT NULL, iso_week TEXT NOT NULL, "
+                 "etv REAL NOT NULL, UNIQUE(site_id, country, iso_week))")
+    conn.execute("DELETE FROM site_region_history")
+    dom2id = {r["domain"]: r["id"] for r in
+              conn.execute("SELECT id, domain FROM sites WHERE classification='affiliate'")}
+    rows = 0
+    for f in sorted(cache.glob("hist_*.json")):
+        try:
+            code = int(f.stem.split("_")[1])
+        except (IndexError, ValueError):
+            continue
+        iso = iso_for(code)
+        if not iso:
+            continue
+        data = json.loads(f.read_text())
+        for dom, series in data.items():
+            sid = dom2id.get(dom)
+            if not sid:
+                continue
+            for k, v in sorted(series.items())[-months:]:
+                y, m = k.split("-")
+                conn.execute(
+                    "INSERT OR REPLACE INTO site_region_history(site_id, country, iso_week, etv) "
+                    "VALUES (?,?,?,?)", (sid, iso, f"{int(y):04d}-{int(m):02d}-01", round(v or 0, 1)))
+                rows += 1
+    conn.commit()
+    return {"rows": rows, "sites": len(dom2id)}

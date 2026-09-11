@@ -115,6 +115,38 @@ def _market_history(conn: sqlite3.Connection, iso: str, n: int = 12) -> list:
     return [{"week": r["iso_week"], "etv": int(r["etv"] or 0)} for r in reversed(rows)]
 
 
+def _market_highlight(conn: sqlite3.Connection, site_id: int, primary_iso: str,
+                      months: int = 3) -> dict | None:
+    """A 'one to watch': a NON-primary market where this site's traffic has
+    surged over the last `months`, from per-site-per-market history. Returns the
+    strongest genuine riser (meaningful base + current traffic), or None."""
+    try:
+        rows = conn.execute(
+            "SELECT country, etv FROM site_region_history WHERE site_id=? "
+            "ORDER BY country, iso_week", (site_id,)).fetchall()
+    except sqlite3.OperationalError:
+        return None
+    series: dict = {}
+    for r in rows:
+        series.setdefault(r["country"], []).append(r["etv"])
+    best = None
+    for iso, vals in series.items():
+        if iso == primary_iso or len(vals) < months + 1:
+            continue
+        base, cur = vals[-(months + 1)], vals[-1]
+        if not base or base < 2000 or cur < 5000:      # need a meaningful base + current
+            continue
+        pct = round((cur - base) / base * 100)
+        if pct < 40:                                    # only genuine surges
+            continue
+        if best is None or pct > best["pct"]:
+            best = {"iso": iso, "pct": pct, "etv": int(cur)}
+    if not best:
+        return None
+    return {"iso": best["iso"], "flag": flag(best["iso"]), "name": name(best["iso"]),
+            "pct": best["pct"], "etv": best["etv"], "months": months}
+
+
 def country_list(conn: sqlite3.Connection, country: str,
                  vertical: str | None = None, sort: str = "traffic",
                  published_only: bool = True) -> dict:
@@ -351,6 +383,10 @@ def site_profile(conn: sqlite3.Connection, domain: str,
         "rating": rev["rating"] if rev else None,
         "review_count": (rev["review_count"] if rev else 0) or 0,
         "traffic_history": history,
+        "market_highlight": _market_highlight(conn, s["id"], s["top_country"]),
+        "last_updated": (conn.execute(
+            "SELECT MAX(captured_at) FROM traffic_snapshots WHERE site_id=?",
+            (s["id"],)).fetchone() or [None])[0],
         "contact": None,
         "contact_locked": True,
     }
