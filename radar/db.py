@@ -70,6 +70,29 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             " created_at TEXT NOT NULL);"
             "CREATE INDEX idx_share_events_mgr ON share_events(manager_id, created_at DESC);")
         applied.append("share_events")
+    # chat_messages — one row per posted message. Rooms are just string
+    # slugs ('global', 'uk', 'casino'...) so we can add per-market or
+    # per-vertical rooms later without a schema change. Indexed on
+    # (room, id DESC) so "load the newest N in room X" is instant.
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='chat_messages'").fetchone() is None:
+        conn.executescript(
+            "CREATE TABLE chat_messages ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " room TEXT NOT NULL DEFAULT 'global',"
+            " manager_id INTEGER NOT NULL REFERENCES chat_managers(id) ON DELETE CASCADE,"
+            " body TEXT NOT NULL,"
+            " created_at TEXT NOT NULL);"
+            "CREATE INDEX idx_chat_room_id ON chat_messages(room, id DESC);"
+            "CREATE INDEX idx_chat_mgr ON chat_messages(manager_id);")
+        applied.append("chat_messages")
+    # WAL — many-readers-one-writer without blocking. Chat polling means
+    # ~150 read requests/sec at 500 concurrent viewers; a rolled-back
+    # default journal would serialize them behind every write. Safe to
+    # call on every boot: it's a persistent PRAGMA per-DB.
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+    except Exception:
+        pass
     # Non-affiliate domains that made it in as 'affiliate' but shouldn't be
     # in the network. Flip them to 'rejected' — one of the values the
     # existing CHECK constraint on sites.classification allows. Idempotent:

@@ -250,6 +250,103 @@ def api_share_claim(conn, mid):
     return {"ok": True, "granted": SHARE_REWARD_SWAPS}
 
 
+# --- Chat -------------------------------------------------------------------
+CHAT_ROOMS = {
+    "global": {"key": "global", "name": "Global lobby",
+               "desc": "Every verified manager on Affswap."},
+    # More rooms can go here later (per-country / per-vertical).
+}
+CHAT_MAX_BODY = 500                 # chars per message
+CHAT_MAX_PER_MINUTE = 20            # posts per member per minute (soft rate cap)
+CHAT_DEFAULT_LIMIT = 60             # initial history fetched
+
+
+def _chat_room(room: str | None) -> str:
+    return room if room in CHAT_ROOMS else "global"
+
+
+def api_chat_list(conn, mid, room: str, since_id: int, limit: int):
+    """Return messages in a room. `since_id > 0` means give me only rows
+    newer than this — the poll path. `since_id == 0` means initial load —
+    return the most recent `limit` in chronological order."""
+    room = _chat_room(room)
+    limit = max(1, min(int(limit or CHAT_DEFAULT_LIMIT), 200))
+    if since_id > 0:
+        rows = conn.execute(
+            "SELECT m.id, m.body, m.created_at, m.manager_id, "
+            "       c.handle, c.real_name, c.avatar_url "
+            "FROM chat_messages m JOIN chat_managers c ON c.id=m.manager_id "
+            "WHERE m.room=? AND m.id > ? ORDER BY m.id ASC LIMIT ?",
+            (room, since_id, limit)).fetchall()
+    else:
+        # Newest N, then flip so oldest-first for rendering
+        rows = list(conn.execute(
+            "SELECT m.id, m.body, m.created_at, m.manager_id, "
+            "       c.handle, c.real_name, c.avatar_url "
+            "FROM chat_messages m JOIN chat_managers c ON c.id=m.manager_id "
+            "WHERE m.room=? ORDER BY m.id DESC LIMIT ?",
+            (room, limit)).fetchall())[::-1]
+    messages = [{
+        "id": r["id"], "body": r["body"], "at": r["created_at"],
+        "manager_id": r["manager_id"],
+        "handle": r["handle"], "real_name": r["real_name"],
+        "avatar_url": r["avatar_url"],
+        "is_you": r["manager_id"] == mid,
+    } for r in rows]
+    return {"room": room, "messages": messages,
+            "last_id": messages[-1]["id"] if messages else since_id}
+
+
+def api_chat_send(conn, mid, payload):
+    """Post a message. Requires an authenticated caller (route enforces).
+    Soft rate-cap so a runaway client can't spam."""
+    body = (payload.get("body") or "").strip()
+    room = _chat_room(payload.get("room"))
+    if not body:
+        return {"ok": False, "error": "empty_message"}, 400
+    if len(body) > CHAT_MAX_BODY:
+        return {"ok": False, "error": "too_long",
+                "limit": CHAT_MAX_BODY}, 400
+    # Rate cap — count posts by this member in the last 60 seconds.
+    recent = conn.execute(
+        "SELECT COUNT(*) c FROM chat_messages "
+        "WHERE manager_id=? AND created_at > datetime('now', '-60 seconds')",
+        (mid,)).fetchone()["c"]
+    if recent >= CHAT_MAX_PER_MINUTE:
+        return {"ok": False, "error": "rate_limited",
+                "retry_after": 60}, 429
+    when = now_iso()
+    cur = conn.execute(
+        "INSERT INTO chat_messages (room, manager_id, body, created_at) "
+        "VALUES (?,?,?,?)", (room, mid, body, when))
+    conn.commit()
+    row = conn.execute(
+        "SELECT c.handle, c.real_name, c.avatar_url "
+        "FROM chat_managers c WHERE c.id=?", (mid,)).fetchone()
+    return {
+        "ok": True,
+        "message": {
+            "id": cur.lastrowid, "body": body, "at": when,
+            "manager_id": mid,
+            "handle": row["handle"] if row else "you",
+            "real_name": row["real_name"] if row else None,
+            "avatar_url": row["avatar_url"] if row else None,
+            "is_you": True,
+        },
+    }, 200
+
+
+def api_chat_rooms(conn):
+    """List rooms with a live message count for each — small enough to
+    include in a single response and lets the UI show '32 messages'."""
+    counts = {r["room"]: r["c"] for r in conn.execute(
+        "SELECT room, COUNT(*) c FROM chat_messages GROUP BY room")}
+    return {"rooms": [{
+        "key": k, "name": v["name"], "desc": v["desc"],
+        "message_count": counts.get(k, 0),
+    } for k, v in CHAT_ROOMS.items()]}
+
+
 def api_lists(conn, mid):
     """The current member's Want and Have lists, with site info attached."""
     def _fetch(table):
@@ -628,6 +725,19 @@ class _H(BaseHTTPRequestHandler):
                 self._json(api_lists(conn, mid))
             elif u.path == "/api/share/status":
                 self._json(api_share_status(conn, mid))
+            elif u.path == "/api/chat":
+                try:
+                    since_id = int(g("since", "0") or 0)
+                except Exception:
+                    since_id = 0
+                try:
+                    limit = int(g("limit", str(CHAT_DEFAULT_LIMIT)) or CHAT_DEFAULT_LIMIT)
+                except Exception:
+                    limit = CHAT_DEFAULT_LIMIT
+                self._json(api_chat_list(conn, mid, g("room", "global"),
+                                         since_id, limit))
+            elif u.path == "/api/chat/rooms":
+                self._json(api_chat_rooms(conn))
             elif u.path == "/api/me":
                 a = swaps.access(conn, mid)
                 row = conn.execute(
@@ -673,6 +783,7 @@ class _H(BaseHTTPRequestHandler):
         try:
             cookies = self._cookies()
             mid = _me(conn, cookies)
+            authed = _me_from_session(conn, cookies) is not None
             # Auth-mutating endpoints handled first (they set their own cookies).
             if u.path == "/api/register":
                 res, cookie_hdr = api_register(conn, payload)
@@ -735,6 +846,15 @@ class _H(BaseHTTPRequestHandler):
                 else:
                     try:
                         self._json(api_account_update(conn, mid, payload))
+                    except Exception as e:
+                        self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/chat/send":
+                if not authed:
+                    self._json({"ok": False, "error": "not_authenticated"}, 401)
+                else:
+                    try:
+                        res, code = api_chat_send(conn, mid, payload)
+                        self._json(res, code)
                     except Exception as e:
                         self._json({"ok": False, "error": str(e)}, 400)
             elif u.path == "/api/share/claim":
