@@ -64,8 +64,26 @@ def _me(conn, cookies=None) -> int:
     return _ensure_demo(conn)
 
 
-def _shot_url(image_ref):
-    return "/shot/" + os.path.basename(image_ref) if image_ref else None
+def _shot_url(image_ref, domain=None):
+    """Homepage image URL for a profile.
+
+    * an embedded upload (data: URI) is used as-is — it travels with the DB, so
+      it works on any host;
+    * otherwise we render the homepage LIVE, on demand, via thum.io keyed by the
+      domain — no files to store or deploy, and it stays current;
+    * a stored local file path (dev only) falls back to /shot/<name>.
+    """
+    if image_ref and str(image_ref).startswith("data:"):
+        return image_ref
+    if domain:
+        # mShots (WordPress.com) renders homepages on demand and, unlike thum.io's
+        # free tier, permits hot-linking as an <img>. It renders async: the first
+        # request may return a "generating" placeholder, so the client retries.
+        return ("https://s0.wp.com/mshots/v1/"
+                + urllib.parse.quote("https://" + domain + "/", safe="") + "?w=1200")
+    if image_ref:
+        return "/shot/" + os.path.basename(image_ref)
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -454,7 +472,7 @@ def api_site(conn, domain, mid):
     p = views.site_profile(conn, domain, published_only=False)
     if not p:
         return None
-    p["screenshot"] = _shot_url(p.get("screenshot"))
+    p["screenshot"] = _shot_url(p.get("screenshot"), p.get("domain"))
     sid = conn.execute("SELECT id FROM sites WHERE domain=?", (domain,)).fetchone()
     sid = sid["id"] if sid else None
     p["you_reviewed"] = bool(sid and conn.execute(
@@ -981,11 +999,11 @@ function sparkSVG(vals){
   +"<polyline points='"+line+"' fill='none' stroke='#3F88E2' stroke-width='2.5'/>"
   +"<circle cx='"+last[0]+"' cy='"+last[1]+"' r='3.5' fill='#3F88E2'/></svg>";
 }
-// series: real weekly snapshots once >=3 exist, else 12 monthly points modeled
-// from the site's current etv + its real 90-day trend (endpoint pinned to etv)
+// series: real MONTHLY snapshots once >=3 exist (DataForSEO historical), else
+// 12 monthly points modeled from current etv + the real 90-day trend
 function chartSeries(p){
  var hist=(p.traffic_history||[]).map(function(x){return +x.etv||0;}).filter(function(v){return v>0;});
- if(hist.length>=3) return {real:true,unit:'week',series:hist};
+ if(hist.length>=3) return {real:true,unit:'month',series:hist};
  var etv=+p.etv||0,n=12,dir=p.trend_dir,m=(p.trend||'').match(/([\d.]+)/),pct=m?+m[1]:8;
  var span=Math.min(0.5,Math.max(0.28,pct/100*2)),start=dir==='down'?(1+span):(1-span),s=[];
  for(var i=0;i<n;i++){var t=i/(n-1),f=start+(1-start)*t,wob=Math.sin((i+1)*12.9898)*43758.5453;wob=wob-Math.floor(wob);f=f*(1+(wob-0.5)*0.02);s.push(Math.max(1,etv*f));}
@@ -996,7 +1014,7 @@ function chartCard(p){
  if(ser.length<2) return "<div class='chartcard'><div class='cc-top'><span class='lbl' style='margin:0'>Traffic history</span></div><div class='chart-empty'>Building traffic history — check back after the next weekly refresh.</div></div>";
  var wk=cs.unit==='week';
  function slc(w,mo){var k=wk?w:mo;return ser.slice(Math.max(0,ser.length-k));}
- var note=cs.real?"live weekly · DataForSEO":"modeled from current traffic &amp; 90-day trend — live history building";
+ var note=cs.real?"live monthly · DataForSEO":"modeled from current traffic &amp; 90-day trend — live history building";
  return "<div class='chartcard'><div class='cc-top'><span class='lbl' style='margin:0'>Traffic history</span>"
   +"<span class='rangeseg-btns'><span class='rgbtn on' onclick=\"chartTo(this,'3')\">3M</span><span class='rgbtn' onclick=\"chartTo(this,'6')\">6M</span><span class='rgbtn' onclick=\"chartTo(this,'12')\">1Y</span></span></div>"
   +"<div class='rangeseg'><div class='chart on' data-c='3'>"+sparkSVG(slc(13,3))+"</div><div class='chart' data-c='6'>"+sparkSVG(slc(26,6))+"</div><div class='chart' data-c='12'>"+sparkSVG(ser.slice())+"</div></div>"
@@ -1007,7 +1025,7 @@ function renderSite(domain){renderTabs('markets');
  gj('/api/site?domain='+encodeURIComponent(domain)).then(function(p){
   if(p.error){APP.innerHTML=appbar({back:'#/home',title:'Not found'})+"<div class='empty'>Site not found.</div>";return;}
   _site=p;
-  var hero=p.screenshot?"<img class='pshot' src='"+p.screenshot+"'>":"<div class='pshot none'>homepage</div>";
+  var hero=p.screenshot?"<img class='pshot' src='"+p.screenshot+"' onerror=\"this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'pshot none',textContent:'homepage'}))\">":"<div class='pshot none'>homepage</div>";
   var regs=p.regions||[];var mx=Math.max.apply(null,regs.map(function(r){return r.etv||0;}).concat([1]));
   function mrow(r){return "<div class='mk'><span class='fl'>"+r.flag+"</span><span class='mn'>"+h(r.name)+(r.primary?' ★':'')+"</span><span class='bar'><span style='width:"+Math.max(6,Math.round((r.etv||0)/mx*100))+"%'></span></span><span class='mv'>"+fmt(r.etv)+"</span></div>";}
   var top5=regs.slice(0,5).map(mrow).join('');

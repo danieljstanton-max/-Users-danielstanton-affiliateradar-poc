@@ -265,6 +265,67 @@ class DataForSEOClient:
                         out[target] = round(float(etv), 1)
         return out
 
+    def historical_bulk_traffic(self, targets: list[str], location_code: int,
+                                language_code: str = "en") -> dict[str, dict[tuple[int, int], float]]:
+        """{domain: {(year, month): organic etv}} — the full MONTHLY history for
+        many domains in ONE market, in as few calls as possible.
+
+        LIVE: DataForSEO Labs *Historical Bulk Traffic Estimation* takes up to
+        1000 targets/call and returns organic etv per month back to 2020-10.
+        (This endpoint returns the full range; the caller slices the last N
+        months. It does not accept date_from/date_to.)
+        MOCK: reuse the single-domain synth across 12 synthetic months."""
+        out: dict[str, dict[tuple[int, int], float]] = {}
+        targets = [t for t in targets if t]
+        if not targets:
+            return out
+        if self.live:
+            for i in range(0, len(targets), 1000):
+                raw = self._post(
+                    "/v3/dataforseo_labs/google/historical_bulk_traffic_estimation/live",
+                    [{"targets": targets[i:i + 1000], "location_code": location_code,
+                      "language_code": language_code, "item_types": ["organic"]}])
+                for dom, series in self._parse_historical_bulk(raw).items():
+                    out.setdefault(dom, {}).update(series)
+        else:
+            # MOCK: 12 months ending "now", using the deterministic week factors
+            from datetime import date
+            y0, m0 = date.today().year, date.today().month
+            for t in targets:
+                series = {}
+                for k in range(12):
+                    mm = m0 - k
+                    yy = y0
+                    while mm <= 0:
+                        mm += 12; yy -= 1
+                    etv = self._parse_domain_rank_overview(
+                        self._mock_domain_rank_overview(t, location_code, week=k))
+                    if etv and etv > 0:
+                        series[(yy, mm)] = round(etv, 1)
+                if series:
+                    out[t] = series
+        return out
+
+    @staticmethod
+    def _parse_historical_bulk(raw: dict) -> dict[str, dict[tuple[int, int], float]]:
+        """Historical Bulk Traffic Estimation → {domain: {(year,month): etv}}."""
+        out: dict[str, dict[tuple[int, int], float]] = {}
+        for task in DataForSEOClient._ok_tasks(raw):
+            for result in task.get("result") or []:
+                for item in result.get("items") or []:
+                    target = item.get("target") or item.get("domain")
+                    if not target:
+                        continue
+                    organic = ((item.get("metrics") or {}).get("organic")) or []
+                    series: dict[tuple[int, int], float] = {}
+                    for pt in organic:
+                        y, mo, etv = pt.get("year"), pt.get("month"), pt.get("etv")
+                        if y and mo and etv is not None:
+                            series[(int(y), int(mo))] = round(float(etv), 1)
+                    if series:
+                        out[target] = series
+        return out
+
     @staticmethod
     def _parse_domain_rank_overview(raw: dict) -> float | None:
         for task in DataForSEOClient._ok_tasks(raw):

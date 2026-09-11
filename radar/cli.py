@@ -78,6 +78,26 @@ def cmd_refresh(args) -> None:
         conn.close()
 
 
+def cmd_history(args) -> None:
+    from .refresh import build_history
+    from .providers.dataforseo import DataForSEOError
+    conn = connect()
+    try:
+        _banner("HISTORY — real monthly traffic (Historical Bulk Traffic Estimation)")
+        try:
+            r = build_history(conn, months=args.months,
+                              progress=lambda n, t, c, cached: print(
+                                  f"  market {n:>2}/{t}  (loc {c}){'  [cached]' if cached else ''}"))
+        except DataForSEOError as e:
+            print(f"  ✗ stopped (resumable — cached markets kept): {e}")
+            return
+        print(f"\n  window={r.get('window')}  sites={r['sites_seen']}  "
+              f"months={r['months']}  snapshots={r['snapshots']}  updated={r['updated']}  "
+              f"markets={r.get('markets_done')}/{r.get('markets_total')}")
+    finally:
+        conn.close()
+
+
 def cmd_screenshot(args) -> None:
     conn = connect()
     client = ScreenshotClient()
@@ -846,6 +866,10 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--build-history", action="store_true",
                    help="run weeks 0..N to seed trend history")
     q.set_defaults(func=cmd_refresh)
+
+    q = sub.add_parser("history", help="build real N-month monthly traffic history")
+    q.add_argument("--months", type=int, default=12)
+    q.set_defaults(func=cmd_history)
 
     q = sub.add_parser("screenshot")
     q.add_argument("--domain"); q.add_argument("--all", action="store_true")

@@ -376,6 +376,42 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .sp-btn.on{background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28);box-shadow:none}
 .sp-locked{background:var(--blue-softer);border:1px dashed var(--line-strong);padding:14px 16px;border-radius:10px;text-align:center;color:var(--ink-mute);font-size:13.5px;font-weight:500;margin-top:12px}
 
+/* ---- Rich site profile ---- */
+.sp-top{display:grid;grid-template-columns:auto 1fr;gap:24px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow-sm);align-items:center}
+.sp-shot-lg{width:280px;height:176px;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#F8FAFD,#EEF2F8);display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)}
+.sp-shot-lg img{width:108px;height:108px;object-fit:contain;border-radius:24px;background:#fff;padding:15px;box-shadow:0 10px 26px rgba(20,40,80,.12)}
+.sp-shot-lg .letter{width:96px;height:96px;border-radius:22px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;box-shadow:0 10px 26px rgba(46,119,204,.28)}
+.sp-name-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sp-name2{font-size:30px;font-weight:800;letter-spacing:-0.03em;color:var(--ink);line-height:1.02}
+.sp-sub{color:var(--ink-2);font-size:13.5px;margin-top:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sp-cta{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.sp-cta .sp-btn{padding:11px 18px;min-width:150px;flex:none}
+.sp-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:16px}
+.sp-stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 15px;box-shadow:var(--shadow-sm)}
+.sp-stat .l{font-family:var(--f-mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-mute);font-weight:600}
+.sp-stat .n{font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--ink);margin-top:7px;line-height:1}
+.sp-stat .n.up{color:#0E9760}.sp-stat .n.down{color:#E5484D}
+.sp-stat .s{font-size:10.5px;color:var(--ink-mute);margin-top:4px}
+.sp-main{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;margin-top:16px;align-items:start}
+.sp-chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sp-delta{font-size:12.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.sp-delta.up{background:var(--up-soft);color:#0E9760}.sp-delta.down{background:rgba(229,72,77,0.10);color:#C53034}
+.sp-chart-note{font-size:11.5px;color:var(--ink-mute);margin-top:12px;font-family:var(--f-mono)}
+.sp-mkt-row2{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;padding:6px 0}
+.sp-mkt-row2 .nm{color:var(--ink);font-weight:500;font-size:13px}
+.sp-mkt-row2 .bar{background:var(--line);height:5px;border-radius:5px;overflow:hidden;margin-top:5px}
+.sp-mkt-row2 .bar i{display:block;height:100%;background:var(--blue)}
+.sp-mkt-row2 .etv{font-family:var(--f-mono);font-size:12.5px;color:var(--ink);font-weight:600}
+.sp-about{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow-sm);margin-top:16px}
+.sp-about h4,.sp-reviews h4{font-size:11.5px;letter-spacing:0.09em;text-transform:uppercase;color:var(--ink-mute);font-family:var(--f-mono);margin-bottom:12px;font-weight:500}
+.sp-about p{color:var(--ink-2);font-size:14.5px;line-height:1.62}
+.sp-about b{color:var(--ink);font-weight:700}
+.sp-reviews{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow-sm);margin-top:16px}
+.sp-rev-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}
+.sp-rev-score{font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-0.02em}
+.sp-rev-item{padding:12px 0;border-top:1px solid var(--line);color:var(--ink-2);font-size:13.5px}
+@media(max-width:820px){.sp-stats{grid-template-columns:repeat(3,1fr)}.sp-main{grid-template-columns:1fr}.sp-top{grid-template-columns:1fr}.sp-shot-lg{width:100%}}
+
 /* SWAPS */
 .sw-hero{padding:32px 0 24px}
 .sw-hero h1{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1.05}
@@ -1304,35 +1340,65 @@ function hydrateSite(domain){
   apiGet('/api/site?domain='+encodeURIComponent(domain)).then(function(p){
     if(!p||p.error){document.getElementById('v-site').innerHTML='<div class="wrap" style="padding:60px 0"><a class="mkd-back" onclick="go(\'#/markets\')">← Back</a><div style="padding:40px;text-align:center;color:var(--ink-mute)">This site isn\'t in the network yet. <a onclick="go(\'#/markets\')" style="color:var(--blue);cursor:pointer">Browse markets</a></div></div>';return;}
     var letter=(p.name||domain).charAt(0).toUpperCase();
-    var mkts=(p.regions||[]).slice().sort(function(a,b){return (b.etv||0)-(a.etv||0);});
-    var maxr=(mkts[0]&&mkts[0].etv)||1;
-    var mktRows=mkts.slice(0,5).map(function(g){var w=Math.max(3,Math.round((g.etv||0)/maxr*100));return '<div class="sp-mkt-row"><span class="mq-flag">'+g.flag+'</span><span style="color:var(--ink);font-weight:500;font-size:13.5px">'+h(g.name||g.iso)+'</span><span class="sp-mkt-bar"><i style="width:'+w+'%"></i></span><span class="sp-mkt-etv">'+fmt(g.etv||0)+'</span></div>';}).join('');
-    var verts=(p.verticals||[]).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
-    var rating = p.review_count ? Number(p.rating||0).toFixed(1)+' <span style="color:var(--ink-mute);font-size:.8em">('+p.review_count+' review'+(p.review_count===1?'':'s')+')</span>' : 'No reviews yet';
+    var reg=(p.regions||[]).slice().sort(function(a,b){return (b.etv||0)-(a.etv||0);});
+    var maxr=(reg[0]&&reg[0].etv)||1, mktCount=reg.length;
+    var prim=reg[0]||{name:(p.traffic_origin&&p.traffic_origin.iso)||'—',flag:(p.traffic_origin&&p.traffic_origin.flag)||'🏳️',etv:p.etv||0};
+    var primShare=p.etv?Math.round((prim.etv||0)/p.etv*100):0;
+    var hist=p.traffic_history||[], vals=hist.map(function(x){return x.etv||0;});
+    var authority=p.etv>0?Math.round(Math.log10(p.etv+1)*10):0;
+    var first=vals[0]||0, last=vals[vals.length-1]||0;
+    var yoy=first>=300?Math.round((last-first)/first*100):null;   // % is unreliable on a tiny base
+    var yoyN=yoy===null?'—':((yoy>=0?'+':'')+(Math.abs(yoy)>999?'999+':yoy)+'%');
+    var yoyC=yoy===null?'':(yoy>2?'up':yoy<-2?'down':'');
+    var peak=vals.length?Math.max.apply(null,vals):0, peakI=vals.indexOf(peak);
+    var MON=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function mlabel(w){if(!w)return '';var pt=String(w).split('-');return MON[+pt[1]]+" '"+pt[0].slice(2);}
+    var peakLabel=(peakI>=0&&hist[peakI])?mlabel(hist[peakI].week):'';
+    var vertNames=(p.verticals||[]).map(function(v){return v.charAt(0).toUpperCase()+v.slice(1);});
+    var verts=vertNames.map(function(v){return '<span class="chip">'+h(v)+'</span>'}).join('')||'<span class="chip">Affiliate</span>';
+    var also=reg.slice(1,4).map(function(r){return h(r.name||r.iso);}).join(', ');
+    var yoyTxt=yoy>2?'<b>up '+yoy+'%</b>':yoy<-2?'<b>down '+Math.abs(yoy)+'%</b>':'<b>roughly flat</b>';
+    var trafLine=yoy===null?'Its traffic history is still building':('over the last 12 months traffic is '+yoyTxt+(peak?', from a peak of <b>'+fmt(peak)+'</b>'+(peakLabel?' in '+peakLabel:''):''));
+    var narrative='<b>'+h(p.name||domain)+'</b> is a '+(vertNames.join(' &amp; ')||'affiliate')+' site pulling an estimated <b>'+fmt(p.etv||0)+'</b> organic visits a month'+(yoy===null?'. '+trafLine:' — '+trafLine)+'. Its audience is concentrated in <b>'+h(prim.name||'—')+'</b> ('+primShare+'% of traffic)'+(also?', with further reach across '+also:'')+' — live in <b>'+mktCount+' markets</b> in total.';
+    function statTile(l,n,cls,s){return '<div class="sp-stat"><div class="l">'+l+'</div><div class="n'+(cls?' '+cls:'')+'">'+n+'</div>'+(s?'<div class="s">'+s+'</div>':'')+'</div>';}
+    var stats=[
+      statTile('Monthly traffic',fmt(p.etv||0),'', 'organic est.'),
+      statTile('Authority',authority+'<span style="font-size:13px;color:var(--ink-mute);font-weight:600">/100</span>','', 'from live traffic'),
+      statTile('Markets',mktCount,'', 'countries live'),
+      statTile('12-mo change',yoyN,yoyC,'vs a year ago'),
+      statTile('Peak (12mo)',fmt(peak),'', peakLabel||'—'),
+      statTile('Top market',prim.flag+' '+primShare+'%','', h(prim.name||'—'))
+    ].join('');
+    var mktRows=reg.slice(0,8).map(function(g){var w=Math.max(3,Math.round((g.etv||0)/maxr*100));return '<div class="sp-mkt-row2"><span class="mq-flag">'+g.flag+'</span><div><div class="nm">'+h(g.name||g.iso)+(g.primary?' <span style="color:var(--blue);font-size:10.5px;font-weight:600">★ primary</span>':'')+'</div><div class="bar"><i style="width:'+w+'%"></i></div></div><span class="etv">'+fmt(g.etv||0)+'</span></div>';}).join('');
+    var moreMkts=mktCount>8?'<div style="text-align:right;color:var(--blue);font-size:12.5px;font-weight:600;margin-top:10px">+'+(mktCount-8)+' more · '+mktCount+' markets total</div>':'';
+    var revScore=p.review_count?Number(p.rating||0).toFixed(1):'—';
+    var revItems=(p.recent_reviews&&p.recent_reviews.length)?p.recent_reviews.slice(0,3).map(function(r){return '<div class="sp-rev-item">★ '+(r.rating||'')+' — '+h(r.body||r.text||'')+'</div>';}).join(''):'<div class="sp-rev-item" style="border-top:0;color:var(--ink-mute)">No reviews yet — be the first to review '+h(p.name||domain)+'.</div>';
+    var shot='<img src="https://www.google.com/s2/favicons?domain='+encodeURIComponent(domain)+'&sz=128" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="letter" style="display:none">'+letter+'</div>';
     document.getElementById('v-site').innerHTML =
-      '<a class="sp-back" onclick="history.back()">← Back</a>'+
-      '<div class="sp-grid">'+
+      '<a class="sp-back" onclick="history.back()">← Back to markets</a>'+
+      '<div class="sp-top">'+
+        '<div class="sp-shot-lg">'+shot+'</div>'+
         '<div>'+
-          '<div class="sp-hero">'+
-            '<div class="sp-shot">'+ (p.screenshot?'<img src="'+p.screenshot+'" style="max-height:200px;border-radius:8px" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="letter" style="display:none">'+letter+'</div>':'<div class="letter">'+letter+'</div>')+'</div>'+
-            '<div class="sp-name">'+h(p.name||domain)+'</div>'+
-            '<div class="sp-domain">'+h(domain)+' '+verts+' <a class="sp-visit" href="https://'+encodeURI(domain)+'" target="_blank" rel="noopener">Visit site →</a></div>'+
-          '</div>'+
-          '<div class="sp-rating"><div><div class="label">Rating</div><div class="val">'+rating+'</div></div><button class="btn btn-gho btn-sm" onclick="reviewPrompt(\''+domain+'\')"'+(p.you_reviewed?' disabled':'')+'>'+(p.you_reviewed?'Reviewed':'Add review')+'</button></div>'+
-        '</div>'+
-        '<div>'+
-          '<div class="sp-chart-card">'+
-            '<div class="sp-etv">'+fmt(p.etv||0)+'<span class="u">/mo total</span></div>'+
-            '<div class="sp-chart" id="sp-chart"></div>'+
-          '</div>'+
-          '<div class="sp-markets-card"><h4>Traffic by market</h4>'+mktRows+ (mkts.length>5?'<div style="text-align:right;color:var(--blue);font-size:12.5px;font-weight:600;margin-top:8px">Top 5 of '+mkts.length+' markets</div>':'') +'</div>'+
-          '<div class="sp-actions">'+
+          '<div class="sp-name-row"><span class="sp-name2">'+h(p.name||domain)+'</span>'+verts+'</div>'+
+          '<div class="sp-sub"><span class="mq-flag">'+prim.flag+'</span> Primarily '+h(prim.name||'—')+' · live in '+mktCount+' markets · <a class="sp-visit" href="https://'+encodeURI(domain)+'" target="_blank" rel="noopener">'+h(domain)+' →</a></div>'+
+          '<div class="sp-cta">'+
             '<button class="sp-btn want'+(p.you_want?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'want\',this)">'+(p.you_want?'✓ On your Want list':'I want this')+'</button>'+
             '<button class="sp-btn have'+(p.you_have?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'have\',this)">'+(p.you_have?'✓ On your Have list':'I have this')+'</button>'+
           '</div>'+
-          '<div class="sp-locked">🔒 Contact hidden — swap to unlock</div>'+
         '</div>'+
-      '</div>';
+      '</div>'+
+      '<div class="sp-stats">'+stats+'</div>'+
+      '<div class="sp-main">'+
+        '<div class="sp-chart-card">'+
+          '<div class="sp-chart-head"><div><div class="sp-etv">'+fmt(p.etv||0)+'<span class="u">/mo</span></div><div style="font-family:var(--f-mono);font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-mute);margin-top:5px">Traffic history · 12 months</div></div>'+(yoy===null?'':'<span class="sp-delta '+(yoy>=0?'up':'down')+'">'+(yoy>=0?'▲ +':'▼ ')+(Math.abs(yoy)>999?'999+':yoy)+'% yr</span>')+'</div>'+
+          '<div class="sp-chart" id="sp-chart" style="height:172px"></div>'+
+          '<div class="sp-chart-note">live monthly · DataForSEO'+(peak?' · peak '+fmt(peak)+(peakLabel?' '+peakLabel:''):'')+'</div>'+
+        '</div>'+
+        '<div class="sp-markets-card"><h4>Traffic by market</h4>'+mktRows+moreMkts+'</div>'+
+      '</div>'+
+      '<div class="sp-about"><h4>About this site</h4><p>'+narrative+'</p></div>'+
+      '<div class="sp-reviews"><h4>Reviews</h4><div class="sp-rev-head"><div class="sp-rev-score">'+revScore+(p.review_count?' <span style="font-size:13px;color:var(--ink-mute);font-weight:600">/5 · '+p.review_count+' review'+(p.review_count===1?'':'s')+'</span>':' <span style="font-size:13px;color:var(--ink-mute);font-weight:600">not yet rated</span>')+'</div><button class="btn btn-gho btn-sm" onclick="reviewPrompt(\''+domain+'\')"'+(p.you_reviewed?' disabled':'')+'>'+(p.you_reviewed?'✓ Reviewed':'Add review')+'</button></div>'+revItems+'</div>'+
+      '<div class="sp-locked">🔒 Contact details hidden — complete a swap to unlock this manager\'s contact.</div>';
     drawSpChart(p.etv||0, p.traffic_history);
   }).catch(function(){document.getElementById('v-site').innerHTML='<div class="wrap" style="padding:60px 0;text-align:center;color:var(--ink-mute)">Couldn\'t load site.</div>';});
 }
@@ -1360,17 +1426,22 @@ function reviewPrompt(domain){
 
 function drawSpChart(E,history){
   var el=document.getElementById('sp-chart');if(!el)return;
-  var N,vals=[];
-  if(history&&history.length>1){N=history.length;for(var i=0;i<N;i++)vals.push(history[i].etv||0);E=Math.max.apply(null,vals)||E||1;}
-  else{N=3;for(var i=0;i<N;i++){var t=i/(N-1);vals.push(E*(0.3+0.7*(1-Math.pow(1-t,1.8))));}}
-  var W=560,H=120,L=48,R=12,T=12,B=26,pw=W-L-R,ph=H-T-B,YM=Math.max(E*1.15,1);
+  var MON=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var N,vals=[],labels=[];
+  if(history&&history.length>1){N=history.length;for(var i=0;i<N;i++){vals.push(history[i].etv||0);var w=String(history[i].week||'').split('-');labels.push(w.length>1?MON[+w[1]]:'');}E=Math.max.apply(null,vals)||E||1;}
+  else{N=3;for(var i=0;i<N;i++){var t=i/(N-1);vals.push(E*(0.3+0.7*(1-Math.pow(1-t,1.8))));labels.push('');}}
+  var W=640,H=190,L=54,R=14,T=14,B=30,pw=W-L-R,ph=H-T-B,YM=Math.max(E*1.15,1);
   var x=function(i){return L+i/(N-1)*pw};var y=function(v){return T+ph-v/YM*ph};
   var pts=vals.map(function(v,i){return x(i)+','+y(v)});
-  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:100%"><defs><linearGradient id="spg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3D7CFF" stop-opacity=".22"/><stop offset="1" stop-color="#3D7CFF" stop-opacity="0"/></linearGradient></defs>'+
-    [0,.5,1].map(function(f){var gy=T+ph-f*ph;return '<line x1="'+L+'" y1="'+gy+'" x2="'+(W-R)+'" y2="'+gy+'" stroke="#E9F0F9" stroke-dasharray="4 4"/><text x="'+(L-8)+'" y="'+(gy+4)+'" text-anchor="end" font-size="11" fill="#9AA7BD" font-family="Geist Mono">'+fmt(f*YM)+'</text>'}).join('')+
+  var peak=Math.max.apply(null,vals),pi=vals.indexOf(peak);
+  var xl=labels.map(function(m,i){if(!m||(N>7&&i%2!==0&&i!==N-1))return '';return '<text x="'+x(i)+'" y="'+(H-9)+'" text-anchor="middle" font-size="10" fill="#9AA7BD" font-family="Geist Mono">'+m+'</text>';}).join('');
+  el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:100%"><defs><linearGradient id="spg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3D7CFF" stop-opacity=".24"/><stop offset="1" stop-color="#3D7CFF" stop-opacity="0"/></linearGradient></defs>'+
+    [0,.5,1].map(function(f){var gy=T+ph-f*ph;return '<line x1="'+L+'" y1="'+gy+'" x2="'+(W-R)+'" y2="'+gy+'" stroke="#E9F0F9" stroke-dasharray="4 4"/><text x="'+(L-8)+'" y="'+(gy+4)+'" text-anchor="end" font-size="10.5" fill="#9AA7BD" font-family="Geist Mono">'+fmt(f*YM)+'</text>'}).join('')+
+    xl+
     '<path d="M'+x(0)+','+(T+ph)+' L'+pts.join(' L')+' L'+x(N-1)+','+(T+ph)+' Z" fill="url(#spg)"/>'+
     '<polyline points="'+pts.join(' ')+'" fill="none" stroke="#3D7CFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'+
-    '<circle cx="'+x(N-1)+'" cy="'+y(vals[N-1])+'" r="4" fill="#3D7CFF" stroke="#fff" stroke-width="2"/>'+
+    (pi>=0&&pi!==N-1?'<circle cx="'+x(pi)+'" cy="'+y(peak)+'" r="3.2" fill="#fff" stroke="#94A3B8" stroke-width="1.5"/>':'')+
+    '<circle cx="'+x(N-1)+'" cy="'+y(vals[N-1])+'" r="4.5" fill="#3D7CFF" stroke="#fff" stroke-width="2"/>'+
   '</svg>';
 }
 

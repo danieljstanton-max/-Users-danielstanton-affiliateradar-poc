@@ -9,10 +9,12 @@ are structurally out of reach.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
-from . import ownership, tagging
+from . import config, ownership, tagging
 from .locations import all_isos, code_for, iso_for, language_for
 from .providers.dataforseo import DataForSEOClient
 from .views import COUNTRY_MIN_ETV  # per-country listing floor — see radar/views.py
@@ -155,3 +157,124 @@ def refresh_all(conn: sqlite3.Connection, week_index: int = LATEST_WEEK,
     return {"iso_week": iso_week, "sites_seen": len(sites),
             "snapshots": snapshotted, "updated": updated,
             "verticals_retagged": tagged["retagged"]}
+
+
+def build_history(conn: sqlite3.Connection, months: int = 12,
+                  client: DataForSEOClient | None = None,
+                  progress=None, cache_dir: str | None = None) -> dict:
+    """Replace each site's traffic_snapshots with REAL monthly history from
+    DataForSEO's Historical Bulk Traffic Estimation, so the profile graphs show
+    true 12-month data (not a modeled curve).
+
+    COST-LEAN: we query each site only in the markets where it actually draws
+    traffic (site_regions, populated by refresh_all) — not every domain in every
+    market — which is ~30x cheaper. RESUMABLE: each market's result is cached to
+    disk as it lands, so if the run is interrupted (e.g. a daily spend limit),
+    re-running skips the markets already pulled and costs nothing for them.
+
+    We sum across a site's markets per month, keep the most recent `months`, and
+    store one snapshot per month (iso_week = 'YYYY-MM-01'). The latest month also
+    becomes the site's headline etv / top_country / regions / trend, so the whole
+    profile is sourced from one consistent dataset.
+    """
+    client = client or DataForSEOClient()
+    keep = months + 3
+    cache = Path(cache_dir) if cache_dir else (config.DATA_DIR / "history_cache")
+    cache.mkdir(parents=True, exist_ok=True)
+
+    sites = conn.execute("SELECT id, domain FROM sites ORDER BY id").fetchall()
+    if not sites:
+        return {"sites_seen": 0, "months": 0, "snapshots": 0, "updated": 0,
+                "markets_done": 0, "markets_total": 0}
+
+    # market_code -> the domains that actually have traffic there (site_regions)
+    market_domains: dict[int, set] = {}
+    for r in conn.execute(
+            "SELECT sr.country AS iso, s.domain AS domain "
+            "FROM site_regions sr JOIN sites s ON s.id = sr.site_id"):
+        code = code_for(r["iso"])
+        if code:
+            market_domains.setdefault(code, set()).add(r["domain"])
+    market_codes = sorted(market_domains)
+
+    def _cf(code):
+        return cache / f"hist_{code}.json"
+
+    def _load(code):
+        raw = json.loads(_cf(code).read_text())
+        return {dom: {tuple(int(x) for x in k.split("-")): v for k, v in s.items()}
+                for dom, s in raw.items()}
+
+    def _save(code, series):
+        _cf(code).write_text(json.dumps(
+            {dom: {f"{y}-{m}": v for (y, m), v in s.items()} for dom, s in series.items()}))
+
+    # fetch each market (cached markets are free on re-run)
+    by_market: dict[int, dict[str, dict]] = {}
+    done = 0
+    for code in market_codes:
+        cached = _cf(code).exists()
+        if cached:
+            series = _load(code)
+        else:
+            lang = language_for(iso_for(code)) or "en"
+            series = client.historical_bulk_traffic(sorted(market_domains[code]), code, lang)
+            series = {dom: dict(sorted(s.items())[-keep:]) for dom, s in series.items()}
+            _save(code, series)
+        by_market[code] = series
+        done += 1
+        if progress:
+            progress(done, len(market_codes), code, cached)
+
+    # the target month window = the most recent `months` months present anywhere
+    all_months = set()
+    for series in by_market.values():
+        for s in series.values():
+            all_months.update(s.keys())
+    if not all_months:
+        return {"sites_seen": len(sites), "months": 0, "snapshots": 0, "updated": 0,
+                "markets_done": done, "markets_total": len(market_codes)}
+    target_months = sorted(all_months)[-months:]           # ascending (y, m)
+
+    snapshotted = updated = 0
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for site in sites:
+        dom = site["domain"]
+        conn.execute("DELETE FROM traffic_snapshots WHERE site_id=?", (site["id"],))
+        monthly = []  # [(iso_week, total, top, by_country)]
+        for (y, m) in target_months:
+            by_country = {}
+            for code in market_codes:
+                etv = by_market.get(code, {}).get(dom, {}).get((y, m), 0)
+                if etv and etv > 0:
+                    by_country[iso_for(code)] = round(etv, 1)
+            if not by_country:
+                continue
+            total = round(sum(by_country.values()), 1)
+            top = max(by_country, key=by_country.get)
+            iso_week = f"{y:04d}-{m:02d}-01"
+            conn.execute(
+                """INSERT INTO traffic_snapshots (site_id, iso_week, etv, top_country, captured_at)
+                   VALUES (?,?,?,?,?)
+                   ON CONFLICT(site_id, iso_week) DO UPDATE SET
+                     etv=excluded.etv, top_country=excluded.top_country""",
+                (site["id"], iso_week, total, top, now))
+            monthly.append((iso_week, total, top, by_country))
+            snapshotted += 1
+        if not monthly:
+            continue
+        latest_iso, latest_total, latest_top, latest_by_country = monthly[-1]
+        _write_regions(conn, site["id"], latest_by_country, latest_total, latest_top)
+        fields = {"etv": latest_total, "top_country": latest_top, "last_api_refresh": latest_iso}
+        trend = _compute_trend(conn, site["id"], latest_iso, latest_total)
+        if trend:
+            fields["trend_pct"], fields["trend_dir"] = trend
+        ownership.apply_api_update(conn, site["id"], fields, source="dataforseo:historical")
+        updated += 1
+
+    conn.commit()
+    return {"sites_seen": len(sites), "months": len(target_months),
+            "window": f"{target_months[0][0]}-{target_months[0][1]:02d} … "
+                      f"{target_months[-1][0]}-{target_months[-1][1]:02d}",
+            "snapshots": snapshotted, "updated": updated,
+            "markets_done": done, "markets_total": len(market_codes)}
