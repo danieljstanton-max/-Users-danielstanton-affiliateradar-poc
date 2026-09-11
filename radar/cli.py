@@ -232,6 +232,38 @@ def cmd_show(args) -> None:
 
 
 # --------------------------------------------------------------------------
+def cmd_grant_swap(args) -> None:
+    """Manually credit a member's swap balance. Used to restore paid-for
+    swaps after a DB reset, and for support / test fixups. Prints the
+    row before + after so the operator sees exactly what changed."""
+    from . import swaps
+    if not (args.email or args.handle):
+        raise SystemExit("grant-swap: pass --email or --handle")
+    conn = db.connect()
+    try:
+        if args.email:
+            row = conn.execute(
+                "SELECT id, handle, work_email FROM chat_managers "
+                "WHERE lower(work_email)=?", (args.email.lower(),)).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT id, handle, work_email FROM chat_managers "
+                "WHERE handle=? OR lower(handle)=?",
+                (args.handle, args.handle.lower())).fetchone()
+        if not row:
+            raise SystemExit(f"grant-swap: no member found for "
+                             f"{'email='+args.email if args.email else 'handle='+args.handle}")
+        mid = row["id"]
+        before = swaps.remaining(conn, mid)
+        swaps.grant_swaps(conn, mid, args.count)
+        conn.commit()
+        after = swaps.remaining(conn, mid)
+        print(f"grant-swap: member {mid} ({row['handle']} · {row['work_email']})")
+        print(f"           swaps: {before} -> {after}  (+{args.count})")
+    finally:
+        conn.close()
+
+
 def cmd_prove_ownership(args) -> None:
     """The headline demo: an API refresh cannot overwrite human-owned data."""
     conn = connect()
@@ -884,6 +916,12 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--domain"); q.add_argument("--contact", action="store_true")
     q.add_argument("--json", action="store_true")
     q.set_defaults(func=cmd_show)
+
+    q = sub.add_parser("grant-swap", help="grant +N swaps to a member by email or handle")
+    q.add_argument("--email", help="member's work_email (exact match, case-insensitive)")
+    q.add_argument("--handle", help="alternative: member's display handle")
+    q.add_argument("--count", type=int, default=1, help="number of swaps to grant")
+    q.set_defaults(func=cmd_grant_swap)
 
     q = sub.add_parser("prove-ownership"); q.set_defaults(func=cmd_prove_ownership)
     q = sub.add_parser("demo"); q.set_defaults(func=cmd_demo)
