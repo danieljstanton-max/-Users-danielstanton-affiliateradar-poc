@@ -2253,14 +2253,28 @@ function saveProfile(btn){
       if(j.error==='not_authenticated') go('#/login');
       return;
     }
+    // Update the visible form inputs directly from the persisted
+    // values in the response — proves the save round-tripped and
+    // sidesteps any race with hydrateAccount() reading a stale row.
+    var saved = j && j.saved ? j.saved : {};
+    var setField=function(id,v){var el=document.getElementById(id); if(el) el.value = v||'';};
+    setField('acct-name',     saved.real_name);
+    setField('acct-company',  saved.company);
+    setField('acct-linkedin', saved.linkedin_url);
+    setField('acct-site',     saved.site_url);
     btn.textContent='Saved ✓';
     setTimeout(function(){btn.textContent=orig;btn.disabled=false;},1600);
-    toast('Profile saved');
+    // Warn if the DB didn't take our value for a field we sent.
+    var missed = [];
+    if(payload.company && !saved.company) missed.push('Company');
+    if(payload.linkedin_url && !saved.linkedin_url) missed.push('LinkedIn URL');
+    if(payload.site_url && !saved.site_url) missed.push('Site');
+    if(missed.length){
+      toast('Saved, but '+missed.join(' + ')+' didn\'t stick — refresh & retry');
+    } else {
+      toast('Profile saved');
+    }
     updateMeChip();
-    // Re-fetch and re-render so the form shows the values actually
-    // persisted — belt-and-braces proof for the user that a save
-    // took effect (and helps catch server-side drops early).
-    hydrateAccount();
   }).catch(function(){toast('Network error');btn.disabled=false;btn.textContent=orig;});
 }
 /* openUpgrade / openTopup are defined in the Payments section and

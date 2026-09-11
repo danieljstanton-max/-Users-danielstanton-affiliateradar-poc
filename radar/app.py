@@ -193,7 +193,11 @@ def _normalize_linkedin_url(raw: str | None) -> str | None:
 def api_account_update(conn, mid, payload):
     """Member-editable profile fields. Only the ones a user should be able to
     change themselves — not handle, work_email, status, linkedin_verified,
-    or created_at."""
+    or created_at.
+
+    Returns the persisted row so the client can display exactly what the DB
+    holds and prove whether a save round-tripped.
+    """
     editable = {
         "real_name": (payload.get("real_name") or "").strip() or None,
         "company":   (payload.get("company") or "").strip() or None,
@@ -202,11 +206,17 @@ def api_account_update(conn, mid, payload):
         "sector":    (payload.get("sector") or "").strip() or None,
     }
     sets = ", ".join(f"{k}=?" for k in editable)
-    conn.execute(
+    cur = conn.execute(
         f"UPDATE chat_managers SET {sets} WHERE id=?",
         (*editable.values(), mid))
     conn.commit()
-    return {"ok": True}
+    row = conn.execute(
+        "SELECT real_name, company, linkedin_url, site_url, sector "
+        "FROM chat_managers WHERE id=?", (mid,)).fetchone()
+    return {"ok": True,
+            "rows_updated": cur.rowcount,
+            "saved": (dict(row) if row else None),
+            "sent": editable}
 
 
 # --- Stripe / billing ------------------------------------------------------- #
