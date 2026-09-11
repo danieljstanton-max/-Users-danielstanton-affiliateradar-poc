@@ -726,10 +726,17 @@ class _H(BaseHTTPRequestHandler):
                 except Exception as e:
                     self._json({"ok": False, "error": str(e)}, 400)
             elif u.path == "/api/account":
-                try:
-                    self._json(api_account_update(conn, mid, payload))
-                except Exception as e:
-                    self._json({"ok": False, "error": str(e)}, 400)
+                # Refuse profile edits from an unauthenticated caller.
+                # Otherwise the write lands on the shared demo user row
+                # and the next visitor either overwrites it or sees the
+                # last person's data. 401 so the client can react.
+                if not authed:
+                    self._json({"ok": False, "error": "not_authenticated"}, 401)
+                else:
+                    try:
+                        self._json(api_account_update(conn, mid, payload))
+                    except Exception as e:
+                        self._json({"ok": False, "error": str(e)}, 400)
             elif u.path == "/api/share/claim":
                 try:
                     res = api_share_claim(conn, mid)
