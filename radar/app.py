@@ -598,10 +598,19 @@ class _H(BaseHTTPRequestHandler):
             if u.path == "/api/home":
                 self._json(api_home(conn))
             elif u.path == "/api/geo":
-                self._json(api_geo(conn, g("iso", "GB").upper(), g("vertical"), mid))
+                # Sensitive: per-market SEO data is members-only. The markets
+                # INDEX (/api/markets) stays open so prospects see the breadth.
+                if not authed:
+                    self._json({"error": "auth_required"}, 401)
+                else:
+                    self._json(api_geo(conn, g("iso", "GB").upper(), g("vertical"), mid))
             elif u.path == "/api/site":
-                p = api_site(conn, g("domain"), mid)
-                self._json(p) if p else self._json({"error": "not_found"}, 404)
+                # Sensitive: full site profile (traffic, trends, contacts) is members-only.
+                if not authed:
+                    self._json({"error": "auth_required"}, 401)
+                else:
+                    p = api_site(conn, g("domain"), mid)
+                    self._json(p) if p else self._json({"error": "not_found"}, 404)
             elif u.path == "/api/markets":
                 self._json(api_markets(conn))
             elif u.path == "/api/loyalty":

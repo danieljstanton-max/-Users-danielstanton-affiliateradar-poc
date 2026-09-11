@@ -52,6 +52,9 @@ GAMBLE = (
     "kladionic", "lutrij", "kladenje", "kockanje", "sportske",
     # Turkish
     "bahis", "iddaa", "kumar", "rulet", "casib", "giris",
+    # Romanian
+    "cazino", "cazinou", "pacanele", "pacanea", "pariuri", "rotiri", "sloturi",
+    "invartiri", "jocuri de noroc", "ruleta",
     # German / Dutch extra
     "spielautomat", "gokkast", "wedden", "goksite",
 )
@@ -80,7 +83,8 @@ DOMAIN_GAMBLE = ("casino", "cassino", "kasino", "kasyn", "kasyno", "casin", "gam
                  "apuesta", "aposta", "scommess", "pronostic", "wager", "spins",
                  "spin", "odds", "vegas", "bahis", "kumar", "bet", "vedonly",
                  "rahapel", "veikka", "bukmach", "zaklad", "kladionic", "lutrij",
-                 "iddaa", "casib", "veto", "toto")
+                 "iddaa", "casib", "veto", "toto",
+                 "cazino", "cazinou", "pacanele", "pariuri")
 _GAMBLE_TLD = {"casino", "bet", "poker", "bingo", "lotto", "vegas", "games"}
 
 

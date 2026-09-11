@@ -406,6 +406,21 @@ def _edit_page(conn, site_id: int) -> bytes:
         return _page("<h1>Not found</h1><a href='/'>← back</a>")
     c = conn.execute("SELECT * FROM site_contacts WHERE site_id=?", (site_id,)).fetchone()
 
+    # deep-link (page that ranks for the top gambling keyword) if we have one,
+    # else the plain homepage — so the back office can jump straight to the site.
+    _sig = conn.execute("SELECT landing_url FROM site_signals WHERE site_id=?",
+                        (site_id,)).fetchone()
+    _visit = (_sig["landing_url"] if _sig and _sig["landing_url"]
+              else f"https://{s['domain']}/")
+    _is_deep = bool(_sig and _sig["landing_url"]
+                    and _sig["landing_url"].rstrip("/") != f"https://{s['domain']}")
+    visit_html = (
+        f"<div style='margin:2px 0 16px;display:flex;gap:10px;align-items:center'>"
+        f"<a class='btn secondary' href='{_esc(_visit)}' target='_blank' "
+        f"rel='noopener noreferrer'>Visit website ↗</a>"
+        f"<span class='hint' style='font-weight:400'>"
+        f"{'deep-linked to the gambling section' if _is_deep else 'homepage'}</span></div>")
+
     def opt(v):
         sel = " selected" if s["classification"] == v else ""
         return f"<option value='{v}'{sel}>{v}</option>"
@@ -477,6 +492,7 @@ def _edit_page(conn, site_id: int) -> bytes:
     body = f"""
       <div class='eyebrow'><a href='/'>← Back office</a></div>
       <h1>{_esc(s['domain'])}</h1>
+      {visit_html}
       <p class='sub'>Traffic & trend are API-owned (read-only here). You own the name, classification and contact.</p>
       {shot_html}
       {regions_note}

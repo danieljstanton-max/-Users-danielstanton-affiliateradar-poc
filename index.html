@@ -453,6 +453,15 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .cmix-n{text-align:right;font-family:var(--f-mono);font-size:12px;color:var(--ink-mute)}
 @media(max-width:900px){.mkd-intel{grid-template-columns:1fr}}
 
+/* Members-only gate on sensitive pages */
+.sensitive-gate{max-width:520px;margin:40px auto 60px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:40px 36px;box-shadow:var(--shadow-sm);text-align:center}
+.sensitive-gate .gate-ico{width:64px;height:64px;margin:0 auto 18px;border-radius:18px;background:var(--blue-softer);display:flex;align-items:center;justify-content:center;font-size:30px}
+.sensitive-gate h2{font-size:24px;font-weight:800;letter-spacing:-0.02em;color:var(--ink);margin-bottom:10px}
+.sensitive-gate p{color:var(--ink-2);font-size:14.5px;line-height:1.6;margin-bottom:22px;max-width:40ch;margin-left:auto;margin-right:auto}
+.sensitive-gate .gate-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.sensitive-gate .gate-note{margin-top:18px;font-family:var(--f-mono);font-size:11px;letter-spacing:0.04em;color:var(--ink-mute)}
+.gate-teaser{filter:blur(6px);opacity:.5;pointer-events:none;user-select:none;margin-top:20px}
+
 /* SWAPS */
 .sw-hero{padding:32px 0 24px}
 .sw-hero h1{font-size:36px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1.05}
@@ -1016,6 +1025,36 @@ function authAction(){
   } else {
     go('#/login');
   }
+}
+
+/* ==================== SENSITIVE-DATA GATE ====================
+   Market detail + site profiles carry the SEO data that is the product —
+   browsable only by registered members. The markets INDEX stays open so
+   prospects can see the network's breadth before signing up. */
+function isAuthed(){return !!(ME&&ME.authed);}
+function ensureMe(){return ME?Promise.resolve():updateMeChip();}
+function sensitiveGate(viewId,kind){
+  var el=document.getElementById(viewId); if(!el) return;
+  var title = kind==='site' ? 'Sign in to view this site' : 'Sign in to view this market';
+  var desc = kind==='site'
+    ? 'Full site profiles — live traffic, 12-month trends, market breakdown and swap contacts — are for registered Affswap members.'
+    : 'Live market data — every affiliate site, traffic estimates, movers and trends — is for registered Affswap members.';
+  el.innerHTML =
+    '<div class="wrap">'
+    + '<a class="mkd-back" onclick="go(\'#/markets\')">← Back to all markets</a>'
+    + '<div class="sensitive-gate"><div class="gate-ico">🔒</div>'
+    + '<h2>'+title+'</h2><p>'+desc+'</p>'
+    + '<div class="gate-cta">'
+    + '<a class="btn" onclick="go(\'#/signup\')">Create free account</a>'
+    + '<a class="btn btn-gho" onclick="go(\'#/login\')">Sign in</a></div>'
+    + '<div class="gate-note">REGISTER + AN ACTIVE SWAP BALANCE UNLOCKS THE FULL DATA</div>'
+    + '</div></div>';
+}
+// Gate a route: show the view, then reveal content only to authed members.
+// ensureMe() covers the first paint, when /api/me may not have resolved yet.
+function gateOr(viewId,kind,cb){
+  switchTo(viewId);
+  ensureMe().then(function(){ if(isAuthed()){cb();} else {sensitiveGate(viewId,kind);} });
 }
 
 /* ==================== HOME ==================== */
@@ -2490,8 +2529,8 @@ function route(){
   if(window.ROUTE_QS.li==='synced'){setTimeout(function(){toast('Profile synced from LinkedIn');},250);}
   if(s==='home'){renderHome();hydrateHome();switchTo('v-home')}
   else if(s==='markets'){renderMarkets();hydrateMarkets();switchTo('v-markets')}
-  else if(s==='market'){var iso=(parts[1]||'US').toUpperCase();renderMarket(iso);hydrateMarket(iso);switchTo('v-market')}
-  else if(s==='site'){var dm=decodeURIComponent(parts.slice(1).join('/'));renderSite(dm);hydrateSite(dm);switchTo('v-site')}
+  else if(s==='market'){var iso=(parts[1]||'US').toUpperCase();gateOr('v-market','market',function(){renderMarket(iso);hydrateMarket(iso);});}
+  else if(s==='site'){var dm=decodeURIComponent(parts.slice(1).join('/'));gateOr('v-site','site',function(){renderSite(dm);hydrateSite(dm);});}
   else if(s==='swaps'){window.ACCT_TAB='swaps';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}
   else if(s==='matches'){window.ACCT_TAB='matches';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}
   else if(s==='loyalty'){window.ACCT_TAB='loyalty';window._ACCT_TAB_REDIRECT=true;go('#/account');return;}
