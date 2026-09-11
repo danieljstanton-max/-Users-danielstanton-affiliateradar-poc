@@ -193,11 +193,8 @@ def _normalize_linkedin_url(raw: str | None) -> str | None:
 def api_account_update(conn, mid, payload):
     """Member-editable profile fields. Only the ones a user should be able to
     change themselves — not handle, work_email, status, linkedin_verified,
-    or created_at.
-
-    Returns the persisted row so the client can display exactly what the DB
-    holds and prove whether a save round-tripped.
-    """
+    or created_at. Returns the persisted row so the client can populate the
+    form from ground truth without a second fetch."""
     editable = {
         "real_name": (payload.get("real_name") or "").strip() or None,
         "company":   (payload.get("company") or "").strip() or None,
@@ -206,17 +203,14 @@ def api_account_update(conn, mid, payload):
         "sector":    (payload.get("sector") or "").strip() or None,
     }
     sets = ", ".join(f"{k}=?" for k in editable)
-    cur = conn.execute(
+    conn.execute(
         f"UPDATE chat_managers SET {sets} WHERE id=?",
         (*editable.values(), mid))
     conn.commit()
     row = conn.execute(
         "SELECT real_name, company, linkedin_url, site_url, sector "
         "FROM chat_managers WHERE id=?", (mid,)).fetchone()
-    return {"ok": True,
-            "rows_updated": cur.rowcount,
-            "saved": (dict(row) if row else None),
-            "sent": editable}
+    return {"ok": True, "saved": (dict(row) if row else None)}
 
 
 # --- Stripe / billing ------------------------------------------------------- #
@@ -1023,23 +1017,6 @@ class _H(BaseHTTPRequestHandler):
                 self._json({"plans": PLANS, "topup": config.SWAP_TOPUP_PRICE})
             elif u.path == "/api/pricing":
                 self._json(api_pricing(conn))
-            elif u.path == "/api/_stripe_check":
-                # Diagnostic — never exposes secret values, just their
-                # presence + length. Delete this route once billing is
-                # confirmed working.
-                def _has(name):
-                    v = os.environ.get(name, "")
-                    return {"set": bool(v), "len": len(v),
-                            "starts": (v[:7] if v else "")}
-                self._json({
-                    "STRIPE_SECRET_KEY":                _has("STRIPE_SECRET_KEY"),
-                    "STRIPE_WEBHOOK_SECRET":            _has("STRIPE_WEBHOOK_SECRET"),
-                    "STRIPE_PRICE_PRO":                 _has("STRIPE_PRICE_PRO"),
-                    "STRIPE_PRICE_UNLIMITED_STANDARD":  _has("STRIPE_PRICE_UNLIMITED_STANDARD"),
-                    "STRIPE_PRICE_UNLIMITED_EARLYBIRD": _has("STRIPE_PRICE_UNLIMITED_EARLYBIRD"),
-                    "STRIPE_PRICE_SWAP_TOPUP":          _has("STRIPE_PRICE_SWAP_TOPUP"),
-                    "stripe_client.configured": stripe_client.configured(),
-                })
             elif u.path == "/api/account":
                 a = api_account(conn, mid)
                 self._json(a) if a else self._json({"error": "not_found"}, 404)
