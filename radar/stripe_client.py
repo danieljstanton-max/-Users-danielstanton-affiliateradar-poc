@@ -69,7 +69,7 @@ def _post(path: str, form: dict) -> dict:
         headers={
             "Authorization": "Bearer " + secret_key(),
             "Content-Type": "application/x-www-form-urlencoded",
-            "Stripe-Version": "2024-06-20",
+            "Stripe-Version": "2026-08-26.dahlia",
         })
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
