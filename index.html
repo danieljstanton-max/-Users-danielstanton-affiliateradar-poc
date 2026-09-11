@@ -1213,7 +1213,7 @@ function hydrateMarket(iso){
   MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
   apiGet('/api/geo?iso='+encodeURIComponent(iso)).then(function(d){
     MKD_STATE.rows = (d.cards||[]).map(function(c){
-      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:c.trend_pct,spark:c.spark||[],landing:c.landing_url};
+      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:(c.market_trend_pct!=null?c.market_trend_pct:c.trend_pct),spark:((c.market_spark&&c.market_spark.length>1)?c.market_spark:c.spark)||[],landing:c.landing_url};
     });
     var country = d.country||{iso:iso,name:iso,flag:''};
     var totalEtv = MKD_STATE.rows.reduce(function(s,r){return s+r.etv;},0);

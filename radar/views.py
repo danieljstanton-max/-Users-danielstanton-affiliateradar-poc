@@ -158,6 +158,28 @@ def _landing_url(conn: sqlite3.Connection, site_id: int, domain: str) -> str:
     return (r["landing_url"] if r and r["landing_url"] else f"https://{domain}/")
 
 
+def _market_series(conn: sqlite3.Connection, site_id: int, iso: str, n: int = 12) -> list:
+    """A site's monthly etv IN a specific market (site_region_history), oldest→newest."""
+    try:
+        rows = conn.execute(
+            "SELECT etv FROM site_region_history WHERE site_id=? AND country=? "
+            "ORDER BY iso_week DESC LIMIT ?", (site_id, iso, n)).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [int(r["etv"] or 0) for r in reversed(rows)]
+
+
+def _series_trend(series: list, months: int = 3) -> float | None:
+    """% change over the last `months` of a monthly series (None on a tiny base)."""
+    if len(series) < 2:
+        return None
+    base = series[max(0, len(series) - 1 - months)]
+    cur = series[-1]
+    if not base or base < 300:
+        return None
+    return round((cur - base) / base * 100)
+
+
 def country_list(conn: sqlite3.Connection, country: str,
                  vertical: str | None = None, sort: str = "traffic",
                  published_only: bool = True) -> dict:
@@ -222,6 +244,7 @@ def country_list(conn: sqlite3.Connection, country: str,
     for r in rows:
         verts = [v["vertical"] for v in conn.execute(
             "SELECT vertical FROM site_verticals WHERE site_id = ?", (r["id"],))]
+        _mser = _market_series(conn, r["id"], iso)
         cards.append({
             "domain": r["domain"],
             "name": _brand(r["domain"], r["display_name"]),
@@ -235,6 +258,8 @@ def country_list(conn: sqlite3.Connection, country: str,
             "trend_dir": r["trend_dir"],
             "trend_pct": r["trend_pct"],
             "spark": _spark(conn, r["id"]),
+            "market_spark": _mser,
+            "market_trend_pct": _series_trend(_mser),
             "landing_url": _landing_url(conn, r["id"], r["domain"]),
             "rating": r["rating"],
             "review_count": r["review_count"] or 0,
