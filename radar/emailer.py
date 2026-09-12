@@ -70,6 +70,10 @@ def send(to: str, subject: str, html: str,
         headers={
             "Authorization": "Bearer " + api_key(),
             "Content-Type": "application/json",
+            # Cloudflare (which fronts Resend) blocks the default
+            # 'Python-urllib' UA with error 1010, so send our own.
+            "User-Agent": "Affswap/1.0 (+https://www.affswap.com)",
+            "Accept": "application/json",
         })
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
