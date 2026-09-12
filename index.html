@@ -2299,6 +2299,7 @@ function saveProfile(btn){
   var payload={
     real_name:document.getElementById('acct-name').value.trim(),
     company:document.getElementById('acct-company').value.trim(),
+    work_email:(document.getElementById('acct-email')||{}).value ? document.getElementById('acct-email').value.trim() : '',
     linkedin_url:document.getElementById('acct-linkedin').value.trim(),
     site_url:(document.getElementById('acct-site')||{}).value ? document.getElementById('acct-site').value.trim() : null,
     sector:'casino'
@@ -2320,6 +2321,7 @@ function saveProfile(btn){
     var setField=function(id,v){var el=document.getElementById(id); if(el) el.value = v||'';};
     setField('acct-name',     saved.real_name);
     setField('acct-company',  saved.company);
+    setField('acct-email',    saved.work_email);
     setField('acct-linkedin', saved.linkedin_url);
     setField('acct-site',     saved.site_url);
     btn.textContent='Saved ✓';

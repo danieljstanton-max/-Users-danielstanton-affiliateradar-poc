@@ -191,10 +191,17 @@ def _normalize_linkedin_url(raw: str | None) -> str | None:
 
 
 def api_account_update(conn, mid, payload):
-    """Member-editable profile fields. Only the ones a user should be able to
-    change themselves — not handle, work_email, status, linkedin_verified,
-    or created_at. Returns the persisted row so the client can populate the
-    form from ground truth without a second fetch."""
+    """Member-editable profile fields. Returns the persisted row so the
+    client can populate the form from ground truth without a second
+    fetch. Note: work_email is editable so members can point alerts /
+    contact at a different address than the one LinkedIn shares; but
+    LinkedIn Refresh will overwrite it again if they re-sync from
+    LinkedIn."""
+    email_in = (payload.get("work_email") or "").strip().lower()
+    # Ignore obviously bad values so the caller doesn't wipe a valid
+    # email by accident; a missing key leaves the DB value alone.
+    if "work_email" in payload and (not email_in or "@" not in email_in):
+        email_in = None
     editable = {
         "real_name": (payload.get("real_name") or "").strip() or None,
         "company":   (payload.get("company") or "").strip() or None,
@@ -202,13 +209,15 @@ def api_account_update(conn, mid, payload):
         "site_url":  (payload.get("site_url") or "").strip() or None,
         "sector":    (payload.get("sector") or "").strip() or None,
     }
+    if email_in:
+        editable["work_email"] = email_in
     sets = ", ".join(f"{k}=?" for k in editable)
     conn.execute(
         f"UPDATE chat_managers SET {sets} WHERE id=?",
         (*editable.values(), mid))
     conn.commit()
     row = conn.execute(
-        "SELECT real_name, company, linkedin_url, site_url, sector "
+        "SELECT real_name, company, work_email, linkedin_url, site_url, sector "
         "FROM chat_managers WHERE id=?", (mid,)).fetchone()
     return {"ok": True, "saved": (dict(row) if row else None)}
 
