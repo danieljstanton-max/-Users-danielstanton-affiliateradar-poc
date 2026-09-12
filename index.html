@@ -1880,15 +1880,18 @@ function hydrateLoyalty(){
 
 /* ==================== ACCOUNT ==================== */
 var ACC_MK=[['gb','United Kingdom'],['us','United States'],['de','Germany'],['ca','Canada'],['fi','Finland'],['it','Italy'],['fr','France'],['nl','Netherlands'],['es','Spain'],['au','Australia'],['br','Brazil'],['se','Sweden'],['ie','Ireland'],['nz','New Zealand'],['za','South Africa'],['in','India']];
+/* Event keys match the server-side alerts.py contract 1:1 so save/load
+   round-trips without a mapping table. Order is preserved for the UI. */
 var ACC_ALERTS=[
-  {k:'new_aff',t:'New affiliates',d:'When a new affiliate is added',on:true},
-  {k:'swap_done',t:'Swap completed',d:'When one of your swaps completes',on:true},
-  {k:'traf_up',t:'Traffic up',d:'When a site on your list gains traffic',on:true},
-  {k:'rev_ok',t:'Review approved',d:'When your review is approved',on:true},
-  {k:'traf_down',t:'Traffic down',d:'When a site on your list loses traffic',on:true},
-  {k:'sugg_ok',t:'Suggested site approved',d:'When your suggested site is approved',on:false},
-  {k:'match',t:'Match ready',d:'When one of your swaps is ready to connect',on:true},
+  {k:'new_affiliate',           t:'New affiliates',        d:'When a new affiliate is added',on:true},
+  {k:'swap_completed',          t:'Swap completed',        d:'When one of your swaps completes',on:true},
+  {k:'traffic_up',              t:'Traffic up',            d:'When a site on your list gains traffic',on:true},
+  {k:'review_approved',         t:'Review approved',       d:'When your review is approved',on:true},
+  {k:'traffic_down',            t:'Traffic down',          d:'When a site on your list loses traffic',on:true},
+  {k:'suggested_site_approved', t:'Suggested site approved', d:'When your suggested site is approved',on:false},
+  {k:'match_ready',             t:'Match ready',           d:'When one of your swaps is ready to connect',on:true},
 ];
+var ACC_FREQUENCY = 'instant';   // instant | daily | weekly
 var ACC_SEL=['gb','us','de'];
 
 function renderAccount(){document.getElementById('v-account').innerHTML='<div style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading…</div>';}
@@ -1934,9 +1937,16 @@ function _hydrateAccountFull(meArg){
     Promise.resolve(meArg),
     apiGet('/api/lists').catch(function(){return{wants:[],haves:[]};}),
     apiGet('/api/swaps').catch(function(){return{matches:[],ledger:[],access:{}};}),
-    apiGet('/api/share/status').catch(function(){return{can_claim:true,total_shares:0,total_swaps_earned:0,cooldown_days:7,reward_swaps:1};})
+    apiGet('/api/share/status').catch(function(){return{can_claim:true,total_shares:0,total_swaps_earned:0,cooldown_days:7,reward_swaps:1};}),
+    apiGet('/api/alerts/prefs').catch(function(){return null;})
   ]).then(function(res){
-    var a=res[0], l=res[1]||{}, me=res[2], lists=res[3]||{wants:[],haves:[]}, sw=res[4]||{matches:[],ledger:[],access:{}}, share=res[5]||{};
+    var a=res[0], l=res[1]||{}, me=res[2], lists=res[3]||{wants:[],haves:[]}, sw=res[4]||{matches:[],ledger:[],access:{}}, share=res[5]||{}, alertData=res[6];
+    // Merge server prefs into ACC_ALERTS so toggles reflect stored state.
+    if(alertData && alertData.prefs){
+      var ev = alertData.prefs.events || {};
+      ACC_ALERTS.forEach(function(a){ if(a.k in ev) a.on = !!ev[a.k]; });
+      ACC_FREQUENCY = alertData.prefs.frequency || 'instant';
+    }
     var matches=sw.matches||[], ledger=sw.ledger||[];
     var approved = l.approved_reviews||0;
     var currentStamps = approved % 5;
@@ -2038,10 +2048,17 @@ function _hydrateAccountFull(meArg){
           '<p class="acct-lab">Alert types</p><p class="acct-sub">Choose what you want to be notified about.</p>'+
           '<div class="alerts-grid" id="acct-alerts"></div>'+
           '<div class="acct-arow">'+
-            '<div><p class="acct-lab">Delivery frequency</p><p class="acct-sub">How often you want to receive emails.</p><div class="seg" id="acct-seg"><button class="on">Instant</button><button>Daily digest</button><button>Weekly digest</button></div></div>'+
+            '<div><p class="acct-lab">Delivery frequency</p><p class="acct-sub">How often you want to receive emails.</p><div class="seg" id="acct-seg">'+
+              '<button data-f="instant" class="'+(ACC_FREQUENCY==='instant'?'on':'')+'">Instant</button>'+
+              '<button data-f="daily"   class="'+(ACC_FREQUENCY==='daily'?'on':'')+'">Daily digest</button>'+
+              '<button data-f="weekly"  class="'+(ACC_FREQUENCY==='weekly'?'on':'')+'">Weekly digest</button>'+
+            '</div></div>'+
             '<div><p class="acct-lab">Markets</p><p class="acct-sub">Alerts use your markets of interest.</p><div class="chipbox mirror" id="acct-mkmirror"></div></div>'+
           '</div>'+
-          '<button class="btn savebtn" onclick="saveAlertPrefs(this)">Save email preferences</button>'+
+          '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+            '<button class="btn savebtn" onclick="saveAlertPrefs(this)">Save email preferences</button>'+
+            '<button class="btn btn-gho" onclick="testAlertEmail(this)">Send test email</button>'+
+          '</div>'+
         '</div>'+
       '</div>'+
       /* Sign out lives at the very bottom of Profile */
@@ -2191,7 +2208,7 @@ function _hydrateAccountFull(meArg){
       return '<div class="altrow"><span class="switch'+(al.on?' on':'')+'" onclick="ACC_ALERTS['+i+'].on=!ACC_ALERTS['+i+'].on;this.classList.toggle(\'on\')"></span><div class="at"><b>'+h(al.t)+'</b><span>'+h(al.d)+'</span></div></div>';
     }).join('');
     // Segment
-    document.querySelectorAll('#acct-seg button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#acct-seg button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');});});
+    document.querySelectorAll('#acct-seg button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#acct-seg button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');ACC_FREQUENCY=b.dataset.f||ACC_FREQUENCY;});});
   }).catch(function(){document.getElementById('v-account').innerHTML='<div style="padding:24px;color:var(--ink-mute)">Couldn\'t load account.</div>';});
 }
 
@@ -2210,7 +2227,48 @@ function addAcctMk(btn){
   btn.parentNode.appendChild(menu);
   setTimeout(function(){document.addEventListener('click',function h(){menu.remove();document.removeEventListener('click',h);},{once:true});},0);
 }
-function saveAlertPrefs(btn){var orig=btn.textContent;btn.textContent='Saved ✓';btn.disabled=true;setTimeout(function(){btn.textContent=orig;btn.disabled=false;},1600);toast('Preferences saved');}
+function saveAlertPrefs(btn){
+  var orig=btn.textContent; btn.disabled=true; btn.textContent='Saving…';
+  var events = {};
+  ACC_ALERTS.forEach(function(a){events[a.k]=!!a.on;});
+  apiPost('/api/alerts/prefs',{prefs:{
+    events: events,
+    frequency: ACC_FREQUENCY,
+    channels: ['email']
+  }}).then(function(j){
+    if(!j || j.ok===false){
+      var msg = j && j.error==='not_authenticated' ? 'Please sign in first' : (j&&j.error)||'Save failed';
+      toast(msg); btn.disabled=false; btn.textContent=orig;
+      if(j && j.error==='not_authenticated') go('#/login');
+      return;
+    }
+    btn.textContent='Saved ✓';
+    setTimeout(function(){btn.textContent=orig;btn.disabled=false;},1600);
+    toast('Alert preferences saved');
+  }).catch(function(){toast('Network error');btn.disabled=false;btn.textContent=orig;});
+}
+
+/* Send a one-off test email to the signed-in member to prove the
+   Resend wiring works end-to-end. Called from the button we add
+   next to Save. */
+function testAlertEmail(btn){
+  var orig=btn.textContent; btn.disabled=true; btn.textContent='Sending…';
+  apiPost('/api/alerts/test',{}).then(function(j){
+    if(!j || j.ok===false){
+      var msgs={
+        resend_not_configured: 'Email provider not configured yet',
+        no_work_email_on_file: 'Add a work email in Profile first',
+        not_authenticated: 'Please sign in first'
+      };
+      toast(msgs[j&&j.error] || (j&&j.error) || 'Send failed');
+      btn.disabled=false; btn.textContent=orig;
+      return;
+    }
+    toast('Test email sent to '+(j.sent_to||'you'));
+    btn.textContent='Sent ✓';
+    setTimeout(function(){btn.textContent=orig;btn.disabled=false;},2400);
+  }).catch(function(){toast('Network error');btn.disabled=false;btn.textContent=orig;});
+}
 /* Best-guess LinkedIn vanity URL from a full name — LinkedIn's
    default vanity follows "first-last" for most accounts. Used as
    placeholder only; the member still has to accept/edit it. */

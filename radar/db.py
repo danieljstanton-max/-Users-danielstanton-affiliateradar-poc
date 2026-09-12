@@ -85,6 +85,12 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             "CREATE INDEX idx_chat_room_id ON chat_messages(room, id DESC);"
             "CREATE INDEX idx_chat_mgr ON chat_messages(manager_id);")
         applied.append("chat_messages")
+    # chat_managers.alert_prefs — JSON blob storing the member's alert
+    # preferences (which event types they want, delivery frequency,
+    # channels enabled). Loaded/saved by /api/alerts/prefs.
+    if not _column_exists(conn, "chat_managers", "alert_prefs"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN alert_prefs TEXT")
+        applied.append("chat_managers.alert_prefs")
     # Stripe billing columns — added lazily as we wire real payments.
     # We store the Stripe customer id on the manager (one per person)
     # and the current subscription's id + status + expiry on the swap

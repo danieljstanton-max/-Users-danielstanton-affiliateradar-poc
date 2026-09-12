@@ -648,6 +648,107 @@ def api_chat_rooms(conn):
     } for k, v in CHAT_ROOMS.items()]}
 
 
+# --- Alerts prefs ----------------------------------------------------------
+# Default toggles a fresh member sees before they've saved anything. Matches
+# the labels shown in the Account "Email alerts" card.
+ALERT_PREFS_DEFAULT = {
+    "events": {
+        "new_affiliate": True,
+        "traffic_up":    True,
+        "traffic_down":  True,
+        "match_ready":   True,
+        "swap_completed": True,
+        "review_approved": True,
+        "suggested_site_approved": False,
+    },
+    "frequency": "instant",   # instant | daily | weekly
+    "channels":  ["email"],   # email | push (push not yet delivered)
+}
+
+# The event keys the frontend uses -> the (rule trigger, description) that
+# the alerts engine understands. Only 'new'/'up'/'down' are engine-driven;
+# the others fire inline when their action happens (match, swap agree, etc.)
+# and are wired one by one in the code paths that trigger them.
+_EVENT_TO_ENGINE_TRIGGER = {
+    "new_affiliate": "new",
+    "traffic_up":    "up",
+    "traffic_down":  "down",
+}
+
+
+def _load_alert_prefs(conn, mid: int) -> dict:
+    row = conn.execute(
+        "SELECT alert_prefs FROM chat_managers WHERE id=?", (mid,)).fetchone()
+    if not row or not row["alert_prefs"]:
+        return json.loads(json.dumps(ALERT_PREFS_DEFAULT))  # deep copy
+    try:
+        p = json.loads(row["alert_prefs"])
+        # Fill in any keys added since the member last saved.
+        events = dict(ALERT_PREFS_DEFAULT["events"])
+        events.update(p.get("events") or {})
+        return {
+            "events":    events,
+            "frequency": (p.get("frequency") or "instant"),
+            "channels":  (p.get("channels")  or ["email"]),
+        }
+    except Exception:
+        return json.loads(json.dumps(ALERT_PREFS_DEFAULT))
+
+
+def api_alerts_prefs_get(conn, mid: int) -> dict:
+    return {"prefs": _load_alert_prefs(conn, mid)}
+
+
+def api_alerts_prefs_save(conn, mid: int, payload: dict) -> dict:
+    """Store the member's prefs as JSON on chat_managers.alert_prefs, and
+    also sync a matching alert_rules row so the engine's existing
+    matching pipeline covers this member on the next evaluate() tick."""
+    from . import alerts
+    # Sanitize the payload — never trust the client to send our keys.
+    incoming = payload.get("prefs") or {}
+    events_in = incoming.get("events") or {}
+    prefs = {
+        "events": {k: bool(events_in.get(k, v))
+                   for k, v in ALERT_PREFS_DEFAULT["events"].items()},
+        "frequency": (incoming.get("frequency") or "instant").strip().lower(),
+        "channels":  [c for c in (incoming.get("channels") or ["email"])
+                      if c in ("email", "push")],
+    }
+    if prefs["frequency"] not in ("instant", "daily", "weekly"):
+        prefs["frequency"] = "instant"
+    conn.execute(
+        "UPDATE chat_managers SET alert_prefs=? WHERE id=?",
+        (json.dumps(prefs), mid))
+    # Sync to alert_rules for the engine: replace this member's rules
+    # with one rule per selected market covering all their engine
+    # triggers, delivery=email.
+    conn.execute("DELETE FROM alert_rules WHERE manager_id=?", (mid,))
+    engine_triggers = [t for k, t in _EVENT_TO_ENGINE_TRIGGER.items()
+                       if prefs["events"].get(k)]
+    if engine_triggers and prefs["channels"]:
+        # Pull the member's markets from their profile chip selection.
+        # If none configured, alert on ALL markets (country=NULL).
+        markets = _member_markets(conn, mid)
+        countries = markets if markets else [None]
+        verticals = ["casino", "sportsbook", "bingo", "poker"]
+        for iso in countries:
+            try:
+                alerts.save_rule(conn, mid, iso, verticals,
+                                 engine_triggers, prefs["channels"])
+            except alerts.AlertError:
+                continue
+    conn.commit()
+    return {"ok": True, "prefs": prefs}
+
+
+def _member_markets(conn, mid: int) -> list:
+    """The ISO markets this member has selected in their profile (Markets of
+    interest chip box). Currently we don't persist the chip selection to
+    the DB, so return an empty list — engine falls back to 'all markets'.
+    Wire this to the real column when we persist market chips."""
+    return []
+
+
 def api_lists(conn, mid):
     """The current member's Want and Have lists, with site info attached."""
     def _fetch(table):
@@ -1024,6 +1125,8 @@ class _H(BaseHTTPRequestHandler):
                 self._json(api_swaps(conn, mid))
             elif u.path == "/api/lists":
                 self._json(api_lists(conn, mid))
+            elif u.path == "/api/alerts/prefs":
+                self._json(api_alerts_prefs_get(conn, mid))
             elif u.path == "/api/share/status":
                 self._json(api_share_status(conn, mid))
             elif u.path == "/api/chat":
@@ -1150,6 +1253,41 @@ class _H(BaseHTTPRequestHandler):
                     self._json(res, 200 if res.get("ok") else 400)
                 except Exception as e:
                     self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/alerts/prefs":
+                if not authed:
+                    self._json({"ok": False, "error": "not_authenticated"}, 401)
+                else:
+                    try:
+                        self._json(api_alerts_prefs_save(conn, mid, payload))
+                    except Exception as e:
+                        self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/alerts/test":
+                # Send one email to the caller right now — used to verify
+                # the Resend wiring end-to-end. Never charges swaps, never
+                # writes an alert_events row.
+                if not authed:
+                    self._json({"ok": False, "error": "not_authenticated"}, 401)
+                else:
+                    try:
+                        from . import alerts as _alerts, emailer as _emailer
+                        if not _emailer.configured():
+                            self._json({"ok": False, "error": "resend_not_configured"}, 503)
+                        else:
+                            row = conn.execute(
+                                "SELECT handle, real_name, work_email FROM chat_managers WHERE id=?",
+                                (mid,)).fetchone()
+                            if not row or not row["work_email"]:
+                                self._json({"ok": False, "error": "no_work_email_on_file"}, 400)
+                            else:
+                                ev = {"manager_id": mid, "domain": "casino.com",
+                                      "name": "Casino.com", "event": "new",
+                                      "detail": "just published"}
+                                subject, html, text = _alerts._render_email(ev, row)
+                                _emailer.send(to=row["work_email"], subject=subject,
+                                              html=html, text=text, tag="test")
+                                self._json({"ok": True, "sent_to": row["work_email"]})
+                    except Exception as e:
+                        self._json({"ok": False, "error": str(e)}, 500)
             elif u.path == "/api/account":
                 # Refuse profile edits from an unauthenticated caller.
                 # Otherwise the write lands on the shared demo user row

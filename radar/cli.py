@@ -264,6 +264,31 @@ def cmd_grant_swap(args) -> None:
         conn.close()
 
 
+def cmd_evaluate_alerts(args) -> None:
+    """Fire the alerts engine once. Prints matches; when --dry-run isn't
+    set, delivers via alerts.deliver() (email through Resend, others
+    still stubbed) and records the alert_events row."""
+    from . import alerts, emailer
+    conn = connect()
+    try:
+        record = not args.dry_run
+        fired = alerts.evaluate(conn, manager_id=args.manager, record=record)
+        if not fired:
+            print("evaluate-alerts: no matches")
+            return
+        print(f"evaluate-alerts: {len(fired)} event(s)"
+              + ("" if record else " (dry-run, nothing delivered)"))
+        for e in fired:
+            delivered = ",".join(e.get("delivered") or []) or "-"
+            print(f"  mid={e['manager_id']}  {e['event']:4s}  "
+                  f"{e['domain']:32s}  {e['detail'][:24]:24s}  ->  {delivered}")
+        if record and not emailer.configured():
+            print("evaluate-alerts: NOTE — RESEND_API_KEY not set, "
+                  "email channel skipped")
+    finally:
+        conn.close()
+
+
 def cmd_prove_ownership(args) -> None:
     """The headline demo: an API refresh cannot overwrite human-owned data."""
     conn = connect()
@@ -922,6 +947,14 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--handle", help="alternative: member's display handle")
     q.add_argument("--count", type=int, default=1, help="number of swaps to grant")
     q.set_defaults(func=cmd_grant_swap)
+
+    q = sub.add_parser("evaluate-alerts",
+                       help="run the alerts engine once and deliver any matching events")
+    q.add_argument("--manager", type=int,
+                   help="only evaluate rules for this manager id (test single member)")
+    q.add_argument("--dry-run", action="store_true",
+                   help="show matches but don't send email or record events")
+    q.set_defaults(func=cmd_evaluate_alerts)
 
     q = sub.add_parser("prove-ownership"); q.set_defaults(func=cmd_prove_ownership)
     q = sub.add_parser("demo"); q.set_defaults(func=cmd_demo)

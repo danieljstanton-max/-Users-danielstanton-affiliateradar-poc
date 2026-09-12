@@ -178,7 +178,7 @@ def evaluate(conn: sqlite3.Connection, manager_id: int | None = None,
                                 "AND event=?", (ev["rule_id"], ev["site_id"], ev["event"])
                                 ).fetchone():
                     continue
-                sent = deliver(ev, rule["delivery"])
+                sent = deliver(ev, rule["delivery"], conn=conn)
                 conn.execute(
                     """INSERT INTO alert_events (rule_id, manager_id, site_id, domain,
                        event, detail, delivered, created_at) VALUES (?,?,?,?,?,?,?,?)""",
@@ -191,19 +191,121 @@ def evaluate(conn: sqlite3.Connection, manager_id: int | None = None,
     return fired
 
 
-def deliver(event: dict, channels: list) -> list:
-    """THE PLUG-IN POINT. Dispatch one alert event to each chosen channel and
-    return the channels actually sent. In the PoC this is a no-op that just
-    acknowledges the channels; wire the real providers here — nothing else in
-    the engine changes.
+def deliver(event: dict, channels: list, conn=None) -> list:
+    """Dispatch one alert event to each chosen channel and return the
+    channels actually delivered. Email goes out via Resend; push and
+    telegram are still stubs.
 
-        push     -> APNs / FCM              # CONFIRM: device-token store + provider
-        email    -> SMTP / SendGrid / SES   # CONFIRM: from-address + template
-        telegram -> Telegram Bot API         # CONFIRM: bot token + chat id per user
+    Passing `conn` lets the email renderer look up the recipient's
+    address and name; without it the email channel is skipped."""
+    sent: list = []
+    for c in channels:
+        if c not in CHANNELS:
+            continue
+        if c == "email":
+            if conn is None:
+                continue
+            try:
+                if _deliver_email(conn, event):
+                    sent.append("email")
+            except Exception as e:
+                # Log but don't crash the whole tick — one bad
+                # recipient shouldn't stop the queue.
+                print(f"[alerts] email delivery failed for "
+                      f"{event.get('event')} on {event.get('domain')}: {e}")
+        else:
+            # push / telegram — not yet wired.
+            sent.append(c)
+    return sent
 
-    Kept deliberately tiny and side-effect-free so it's obvious where to plug in.
-    """
-    return [c for c in channels if c in CHANNELS]
+
+def _deliver_email(conn, event: dict) -> bool:
+    """Render + send one alert email. Returns True if Resend accepted it."""
+    from . import emailer
+    if not emailer.configured():
+        return False
+    row = conn.execute(
+        "SELECT handle, real_name, work_email "
+        "FROM chat_managers WHERE id=?",
+        (event["manager_id"],)).fetchone()
+    if not row or not row["work_email"]:
+        return False
+    subject, html, text = _render_email(event, row)
+    emailer.send(
+        to=row["work_email"], subject=subject, html=html, text=text,
+        tag=f"alert:{event.get('event','?')}")
+    return True
+
+
+# --- email templates -------------------------------------------------------
+_EVENT_TITLES = {
+    "new":  "A new affiliate site just appeared in your market",
+    "up":   "A site on your radar is trending up",
+    "down": "A site on your radar is trending down",
+}
+_EVENT_LEDES = {
+    "new":  "You asked to hear when new affiliate sites appear. Here's one.",
+    "up":   "A site you're watching just had a traffic spike.",
+    "down": "A site you're watching is losing traffic — could be a swap opportunity.",
+}
+
+
+def _render_email(event: dict, row) -> tuple[str, str, str]:
+    """Return (subject, html_body, text_body) for one alert event."""
+    from . import emailer
+    base = emailer.public_url()
+    title = _EVENT_TITLES.get(event["event"], "Affswap alert")
+    lede = _EVENT_LEDES.get(event["event"], "")
+    site_name = event.get("name") or event.get("domain") or "(unknown site)"
+    domain = event.get("domain") or ""
+    detail = event.get("detail") or ""
+    first = (row["real_name"] or row["handle"] or "").split(" ")[0] or "there"
+
+    site_url = f"{base}/#/site/{domain}"
+    prefs_url = f"{base}/#/account"
+
+    subject = f"[Affswap] {site_name} — {title}"
+
+    html = f"""<!doctype html>
+<html><body style="margin:0;background:#F5F7FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1A2332">
+  <div style="max-width:560px;margin:32px auto;padding:0 16px">
+    <div style="padding:0 4px 20px">
+      <span style="font-weight:800;font-size:22px;letter-spacing:-0.02em;color:#1A2332">Affswap</span>
+      <span style="color:#6B7480;font-size:13px;margin-left:10px">alerts</span>
+    </div>
+    <div style="background:#fff;border:1px solid #E4E8EE;border-radius:14px;padding:28px 28px 24px;box-shadow:0 1px 3px rgba(20,30,50,0.04)">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#3D7CFF;margin-bottom:10px">{_esc(_TRIGGER_LABEL.get(event['event'], ''))}</div>
+      <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 14px;line-height:1.25;color:#1A2332">{_esc(site_name)}</h1>
+      <p style="color:#485062;font-size:14.5px;line-height:1.55;margin:0 0 22px">Hi {_esc(first)}, {_esc(lede)}<br><br><b>{_esc(site_name)}</b> <span style="color:#6B7480">({_esc(domain)})</span> &middot; <b>{_esc(detail)}</b></p>
+      <a href="{_esc(site_url)}" style="display:inline-block;background:#3D7CFF;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(61,124,255,0.28)">View site profile →</a>
+    </div>
+    <div style="text-align:center;padding:20px 4px;color:#6B7480;font-size:12px;line-height:1.5">
+      You're getting this because you set up alerts for this market.<br>
+      <a href="{_esc(prefs_url)}" style="color:#3D7CFF;text-decoration:none">Manage alert preferences</a>
+    </div>
+  </div>
+</body></html>"""
+
+    text = (
+        f"[Affswap] {site_name} — {title}\n\n"
+        f"Hi {first},\n\n"
+        f"{lede}\n\n"
+        f"{site_name} ({domain}) — {detail}\n\n"
+        f"View: {site_url}\n\n"
+        f"---\n"
+        f"You're getting this because you set up alerts for this market.\n"
+        f"Manage preferences: {prefs_url}\n"
+    )
+    return subject, html, text
+
+
+def _esc(s) -> str:
+    """Tiny HTML escaper for email templates (avoid pulling html.escape here
+    since it also escapes single quotes we sometimes use for attributes)."""
+    if s is None:
+        return ""
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
 
 
 # --- demo seeding -----------------------------------------------------------

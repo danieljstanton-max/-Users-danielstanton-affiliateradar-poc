@@ -43,6 +43,15 @@ services:
       # Signed session-cookie secret (any long random string).
       - key: AFFSWAP_SECRET
         sync: false
+      # Resend email API — used by the alerts engine.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ALERTS_FROM_EMAIL
+        sync: false
+      - key: ALERTS_FROM_NAME
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
       # Stripe billing — dashboard-only. sync:false keeps the Blueprint
       # sync from wiping these on every git push.
       - key: STRIPE_SECRET_KEY

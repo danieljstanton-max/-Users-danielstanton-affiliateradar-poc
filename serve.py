@@ -299,12 +299,43 @@ class Proxy(BaseHTTPRequestHandler):
         print(f'[proxy] {host} {self.command} {self.path} {fmt % args}')
 
 
+def _alerts_scheduler() -> None:
+    """Background thread — every N minutes, tick the alerts engine and
+    deliver any newly-matched events. Idempotent (evaluate() dedupes
+    on rule+site+event), so nothing gets sent twice.
+
+    Interval is generous by default (15 min) so evaluate() doesn't
+    hammer the DB — bump AFFSWAP_ALERTS_INTERVAL_SECONDS to change."""
+    import time
+    from radar import alerts, db as _db
+    interval = int(os.environ.get("AFFSWAP_ALERTS_INTERVAL_SECONDS", "900"))
+    # Small warmup so the http server binds first.
+    time.sleep(15)
+    while True:
+        try:
+            conn = _db.connect()
+            try:
+                fired = alerts.evaluate(conn, record=True)
+                if fired:
+                    print(f"[alerts] delivered {len(fired)} event(s)")
+            finally:
+                conn.close()
+        except Exception as e:
+            print(f"[alerts] tick failed: {e}")
+        time.sleep(interval)
+
+
 def main() -> None:
     ensure_db()
     idx = ROOT / "index.html"
     Proxy.index_html = idx.read_bytes() if idx.exists() else b""
     Proxy.app_port = _start_backend(AppHandler)
     Proxy.admin_port = _start_backend(AdminHandler)
+    if os.environ.get("AFFSWAP_ALERTS_DISABLED", "").lower() not in ("1", "true"):
+        t = threading.Thread(target=_alerts_scheduler, daemon=True)
+        t.start()
+        print(f"  alerts     -> ticking every "
+              f"{os.environ.get('AFFSWAP_ALERTS_INTERVAL_SECONDS','900')}s")
 
     port = int(os.environ.get("PORT", "8080"))
     front = ThreadingHTTPServer(("0.0.0.0", port), Proxy)
