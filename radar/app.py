@@ -566,9 +566,12 @@ def api_share_claim(conn, mid):
 
 # --- Chat -------------------------------------------------------------------
 CHAT_ROOMS = {
-    "global": {"key": "global", "name": "Global lobby",
-               "desc": "Every verified manager on Affswap."},
-    # More rooms can go here later (per-country / per-vertical).
+    # key stays 'global' so existing history carries over under the new name.
+    "global": {"key": "global", "name": "Affiliate Manager Community",
+               "desc": "Every verified affiliate manager on Affswap."},
+    "sbc-lisbon-2026": {"key": "sbc-lisbon-2026", "name": "SBC Lisbon 2026",
+               "desc": "Meet and connect at SBC Summit Lisbon 2026."},
+    # More rooms can go here later (per-country / per-vertical / per-event).
 }
 CHAT_MAX_BODY = 500                 # chars per message
 CHAT_MAX_PER_MINUTE = 20            # posts per member per minute (soft rate cap)
