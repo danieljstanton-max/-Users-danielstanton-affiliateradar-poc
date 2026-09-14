@@ -970,7 +970,7 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .stub h2{font-size:32px;color:var(--ink);margin-bottom:8px;font-weight:700}
 
 /* FOOTER */
-footer{padding:56px 0 40px}
+.site-footer{margin-top:72px;background:linear-gradient(180deg,var(--blue-soft),var(--blue-softer));border-top:1px solid var(--line);padding:40px 0 44px}
 .foot-row{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
 .foot-links{display:flex;gap:22px}
 .foot-links a{color:var(--ink-2);font-size:13.5px;font-weight:500;cursor:pointer}
@@ -1255,15 +1255,17 @@ footer{padding:56px 0 40px}
   <section id="v-stub" class="view"></section>
 </main>
 
-<footer class="wrap">
-  <div class="foot-row">
-    <a class="brand" onclick="go('#/home')">
-      <img class="brand-logo" src="/assets/affswap-logo.png" alt="Affswap">
-    </a>
-    <nav class="foot-links">
-      <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/payments')">Payments</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
-    </nav>
-    <span class="foot-tag">Real people. Real opportunities. Bigger networks.</span>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-row">
+      <a class="brand" onclick="go('#/home')">
+        <img class="brand-logo" src="/assets/affswap-logo.png" alt="Affswap">
+      </a>
+      <nav class="foot-links">
+        <a onclick="go('#/home')">Home</a><a onclick="go('#/markets')">Markets</a><a onclick="go('#/payments')">Payments</a><a onclick="go('#/account')">Account</a><a onclick="go('#/privacy')">Privacy</a><a onclick="go('#/terms')">Terms</a>
+      </nav>
+      <span class="foot-tag">Real people. Real opportunities. Bigger networks.</span>
+    </div>
   </div>
 </footer>
 
