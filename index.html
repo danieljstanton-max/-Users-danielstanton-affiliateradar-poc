@@ -71,6 +71,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .nav-links a:hover{color:var(--ink)}
 .nav-links a.on{color:var(--blue)}
 .nav-links a.on::after{content:"";position:absolute;left:0;right:0;bottom:-12px;height:2px;background:var(--blue);border-radius:2px}
+.mtabs{display:none}
 .nav-right{display:flex;align-items:center;gap:12px}
 .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--blue-soft);color:var(--blue-hi);font-weight:600;font-size:13.5px;border-radius:999px}
 .pill svg{width:14px;height:14px}
@@ -1007,6 +1008,12 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 @media (max-width:640px){
   .wrap{padding:0 16px}
   .nav-links{display:none}
+  /* mobile bottom tab bar — labelled nav so Payments/Account are easy to find */
+  .mtabs{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:95;background:var(--card);border-top:1px solid var(--line);padding:6px 2px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 20px rgba(11,27,51,0.07)}
+  .mtabs a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0;font-size:10px;font-weight:600;letter-spacing:-0.01em;color:var(--ink-mute);cursor:pointer;text-decoration:none}
+  .mtabs a svg{width:22px;height:22px}
+  .mtabs a.on{color:var(--blue)}
+  body{padding-bottom:66px}
   .stats-grid,.opp-grid,.sw-stats,.mkd-stats{grid-template-columns:1fr}
   .section{padding:48px 0}
   .cta-band{flex-direction:column;align-items:flex-start;padding:20px}
@@ -1095,6 +1102,11 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
   .mk-table tbody .view-btn{display:flex;justify-content:center;width:100%;padding:11px 0;border:1px solid var(--line);border-radius:10px;font-weight:600;margin-top:2px}
   .mkd-tf{gap:8px}
   .mkd-bar{max-width:120px}
+  /* affiliate rows -> labelled cards like Markets (Monthly traffic / Authority / Trend) */
+  .mk-table td[data-label] .mkd-bar{display:none}
+  .mk-table td[data-label] .mkd-tf{min-width:0}
+  .mk-table td[data-label] .mkd-tf b{font-size:14px}
+  .mk-table tbody .mkd-acts{justify-content:flex-start;flex-wrap:wrap;gap:8px;margin-top:2px}
   .mkd-acts{justify-content:flex-start;flex-wrap:wrap;gap:6px}
   .mkd-footer-cta{padding:20px}
   .mkd-footer-cta h3{font-size:17px}
@@ -1285,6 +1297,14 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
   </div>
 </footer>
 
+<nav class="mtabs" id="mtabs">
+  <a data-s="home" onclick="go('#/home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 L12 4 L20 11"/><path d="M6 10 V20 H18 V10"/></svg><span>Home</span></a>
+  <a data-s="markets" onclick="go('#/markets')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M4 12 H20 M12 4 C 8 8, 8 16, 12 20 M12 4 C 16 8, 16 16, 12 20"/></svg><span>Markets</span></a>
+  <a data-s="chat" onclick="go('#/chat')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M5 5 H19 V15 H10 L6 19 V15 H5 Z"/></svg><span>Chat</span></a>
+  <a data-s="payments" onclick="go('#/payments')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10 H21"/></svg><span>Payments</span></a>
+  <a data-s="account" onclick="go('#/account')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20 C 5 15, 8 13, 12 13 C 16 13, 19 15, 19 20"/></svg><span>Account</span></a>
+</nav>
+
 <div id="toast"></div>
 
 <script>
@@ -1305,6 +1325,15 @@ function updateNav(active){
   document.getElementById('nlinks').innerHTML=NAV.map(function(n){
     return '<a class="'+(n[0]===active?'on':'')+'" onclick="go(\'#/'+n[0]+'\')">'+h(n[1])+'</a>';
   }).join('');
+  // mobile bottom tabs — map sub-routes to their family tab
+  var famAcct=['account','matches','swaps','loyalty','lists','alerts'];
+  var famPay=['payments','billing','plans'];
+  var tabs=document.querySelectorAll('#mtabs a');
+  for(var i=0;i<tabs.length;i++){
+    var s=tabs[i].getAttribute('data-s');
+    var on = s===active || (s==='account'&&famAcct.indexOf(active)>=0) || (s==='payments'&&famPay.indexOf(active)>=0);
+    tabs[i].classList.toggle('on', on);
+  }
 }
 
 var ME=null;
@@ -1640,7 +1669,7 @@ function hydrateMarket(iso){
       intelHtml+
 
       /* Toolbar — search + sort + view toggle */
-      '<div class="mk-toolbar" style="margin-top:24px;grid-template-columns:minmax(0,1fr) auto auto auto">'+
+      '<div class="mk-toolbar" style="margin-top:24px">'+
         '<label class="mk-search"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11 L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input type="text" id="mkd-search" placeholder="Search sites in '+h(country.name)+'…"></label>'+
         '<div class="mk-dd"><select id="mkd-sort"><option value="traffic">Sort: Most traffic</option><option value="authority">Sort: Highest authority</option><option value="name">Sort: A–Z</option></select><svg class="dd-caret" viewBox="0 0 12 12" fill="none"><path d="M3 5 L6 8 L9 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>'+
         '<div class="mkd-viewtog" role="tablist" aria-label="Toggle list or grid view">'+
@@ -1755,9 +1784,9 @@ function renderMkdRows(){
       var color=MKD_PALETTE[i%MKD_PALETTE.length];
       return '<tr class="mk-row-link" onclick="go(\'#/site/'+r.domain+'\')">'+
         '<td><div class="mkd-site">'+mkdFavHtml(r,color)+'<div class="mkd-site-info"><b>'+h(r.name)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
-        '<td><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
-        '<td><span class="mkd-auth">'+r.authority+'</span></td>'+
-        '<td><div class="mkd-trend">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div></td>'+
+        '<td data-label="Monthly traffic"><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
+        '<td data-label="Authority"><span class="mkd-auth">'+r.authority+'</span></td>'+
+        '<td data-label="Trend"><div class="mkd-trend">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div></td>'+
         '<td>'+verts+'</td>'+
         '<td><div class="mkd-acts" onclick="event.stopPropagation()">'+
           '<a class="mkd-visit" href="'+(r.landing||('https://'+encodeURI(r.domain)+'/'))+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
