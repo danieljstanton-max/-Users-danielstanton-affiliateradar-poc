@@ -67,7 +67,8 @@ CURATED: dict[tuple[str, str], list[tuple[str, str]]] = {
     ("TH", "bingo"): _kw("th", "บิงโกออนไลน์", "เกมบิงโกออนไลน์"),
     ("AU", "casino"): [("best online casino australia", "en"), ("pokies online", "en")],
     ("NZ", "casino"): [("best online casino nz", "en")],
-    ("BR", "sportsbook"): [("melhores casas de apostas", "pt"), ("bônus de aposta", "pt")],
+    # Brazil placeholders below are superseded by the full BR entry in
+    # KEYWORDS_BY_MARKET (casino + sportsbook, Brazilian Portuguese).
 }
 
 # ---------------------------------------------------------------------------
@@ -148,6 +149,26 @@ _EU: dict[str, dict[str, list[tuple[str, str]]]] = {
                       "bónus de casino", "bónus de casino sem depósito", "casinos com levantamentos rápidos"),
         "sportsbook": _kw("pt", "melhores casas de apostas", "análises de casas de apostas",
                           "melhores sites de apostas", "apostas desportivas online"),
+    },
+    # Brazil — huge market post-regulation (Bets Law 14.790/2023). Uses
+    # Brazilian Portuguese ("cassino" with double-s, not "casino"). Distinct
+    # keyword set from Portugal because the terminology, brands, and legal
+    # framing are meaningfully different.
+    "BR": {
+        "casino": _kw("pt", "melhores cassinos online brasil", "cassinos online brasil",
+                      "avaliações de cassinos online", "novos cassinos brasil",
+                      "cassino ao vivo brasil", "cassino online confiável",
+                      "bônus de cassino sem depósito", "rodadas grátis brasil",
+                      "melhores slots online", "jogos de cassino online",
+                      "promoções de cassino brasil", "cassino com pix",
+                      "cassinos licenciados brasil"),
+        "sportsbook": _kw("pt", "melhores casas de apostas brasil",
+                          "casas de apostas confiáveis", "apostas esportivas online",
+                          "melhores sites de apostas esportivas",
+                          "bônus de apostas esportivas", "casas de apostas com bônus",
+                          "apostas em futebol brasil", "odds brasileirão",
+                          "promoções de apostas esportivas", "casas de apostas licenciadas",
+                          "casas de apostas com pix", "apostas ao vivo brasil"),
     },
     "GR": {
         "casino": _kw("el", "καλύτερα online καζίνο", "κριτικές online καζίνο",
