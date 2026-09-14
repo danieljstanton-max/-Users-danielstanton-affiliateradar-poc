@@ -146,6 +146,39 @@ def reject(conn: sqlite3.Connection, member_id: int, reason: str | None = None,
     return {"ok": True, "id": member_id, "reason": reason}
 
 
+def delete(conn: sqlite3.Connection, member_id: int) -> dict:
+    """PERMANENTLY delete a member and every row tied to them. Irreversible —
+    the back office guards this behind an explicit confirm."""
+    row = conn.execute("SELECT handle, real_name FROM chat_managers WHERE id=?",
+                       (member_id,)).fetchone()
+    if not row:
+        return {"ok": False, "error": "not_found"}
+    who = row["real_name"] or row["handle"] or f"member {member_id}"
+    stmts = [
+        ("DELETE FROM swap_wants WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM swap_haves WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM swap_accounts WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM swap_contributions WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM swap_matches WHERE a_manager=? OR b_manager=?", (member_id, member_id)),
+        ("DELETE FROM swap_ledger WHERE from_manager=? OR to_manager=?", (member_id, member_id)),
+        ("DELETE FROM alert_rules WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM alert_events WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM reviews WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM share_events WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM chat_messages WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM billing_events WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM feedback WHERE manager_id=?", (member_id,)),
+        ("DELETE FROM chat_managers WHERE id=?", (member_id,)),
+    ]
+    for sql, params in stmts:
+        try:
+            conn.execute(sql, params)
+        except Exception:
+            pass  # table may not exist on older DBs — keep going
+    conn.commit()
+    return {"ok": True, "deleted": who}
+
+
 # --- demo -------------------------------------------------------------------
 _DEMO_APPS = [
     # real_name, handle, work_email, linkedin, company, sector, years, li_ok, confirm

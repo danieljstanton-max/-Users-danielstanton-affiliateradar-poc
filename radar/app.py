@@ -1259,6 +1259,28 @@ class _H(BaseHTTPRequestHandler):
                         self._json({"ok": True, **res})
                     except swaps.SwapError as e:
                         self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/feedback":
+                # Member feedback / feature requests -> back office · Feedback tab.
+                if not authed:
+                    self._json({"ok": False, "error": "Please sign in to send feedback."}, 401)
+                    return
+                body = (payload.get("body") or "").strip()
+                if not body:
+                    self._json({"ok": False, "error": "Please write something first."}, 400)
+                elif len(body) > 4000:
+                    self._json({"ok": False, "error": "too_long"}, 400)
+                else:
+                    conn.execute(
+                        "CREATE TABLE IF NOT EXISTS feedback ("
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, manager_id INTEGER, "
+                        "kind TEXT DEFAULT 'feedback', body TEXT NOT NULL, "
+                        "status TEXT NOT NULL DEFAULT 'new', created_at TEXT NOT NULL, "
+                        "resolved_at TEXT, resolved_by TEXT)")
+                    conn.execute(
+                        "INSERT INTO feedback (manager_id, kind, body, created_at) VALUES (?,?,?,?)",
+                        (mid, (payload.get("kind") or "feedback"), body, now_iso()))
+                    conn.commit()
+                    self._json({"ok": True})
             elif u.path in ("/api/want/remove", "/api/have/remove"):
                 dom = (payload.get("domain") or "").strip()
                 if not dom:

@@ -2272,7 +2272,7 @@ function _hydrateAccountFull(meArg){
             '<div class="acct-fields">'+
               '<div class="field"><label>Display name</label><div class="inp"><input id="acct-handle" value="'+h(a.handle||'')+'"></div></div>'+
               '<div class="field"><label>Full name</label><div class="inp"><input id="acct-name" value="'+h(a.real_name||'')+'" placeholder="Sam Knight"></div></div>'+
-              '<div class="field"><label>Company</label><div class="inp"><input id="acct-company" value="'+h(a.company||'')+'" placeholder="Growth Media Ltd"></div></div>'+
+              '<div class="field"><label>Company <span style="color:var(--warn)">*</span> <span style="color:var(--ink-mute);font-weight:400;font-size:11.5px">— shown in chat</span></label><div class="inp"><input id="acct-company" value="'+h(a.company||'')+'" placeholder="Growth Media Ltd" required></div></div>'+
               '<div class="field"><label>Work email</label><div class="inp"><input id="acct-email" type="email" value="'+h(a.work_email||'')+'" placeholder="you@company.com"></div></div>'+
               '<div class="field-row">'+
                 '<div class="field"><label>LinkedIn URL</label><div class="inp"><input id="acct-linkedin" value="'+h(a.linkedin_url||'')+'" placeholder="'+h(_guessLiUrl(a.real_name)||'linkedin.com/in/samknight')+'"></div></div>'+
@@ -2301,6 +2301,14 @@ function _hydrateAccountFull(meArg){
             '<button class="btn savebtn" onclick="saveAlertPrefs(this)">Save email preferences</button>'+
             '<button class="btn btn-gho" onclick="testAlertEmail(this)">Send test email</button>'+
           '</div>'+
+        '</div>'+
+      '</div>'+
+      /* Feedback & feature requests -> back office */
+      '<div class="acct-card" style="margin-top:16px">'+
+        '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M3 4 H17 V13 H8 L4.5 16 V13 H3 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><div><h2>Feedback &amp; feature requests</h2><p>Tell us what you think, or a feature you&rsquo;d like to see on Affswap &mdash; we read every message.</p></div></div>'+
+        '<div id="fb-form">'+
+          '<textarea id="fb-body" rows="3" maxlength="4000" placeholder="Your feedback, or a feature you&rsquo;d love to see&hellip;" style="width:100%;min-height:84px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:12px;font-family:inherit;font-size:14px;background:var(--card);color:var(--ink);box-sizing:border-box"></textarea>'+
+          '<button class="btn" style="margin-top:12px" onclick="sendFeedback()">Send feedback</button>'+
         '</div>'+
       '</div>'+
       /* Sign out lives at the very bottom of Profile */
@@ -2537,10 +2545,12 @@ function focusLinkedInUrl(){
 }
 
 function saveProfile(btn){
+  var company=document.getElementById('acct-company').value.trim();
+  if(!company){ toast('Please add your company name — it\'s shown in chat'); var c=document.getElementById('acct-company'); if(c){c.focus();c.scrollIntoView({behavior:'smooth',block:'center'});c.style.boxShadow='0 0 0 3px rgba(229,72,77,0.35)';setTimeout(function(){c.style.boxShadow='';},1800);} return; }
   var orig=btn.textContent; btn.disabled=true; btn.textContent='Saving…';
   var payload={
     real_name:document.getElementById('acct-name').value.trim(),
-    company:document.getElementById('acct-company').value.trim(),
+    company:company,
     work_email:(document.getElementById('acct-email')||{}).value ? document.getElementById('acct-email').value.trim() : '',
     linkedin_url:document.getElementById('acct-linkedin').value.trim(),
     site_url:(document.getElementById('acct-site')||{}).value ? document.getElementById('acct-site').value.trim() : null,
@@ -2583,6 +2593,13 @@ function saveProfile(btn){
 }
 /* openUpgrade / openTopup are defined in the Payments section and
    redirect to /#/payments — kept for callers elsewhere in the app. */
+function sendFeedback(){
+  var t=document.getElementById('fb-body');if(!t||!t.value.trim()){toast('Write something first');return;}
+  var btn=document.querySelector('#fb-form button');if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  var done=function(){document.getElementById('fb-form').innerHTML='<div style="padding:16px;background:var(--up-soft);border:1px solid rgba(20,184,122,0.28);border-radius:10px;color:#0E9760;font-weight:600;display:flex;align-items:center;gap:10px"><span style="width:24px;height:24px;background:var(--up);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">✓</span>Thanks! Your feedback has been sent to the team.</div>';};
+  var fail=function(m){toast(m||'Could not send — try again');if(btn){btn.disabled=false;btn.textContent='Send feedback';}};
+  apiPost('/api/feedback',{body:t.value.trim()}).then(function(j){ if(j&&j.ok){done();} else {fail(j&&j.error);} }).catch(function(){fail();});
+}
 function suggestSite(){
   var u=document.getElementById('sugg-url');if(!u||!u.value.trim()){toast('Enter a site URL');return;}
   var btn=document.querySelector('#sugg-form button');if(btn){btn.disabled=true;btn.textContent='Submitting…';}

@@ -212,6 +212,7 @@ ICONS = {
     "fullmembers": _ic("<circle cx='8' cy='9' r='3'/><path d='M2.5 19c0-3 2.4-5 5.5-5s5.5 2 5.5 5'/><circle cx='17' cy='8' r='2.3'/><path d='M15.6 13.6c2.1.3 3.9 2 3.9 4.4'/>"),
     "curation":  _ic("<path d='M3 5h18l-7 8v6l-4-2v-4z'/>"),
     "reviews":   _ic("<path d='M12 3.6l2.5 5.1 5.6.8-4 3.9 1 5.6L12 16.4 6.9 19l1-5.6-4-3.9 5.6-.8z'/>"),
+    "feedback":  _ic("<path d='M4 5h16v10H9l-4 4v-4H4z'/><path d='M8 9h8M8 12h5'/>"),
     "shots":     _ic("<rect x='3' y='5' width='18' height='14' rx='2'/><circle cx='8.5' cy='10' r='1.6'/><path d='M21 16l-5-4-8 6'/>"),
     "sites":     _ic("<circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18'/>"),
     "import":    _ic("<path d='M12 15V4M8 8l4-4 4 4'/><path d='M5 20h14'/>"),
@@ -237,6 +238,8 @@ _SIDEBAR = [
          "WHERE s.classification='affiliate' AND (sg.review IS NULL OR sg.review='') AND sg.flagged=1"),
         ("reviews", "/reviews", "Reviews",
          "SELECT COUNT(*) n FROM reviews WHERE status='pending'"),
+        ("feedback", "/feedback", "Feedback",
+         "SELECT COUNT(*) n FROM feedback WHERE status='new'"),
         ("shots", "/screenshots", "Homepages",
          "SELECT COUNT(*) n FROM sites s WHERE s.classification='affiliate' "
          "AND s.id NOT IN (SELECT site_id FROM blacklist) "
@@ -1192,8 +1195,17 @@ def _member_detail_page(conn, mid: int, flash: str = "", temp_pw: str = "") -> b
         + info("Member ID", str(mid))
         + "</div>")
 
+    # company — editable here so an operator can fill it in (it shows in chat)
     body.append(
-        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px'>"
+        f"<form class='card' method='post' action='/member-company?id={mid}' style='max-width:none;margin-top:16px'>"
+        "<label style='margin-top:0'>Company <span class='hint' style='font-weight:400'>"
+        "— shown next to this member in chat &amp; on their profile</span></label>"
+        "<div style='display:flex;gap:10px'>"
+        f"<input name='company' value='{_esc(g('company') or '')}' placeholder='Company name' style='flex:1'>"
+        "<button type='submit'>Save</button></div></form>")
+
+    body.append(
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px'>"
         f"<form class='card' method='post' action='/member-gift?id={mid}' style='max-width:none;margin:0'>"
         "<label style='margin-top:0'>Gift swaps</label>"
         "<div style='display:flex;gap:10px;align-items:center'>"
@@ -1220,7 +1232,66 @@ def _member_detail_page(conn, mid: int, flash: str = "", temp_pw: str = "") -> b
                  "Account status — suspending revokes access")
         + "</div>")
 
+    body.append(
+        "<div class='card' style='max-width:none;margin-top:16px;border-color:#F3B4B2'>"
+        "<label style='margin-top:0;color:var(--down)'>Danger zone</label>"
+        "<div class='hint' style='margin:2px 0 12px'>Permanently delete this member and all their "
+        "data — swaps, matches, reviews, chat messages, feedback. This cannot be undone.</div>"
+        f"<form method='post' action='/member-delete?id={mid}' onsubmit=\"return confirm('Permanently "
+        "delete this member and ALL their data? This cannot be undone.');\">"
+        "<button class='btn reject' type='submit'>Delete member permanently</button></form></div>")
+
     return _page("".join(body), title=f"Member · {name}")
+
+
+def _feedback_page(conn, flash: str = "") -> bytes:
+    """Member feedback + feature requests, newest/unreviewed first."""
+    conn.execute("CREATE TABLE IF NOT EXISTS feedback ("
+                 "id INTEGER PRIMARY KEY AUTOINCREMENT, manager_id INTEGER, "
+                 "kind TEXT DEFAULT 'feedback', body TEXT NOT NULL, "
+                 "status TEXT NOT NULL DEFAULT 'new', created_at TEXT, "
+                 "resolved_at TEXT, resolved_by TEXT)")
+    rows = conn.execute(
+        "SELECT f.id, f.body, f.status, f.created_at, f.manager_id, "
+        "       c.real_name, c.handle, c.company "
+        "FROM feedback f LEFT JOIN chat_managers c ON c.id=f.manager_id "
+        "ORDER BY (f.status='new') DESC, f.created_at DESC").fetchall()
+    new_n = sum(1 for r in rows if r["status"] == "new")
+    body = [
+        "<div class='eyebrow'>Affswap · Back office</div>",
+        "<h1>Feedback &amp; feature requests</h1>",
+        "<p class='sub'>What members are telling us and asking for. New items first — "
+        "mark them reviewed as you work through them.</p>",
+        f"<p class='mode'>New: <b>{new_n}</b> &nbsp;·&nbsp; Total: <b>{len(rows)}</b></p>",
+        _nav("feedback", 0),
+    ]
+    if flash:
+        body.append(f"<div class='note'>{_esc(flash)}</div>")
+    if not rows:
+        body.append("<div class='empty'><div class='big'>💬</div>No feedback yet.</div>")
+    for r in rows:
+        who = _esc(r["real_name"] or r["handle"] or "—")
+        comp = _esc(r["company"] or "")
+        when = _esc((r["created_at"] or "")[:16].replace("T", " "))
+        isnew = r["status"] == "new"
+        mid = r["manager_id"]
+        who_html = (f"<a href='/member?id={mid}'>{who}</a>" if mid else who)
+        act = (f"<form method='post' action='/feedback-act?id={r['id']}' style='display:inline'>"
+               f"<input type='hidden' name='action' value='{'reviewed' if isnew else 'reopen'}'>"
+               f"<button class='btn secondary' type='submit'>{'Mark reviewed' if isnew else 'Reopen'}</button></form>"
+               f"<form method='post' action='/feedback-act?id={r['id']}' style='display:inline'>"
+               f"<input type='hidden' name='action' value='delete'>"
+               f"<button class='btn reject' type='submit'>Delete</button></form>")
+        body.append(
+            "<div class='qcard'><div class='qmain'>"
+            "<div class='qmeta' style='margin-bottom:7px'><b>" + who_html + "</b>"
+            + (f"<span class='ev'>{comp}</span>" if comp else "")
+            + f"<span class='ev'>{when}</span>"
+            + ("" if isnew else "<span class='badge affiliate'>reviewed</span>")
+            + "</div>"
+            + f"<div style='font-size:14px;color:var(--ink);white-space:pre-wrap;line-height:1.5'>{_esc(r['body'])}</div>"
+            + "</div><div class='qactions'>" + act + "</div></div>")
+    return _page("".join(body), title="Feedback")
 
 
 def _curation_page(conn, flash: str = "") -> bytes:
@@ -1359,6 +1430,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(_member_detail_page(conn, int(qs["id"][0]), flash=flash))
             elif parsed.path == "/reviews":
                 self._send(_reviews_page(conn, flash=flash))
+            elif parsed.path == "/feedback":
+                self._send(_feedback_page(conn, flash=flash))
             elif parsed.path == "/blacklist":
                 self._send(_blacklist_page(conn, flash=flash))
             elif parsed.path == "/blacklist/sample":
@@ -1618,6 +1691,39 @@ class _Handler(BaseHTTPRequestHandler):
                     msg = "Unknown action."
                 conn.commit()
                 self._send(b"", code=303, headers={"Location": f"/member?id={mid}&flash=" + urllib.parse.quote(msg)})
+                return
+            if parsed.path == "/feedback-act":                # feedback: reviewed / reopen / delete
+                fid = int(qs["id"][0])
+                action = form.get("action", [""])[0]
+                if action == "reviewed":
+                    conn.execute("UPDATE feedback SET status='reviewed', resolved_at=?, "
+                                 "resolved_by='backoffice' WHERE id=?", (now_iso(), fid))
+                    msg = "Marked reviewed."
+                elif action == "reopen":
+                    conn.execute("UPDATE feedback SET status='new', resolved_at=NULL WHERE id=?", (fid,))
+                    msg = "Reopened."
+                elif action == "delete":
+                    conn.execute("DELETE FROM feedback WHERE id=?", (fid,))
+                    msg = "Feedback deleted."
+                else:
+                    msg = "Unknown action."
+                conn.commit()
+                self._send(b"", code=303, headers={"Location": "/feedback?flash=" + urllib.parse.quote(msg)})
+                return
+            if parsed.path == "/member-company":              # operator sets a member's company
+                mid = int(qs["id"][0])
+                company = (form.get("company", [""])[0] or "").strip()
+                conn.execute("UPDATE chat_managers SET company=? WHERE id=?", (company or None, mid))
+                conn.commit()
+                self._send(b"", code=303, headers={"Location": f"/member?id={mid}&flash=" +
+                           urllib.parse.quote("Company updated." if company else "Company cleared.")})
+                return
+            if parsed.path == "/member-delete":               # operator: permanently delete a member
+                from . import members
+                res = members.delete(conn, int(qs["id"][0]))
+                msg = (f"Deleted {res['deleted']} and all their data." if res.get("ok")
+                       else f"Could not delete: {res.get('error')}")
+                self._send(b"", code=303, headers={"Location": "/full-members?flash=" + urllib.parse.quote(msg)})
                 return
             # --- review moderation (approve → recompute ★ + loyalty reward) ----
             if parsed.path == "/review-moderate":
