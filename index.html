@@ -1052,9 +1052,15 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
   .mk-hero{padding:24px 0 20px}
   .mk-hero h1{font-size:28px}
   .mk-hero .mk-lede{font-size:14px}
-  .mk-side-row{grid-template-columns:1fr 1fr;gap:10px}
-  .mk-side{padding:14px}
-  .mk-side .n{font-size:22px}
+  .mk-side-row{grid-template-columns:1fr;gap:14px}          /* stack: tile over Top Markets */
+  .mk-tile{padding:16px 18px}
+  .mk-tile .n{font-size:24px}
+  .mk-tile .l{font-size:13px}
+  /* Top Markets table fits full width: drop rank + trend, compact cells */
+  .mk-top{padding:14px 16px}
+  .mk-top-table th,.mk-top-table td{padding:9px 4px;font-size:13px}
+  .mk-top-table th:first-child,.mk-top-table td.rank,
+  .mk-top-table th:last-child,.mk-top-table td.trend{display:none}
   .mk-toolbar{grid-template-columns:1fr;gap:8px}
   .mk-search input{font-size:14px}
   .mk-dd select{font-size:13px}
@@ -1077,10 +1083,16 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
   .mk-toolbar{grid-template-columns:1fr;gap:8px}
   .mkd-viewtog{width:100%;justify-content:space-between}
   .mkd-viewtog button{flex:1}
-  .mk-table-card{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .mk-table thead{display:none}                             /* hide table header, rows become cards */
-  .mk-table tbody tr{display:grid;grid-template-columns:1fr;gap:8px;padding:14px;border-bottom:1px solid var(--line)}
+  .mk-table-card{overflow:hidden}
+  .mk-table thead{display:none}                             /* header hidden — rows become labelled cards */
+  .mk-table tbody tr{display:grid;grid-template-columns:1fr;gap:10px;padding:16px;border-bottom:1px solid var(--line)}
   .mk-table tbody td{padding:0;border:0}
+  .mk-table tbody .country-c{font-size:15.5px;font-weight:700}
+  .mk-table tbody td[data-label]{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:700;color:var(--ink)}
+  .mk-table tbody td[data-label]::before{content:attr(data-label);color:var(--ink-mute);font-weight:500;font-size:13px}
+  .mk-table tbody .trend-cell{height:26px}
+  .mk-table tbody .trend-cell svg{height:26px;width:100%}
+  .mk-table tbody .view-btn{display:flex;justify-content:center;width:100%;padding:11px 0;border:1px solid var(--line);border-radius:10px;font-weight:600;margin-top:2px}
   .mkd-tf{gap:8px}
   .mkd-bar{max-width:120px}
   .mkd-acts{justify-content:flex-start;flex-wrap:wrap;gap:6px}
@@ -1552,7 +1564,7 @@ function renderMarketsAll(){
   document.getElementById('mk-all-body').innerHTML = filt.map(function(c,i){
     var verts=(c.verts||[]).slice(0,3).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
     var trend='<svg viewBox="0 0 100 30"><polyline class="path-up" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" points="2,22 15,'+(20-i%3)+' 30,'+(18-i%2)+' 45,'+(15-i%4)+' 60,'+(13-i%3)+' 75,'+(10-i%2)+' 92,'+(7-i%2)+'"/></svg>';
-    return '<tr class="mk-row-link" onclick="go(\'#/market/'+c.iso+'\')"><td class="rank">'+(i+1)+'</td><td class="country-c"><div class="cwrap"><span class="flag-big">'+c.flag+'</span><span class="cname">'+h(c.name)+'</span></div></td><td class="num-c">'+c.count+'</td><td class="tf">'+h(c.tf)+'</td><td>'+verts+'</td><td class="trend-cell">'+trend+'</td><td><a class="view-btn" onclick="event.stopPropagation();go(\'#/market/'+c.iso+'\')">View market →</a></td></tr>';
+    return '<tr class="mk-row-link" onclick="go(\'#/market/'+c.iso+'\')"><td class="rank">'+(i+1)+'</td><td class="country-c"><div class="cwrap"><span class="flag-big">'+c.flag+'</span><span class="cname">'+h(c.name)+'</span></div></td><td class="num-c" data-label="Sites">'+c.count+'</td><td class="tf" data-label="Monthly traffic">'+h(c.tf)+'</td><td>'+verts+'</td><td class="trend-cell">'+trend+'</td><td><a class="view-btn" onclick="event.stopPropagation();go(\'#/market/'+c.iso+'\')">View market →</a></td></tr>';
   }).join('');
 }
 
