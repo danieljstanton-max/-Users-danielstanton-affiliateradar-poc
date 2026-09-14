@@ -107,6 +107,52 @@ def read_session_cookie(cookie: str | None) -> int | None:
     return mid
 
 
+# --- back-office admin session --------------------------------------------- #
+# A SEPARATE cookie on the admin host. Subject is 'owner' (master login) or
+# 'm:<manager_id>' (a member the owner granted is_admin). Signed with a distinct
+# 'adm:' prefix so an ordinary member session token can never be replayed here.
+ADMIN_COOKIE_NAME = "affswap_admin"
+
+
+def make_admin_cookie(subject: str) -> str:
+    payload = f"{subject}.{int(time.time())}"
+    sig = hmac.new(_secret(), ("adm:" + payload).encode(), hashlib.sha256).digest()
+    return f"{payload}.{_b64u(sig)}"
+
+
+def read_admin_cookie(cookie: str | None) -> str | None:
+    if not cookie:
+        return None
+    parts = cookie.split(".")
+    if len(parts) != 3:
+        return None
+    subject, ts_str, sig_b64 = parts
+    payload = f"{subject}.{ts_str}"
+    expected = hmac.new(_secret(), ("adm:" + payload).encode(), hashlib.sha256).digest()
+    try:
+        got = _b64u_decode(sig_b64)
+    except Exception:
+        return None
+    if not hmac.compare_digest(expected, got):
+        return None
+    try:
+        ts = int(ts_str)
+    except ValueError:
+        return None
+    if time.time() - ts > SESSION_TTL_SECONDS:
+        return None
+    return subject
+
+
+def set_admin_cookie_header(value: str, max_age: int = SESSION_TTL_SECONDS) -> str:
+    return (f"{ADMIN_COOKIE_NAME}={value}; Path=/; Max-Age={max_age}; "
+            "HttpOnly; SameSite=Lax")
+
+
+def clear_admin_cookie_header() -> str:
+    return f"{ADMIN_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"
+
+
 # --- cookie header helpers -------------------------------------------------- #
 def parse_cookie_header(header: str | None) -> dict:
     out: dict = {}

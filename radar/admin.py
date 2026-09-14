@@ -12,8 +12,10 @@ three outreach channels (email / Telegram / Teams).
 """
 from __future__ import annotations
 
+import hmac
 import html
 import json
+import os
 import re
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -276,7 +278,7 @@ def _sidebar(active: str) -> str:
             badge = _count_badge(sql) if sql else ""
             out.append(f"<a class='side-item{cls}' href='{href}'>{ICONS.get(key,'')}"
                        f"<span class='si-label'>{label}</span>{badge}</a>")
-    out.append("</nav><div class='side-foot'>Affswap · admin</div></aside>")
+    out.append("</nav><div class='side-foot'><a href='/logout'>Sign out</a> · Affswap admin</div></aside>")
     return "".join(out)
 
 
@@ -319,6 +321,48 @@ def _page(body: str, title: str = "Affswap · Back office") -> bytes:
 
 def _esc(v) -> str:
     return html.escape("" if v is None else str(v), quote=True)
+
+
+def _login_page(error: str = "") -> bytes:
+    """Back-office sign-in — no sidebar (the visitor isn't authed yet)."""
+    err = (f"<div class='note' style='background:#FCEBEC;border-color:#F3B4B2;color:#B4232A'>{_esc(error)}</div>"
+           if error else "")
+    inner = (
+        "<div style='max-width:400px;margin:9vh auto 0;padding:0 20px'>"
+        f"<div style='display:flex;align-items:center;gap:10px;margin-bottom:24px'>{MARK_SVG}"
+        "<span class='blogo'>Aff<span>swap</span></span>"
+        "<span class='bo'>Back office</span></div>"
+        "<h1 style='font-size:24px'>Sign in</h1>"
+        "<p class='sub'>Admins sign in with their Affswap email and password.</p>"
+        + err +
+        "<form class='card' method='post' action='/login' style='max-width:none;margin-top:14px'>"
+        "<label style='margin-top:0'>Email or username</label>"
+        "<input name='email' type='text' autofocus autocomplete='username'>"
+        "<label>Password</label>"
+        "<input name='password' type='password' autocomplete='current-password'>"
+        "<div class='actions'><button type='submit' style='width:100%'>Sign in</button></div>"
+        "</form></div>")
+    return (f"<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+            f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            f"<link rel='icon' type='image/svg+xml' href='{FAVICON}'>"
+            f"<title>Sign in · Affswap back office</title><style>{CSS}</style></head>"
+            f"<body>{inner}</body></html>").encode()
+
+
+def _login_subject(conn, email: str, pw: str):
+    """Resolve a back-office login to 'owner', 'm:<id>', or None."""
+    admin_user = os.environ.get("ADMIN_USER", "admin")
+    admin_pass = os.environ.get("ADMIN_PASS", "")
+    if admin_pass and email == admin_user and hmac.compare_digest(pw, admin_pass):
+        return "owner"
+    _ensure_member_cols(conn)
+    from . import auth
+    r = conn.execute(
+        "SELECT id, password_hash, COALESCE(is_admin,0) AS is_admin, status "
+        "FROM chat_managers WHERE lower(work_email)=lower(?)", (email,)).fetchone()
+    if r and r["is_admin"] and r["status"] == "verified" and auth.verify_password(pw, r["password_hash"]):
+        return f"m:{r['id']}"
+    return None
 
 
 def _queue_count(conn) -> int:
@@ -1396,7 +1440,13 @@ class _Handler(BaseHTTPRequestHandler):
         flash = qs.get("flash", [""])[0]
         conn = connect()
         try:
-            if parsed.path == "/":
+            if parsed.path == "/login":
+                self._send(_login_page())
+            elif parsed.path == "/logout":
+                from . import auth
+                self._send(b"", code=303, headers={"Location": "/login",
+                           "Set-Cookie": auth.clear_admin_cookie_header()})
+            elif parsed.path == "/":
                 self._send(_queue_page(conn, "seo", flash=flash))
             elif parsed.path == "/queue-members":
                 self._send(_queue_page(conn, "submitted", flash=flash))
@@ -1457,6 +1507,19 @@ class _Handler(BaseHTTPRequestHandler):
 
         conn = connect()
         try:
+            if parsed.path == "/login":                       # back-office sign-in
+                from . import auth
+                email = (form.get("email", [""])[0] or "").strip()
+                pw = form.get("password", [""])[0] or ""
+                subject = _login_subject(conn, email, pw)
+                if subject:
+                    self._send(b"", code=303, headers={
+                        "Location": "/",
+                        "Set-Cookie": auth.set_admin_cookie_header(auth.make_admin_cookie(subject))})
+                else:
+                    self._send(_login_page("Wrong email/password, or that account isn't an admin."),
+                               code=401)
+                return
             # --- manual homepage upload (from the Homepages tab, via fetch) ---
             if parsed.path == "/screenshot-upload":
                 try:

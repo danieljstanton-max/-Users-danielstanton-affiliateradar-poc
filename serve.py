@@ -118,7 +118,7 @@ class Proxy(BaseHTTPRequestHandler):
             return host == ADMIN_HOSTNAME
         return host.startswith("admin.")
 
-    def _admin_authorised(self) -> bool:
+    def _basic_ok(self) -> bool:
         hdr = self.headers.get("Authorization", "")
         if not hdr.startswith("Basic "):
             return False
@@ -130,7 +130,38 @@ class Proxy(BaseHTTPRequestHandler):
         # constant-time compare on both fields
         ok_user = hmac.compare_digest(user, ADMIN_USER)
         ok_pass = hmac.compare_digest(pw, ADMIN_PASS)
-        return ok_user and ok_pass
+        return bool(ADMIN_PASS) and ok_user and ok_pass
+
+    def _admin_authorised(self) -> bool:
+        # 1) admin session cookie — the owner (master login) or a member the
+        #    owner granted is_admin, signed by radar.auth.
+        try:
+            from radar import auth
+            cookies = auth.parse_cookie_header(self.headers.get("Cookie"))
+            subject = auth.read_admin_cookie(cookies.get(auth.ADMIN_COOKIE_NAME))
+            if subject == "owner":
+                return True
+            if subject and subject.startswith("m:"):
+                try:
+                    mid = int(subject[2:])
+                except ValueError:
+                    mid = 0
+                if mid:
+                    from radar.db import connect
+                    conn = connect()
+                    try:
+                        r = conn.execute("SELECT is_admin, status FROM chat_managers "
+                                         "WHERE id=?", (mid,)).fetchone()
+                    except Exception:
+                        r = None
+                    finally:
+                        conn.close()
+                    if r and r["is_admin"] and r["status"] == "verified":
+                        return True
+        except Exception:
+            pass
+        # 2) HTTP Basic Auth (owner master key — still works for curl / API).
+        return self._basic_ok()
 
     def _deny_admin(self) -> None:
         if not ADMIN_PASS:
@@ -155,10 +186,23 @@ class Proxy(BaseHTTPRequestHandler):
     # -- proxy ------------------------------------------------------------- #
     def _dispatch(self) -> None:
         if self._is_admin_host():
-            if not ADMIN_PASS or not self._admin_authorised():
+            if not ADMIN_PASS:
                 self._deny_admin()
                 return
-            self._proxy(self.admin_port)
+            if self._admin_authorised():
+                self._proxy(self.admin_port)
+                return
+            # Not signed in: let the login form + logout + assets through so a
+            # member can sign in with their own credentials; send everything
+            # else to the login page (no more browser Basic-Auth popup).
+            path = self.path.split("?", 1)[0]
+            if path in ("/login", "/logout") or path.startswith("/assets/"):
+                self._proxy(self.admin_port)
+                return
+            self.send_response(303)
+            self.send_header("Location", "/login")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
             return
         # Member "face" = the polished single-page app (static, self-contained).
         # Its /api/* JSON and /shot/* assets stay wired to the DB-backed app.
