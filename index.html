@@ -903,6 +903,17 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .chat-msg.you .chat-bubble .chat-meta b{color:#fff}
 .chat-avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,#6D28D9,#3D7CFF);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 32px}
 .chat-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.chat-avatar[role=button]{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+.chat-avatar[role=button]:hover{transform:scale(1.08);box-shadow:0 0 0 3px rgba(61,124,255,0.25)}
+.cp-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.42);display:flex;align-items:center;justify-content:center;z-index:1000;animation:cpin .12s ease}
+@keyframes cpin{from{opacity:0}to{opacity:1}}
+.cp-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 32px 24px;text-align:center;box-shadow:0 24px 60px rgba(15,23,42,0.28);max-width:300px;width:calc(100% - 48px)}
+.cp-ph{width:88px;height:88px;border-radius:50%;margin:0 auto 16px;overflow:hidden;background:linear-gradient(135deg,#6D28D9,#3D7CFF);color:#fff;font-weight:700;font-size:34px;display:flex;align-items:center;justify-content:center}
+.cp-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.cp-name{font-size:20px;font-weight:800;letter-spacing:-0.02em;color:var(--ink)}
+.cp-handle{color:var(--ink-mute);font-size:13px;margin-top:2px}
+.cp-company{display:inline-flex;align-items:center;gap:7px;margin-top:15px;padding:7px 14px;background:var(--blue-soft);color:var(--blue);border-radius:999px;font-size:13.5px;font-weight:600}
+.cp-company.cp-muted{background:var(--ground);color:var(--ink-mute);font-weight:500}
 .chat-bubble{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:0;box-shadow:0 1px 2px rgba(20,30,50,0.03)}
 .chat-meta{font-size:11.5px;color:var(--ink-mute);margin-bottom:4px;display:flex;gap:8px;align-items:baseline}
 .chat-meta b{color:var(--ink);font-weight:600;font-size:12.5px}
@@ -3245,9 +3256,13 @@ function chatMessagesHtml(msgs, appending){
 function chatMessageHtml(m){
   var name = m.real_name || m.handle || 'Member';
   var initial = (name.charAt(0)||'?').toUpperCase();
+  // Clickable avatar -> a profile snapshot (photo, full name, company).
+  var pd = ' class="chat-avatar" role="button" tabindex="0" title="View profile" onclick="chatShowProfile(this)"'
+    + ' data-name="'+h(name)+'" data-handle="'+h(m.handle||'')+'" data-company="'+h(m.company||'')+'"'
+    + ' data-avatar="'+h(m.avatar_url||'')+'" data-initial="'+h(initial)+'"';
   var avatar = m.avatar_url
-    ? '<span class="chat-avatar"><img src="'+h(m.avatar_url)+'" alt="" onerror="this.parentNode.textContent=\''+h(initial)+'\'"></span>'
-    : '<span class="chat-avatar">'+h(initial)+'</span>';
+    ? '<span'+pd+'><img src="'+h(m.avatar_url)+'" alt="" onerror="this.parentNode.textContent=\''+h(initial)+'\'"></span>'
+    : '<span'+pd+'>'+h(initial)+'</span>';
   var time = _chatFormatTime(m.at);
   var isYou = !!m.is_you;
   return '<div class="chat-msg'+(isYou?' you':'')+(m.pending?' pending':'')+'" data-id="'+(m.id||'')+'">'+
@@ -3258,6 +3273,30 @@ function chatMessageHtml(m){
     '</div>'+
   '</div>';
 }
+
+// Profile snapshot popup — who's who, opened by clicking a chat avatar.
+function chatShowProfile(el){
+  if(!el) return;
+  var name=el.getAttribute('data-name')||'Member';
+  var handle=el.getAttribute('data-handle')||'';
+  var company=el.getAttribute('data-company')||'';
+  var avatar=el.getAttribute('data-avatar')||'';
+  var initial=el.getAttribute('data-initial')||(name.charAt(0)||'?').toUpperCase();
+  var pic = avatar
+    ? '<div class="cp-ph"><img src="'+h(avatar)+'" alt="" onerror="this.parentNode.textContent=\''+h(initial)+'\'"></div>'
+    : '<div class="cp-ph">'+h(initial)+'</div>';
+  var comp = company
+    ? '<div class="cp-company"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 21V7l8-4 8 4v14"/><path d="M9 21v-6h6v6"/></svg>'+h(company)+'</div>'
+    : '<div class="cp-company cp-muted">Company not shared</div>';
+  var ov=document.createElement('div');
+  ov.className='cp-overlay';
+  ov.onclick=chatCloseProfile;
+  ov.innerHTML='<div class="cp-card" onclick="event.stopPropagation()">'+pic+
+    '<div class="cp-name">'+h(name)+'</div>'+
+    (handle?'<div class="cp-handle">@'+h(handle)+'</div>':'')+comp+'</div>';
+  document.body.appendChild(ov);
+}
+function chatCloseProfile(){var ov=document.querySelector('.cp-overlay');if(ov) ov.remove();}
 
 function _chatEscapeAndLink(s){
   // Escape first — s is untrusted, written by other members. Then

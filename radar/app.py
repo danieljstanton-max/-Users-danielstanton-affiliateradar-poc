@@ -591,7 +591,7 @@ def api_chat_list(conn, mid, room: str, since_id: int, limit: int):
     if since_id > 0:
         rows = conn.execute(
             "SELECT m.id, m.body, m.created_at, m.manager_id, "
-            "       c.handle, c.real_name, c.avatar_url "
+            "       c.handle, c.real_name, c.avatar_url, c.company "
             "FROM chat_messages m JOIN chat_managers c ON c.id=m.manager_id "
             "WHERE m.room=? AND m.id > ? ORDER BY m.id ASC LIMIT ?",
             (room, since_id, limit)).fetchall()
@@ -599,7 +599,7 @@ def api_chat_list(conn, mid, room: str, since_id: int, limit: int):
         # Newest N, then flip so oldest-first for rendering
         rows = list(conn.execute(
             "SELECT m.id, m.body, m.created_at, m.manager_id, "
-            "       c.handle, c.real_name, c.avatar_url "
+            "       c.handle, c.real_name, c.avatar_url, c.company "
             "FROM chat_messages m JOIN chat_managers c ON c.id=m.manager_id "
             "WHERE m.room=? ORDER BY m.id DESC LIMIT ?",
             (room, limit)).fetchall())[::-1]
@@ -607,7 +607,7 @@ def api_chat_list(conn, mid, room: str, since_id: int, limit: int):
         "id": r["id"], "body": r["body"], "at": r["created_at"],
         "manager_id": r["manager_id"],
         "handle": r["handle"], "real_name": r["real_name"],
-        "avatar_url": r["avatar_url"],
+        "avatar_url": r["avatar_url"], "company": r["company"],
         "is_you": r["manager_id"] == mid,
     } for r in rows]
     return {"room": room, "messages": messages,
@@ -638,7 +638,7 @@ def api_chat_send(conn, mid, payload):
         "VALUES (?,?,?,?)", (room, mid, body, when))
     conn.commit()
     row = conn.execute(
-        "SELECT c.handle, c.real_name, c.avatar_url "
+        "SELECT c.handle, c.real_name, c.avatar_url, c.company "
         "FROM chat_managers c WHERE c.id=?", (mid,)).fetchone()
     return {
         "ok": True,
@@ -648,6 +648,7 @@ def api_chat_send(conn, mid, payload):
             "handle": row["handle"] if row else "you",
             "real_name": row["real_name"] if row else None,
             "avatar_url": row["avatar_url"] if row else None,
+            "company": row["company"] if row else None,
             "is_you": True,
         },
     }, 200
