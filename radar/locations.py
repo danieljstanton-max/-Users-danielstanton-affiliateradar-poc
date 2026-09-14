@@ -34,6 +34,7 @@ COUNTRIES: list[tuple[str, int, str]] = [
     ("CO", 170, "Colombia"),       ("PE", 604, "Peru"),
     ("PH", 608, "Philippines"),    ("ID", 360, "Indonesia"),
     ("TR", 792, "Turkey"),         ("UA", 804, "Ukraine"),
+    ("TH", 764, "Thailand"),
 ]
 
 _ISO_TO_NUM = {iso: num for iso, num, _ in COUNTRIES}
@@ -46,7 +47,7 @@ LANG = {
     "IT": "it", "NL": "nl", "BE": "nl", "SE": "sv", "NO": "no", "FI": "fi",
     "DK": "da", "PL": "pl", "GR": "el", "RO": "ro", "CZ": "cs", "HU": "hu",
     "JP": "ja", "BR": "pt", "MX": "es", "AR": "es", "CL": "es", "CO": "es",
-    "PE": "es", "TR": "tr", "UA": "uk", "ID": "id",
+    "PE": "es", "TR": "tr", "UA": "uk", "ID": "id", "TH": "th",
 }
 
 

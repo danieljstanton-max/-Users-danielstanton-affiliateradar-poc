@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -159,44 +160,118 @@ textarea{width:100%;min-height:180px;background:#fff;border:1px solid var(--line
 .rowbadge.create{color:var(--up);background:#E6F6EC}
 .rowbadge.update{color:#9A6400;background:#FCF0D9}
 .rowbadge.error{color:var(--down);background:#FCEBEC}
+/* ---- sidebar shell (left nav opens into the main page) ---- */
+.layout{display:flex;min-height:100vh;align-items:flex-start}
+.sidebar{position:sticky;top:0;flex:0 0 250px;width:250px;height:100vh;overflow-y:auto;
+ background:rgba(255,255,255,.72);backdrop-filter:blur(8px);border-right:1px solid var(--line);
+ padding:16px 14px;display:flex;flex-direction:column}
+.side-brand{display:flex;align-items:center;gap:9px;padding:8px 10px 16px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.sb-name{font-weight:800;font-size:18px;letter-spacing:-.3px;color:var(--ink)}.sb-name span{color:var(--blue-d)}
+.sb-tag{margin-left:auto;font:800 9px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--blue-dd);background:var(--blue-050);padding:3px 7px;border-radius:6px}
+.side-nav{display:flex;flex-direction:column;gap:2px}
+.side-group{font:800 10px var(--sans);letter-spacing:.11em;text-transform:uppercase;color:var(--ink3);padding:15px 10px 6px}
+.side-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--ink2);position:relative;transition:background .12s,color .12s}
+.side-item svg{width:17px;height:17px;flex:0 0 auto;opacity:.8}
+.side-item .si-label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-item:hover{background:var(--card2);color:var(--ink)}
+.side-item.active{background:var(--blue-050);color:var(--blue-dd)}
+.side-item.active svg{opacity:1;color:var(--blue-d)}
+.side-item.active::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--blue-d)}
+.side-item .count{font-family:var(--mono);font-size:10.5px;background:var(--blue);color:#fff;border-radius:999px;padding:1px 7px;font-weight:800;margin-left:auto}
+.side-item.active .count{background:var(--blue-d)}
+.side-foot{margin-top:auto;padding:14px 11px 4px;font:600 11px var(--mono);color:var(--ink3);border-top:1px solid var(--line)}
+.main{flex:1;min-width:0}
+.main-inner{max-width:1060px;margin:0 auto;padding:26px 32px 90px}
+@media (max-width:880px){
+ .layout{flex-direction:column}
+ .sidebar{position:static;width:100%;height:auto;flex:none;border-right:0;border-bottom:1px solid var(--line)}
+ .side-nav{flex-direction:row;flex-wrap:wrap;gap:3px}
+ .side-group{width:100%;padding:8px 10px 2px}
+ .side-item.active::before{display:none}
+ .side-foot{display:none}
+ .main-inner{padding:20px 18px 60px}
+}
 """
 
 
-def _nav(active: str, queue_count: int) -> str:
-    def tab(key, href, label, badge=""):
-        cls = "active" if active == key else ""
-        return f"<a class='{cls}' href='{href}'>{label}{badge}</a>"
-    qbadge = f"<span class='count'>{queue_count}</span>" if queue_count else ""
-    _SUB = ("(SELECT site_id FROM swap_contributions WHERE status='pending' "
-            "AND site_id IS NOT NULL)")
-    return ("<div class='nav'>"
-            + tab("queue", "/", "New affiliate · SEO", _count_badge(
-                f"SELECT COUNT(*) n FROM sites WHERE classification='candidate' AND id NOT IN {_SUB}"))
-            + tab("subs", "/queue-members", "New affiliate · Submitted", _count_badge(
-                f"SELECT COUNT(*) n FROM sites WHERE classification='candidate' AND id IN {_SUB}"))
-            + tab("members", "/members", "Member approvals", _count_badge(
-                "SELECT COUNT(*) n FROM chat_managers WHERE status='pending' "
-                "AND linkedin_verified=1 AND work_email_confirmed=1"))
-            + tab("sites", "/sites", "All sites")
-            + tab("curation", "/curation", "Curation", _count_badge(
-                "SELECT COUNT(*) n FROM site_signals sg JOIN sites s ON s.id=sg.site_id "
-                "WHERE s.classification='affiliate' AND (sg.review IS NULL OR sg.review='') "
-                "AND sg.flagged=1"))
-            + tab("shots", "/screenshots", "Homepages", _count_badge(
-                "SELECT COUNT(*) n FROM sites s WHERE s.classification='affiliate' "
-                "AND s.id NOT IN (SELECT site_id FROM blacklist) "
-                "AND s.id NOT IN (SELECT site_id FROM screenshots WHERE provider<>'mock') "
-                "AND EXISTS (SELECT 1 FROM site_regions rg WHERE rg.site_id=s.id "
-                "AND rg.etv > (CASE WHEN s.etv>=10000 THEN 1500 ELSE 500 END))"))
-            + tab("import", "/import", "Bulk import")
-            + tab("blacklist", "/blacklist", "Blacklist")
-            + tab("chat", "/chat", "Chat reports")
-            + tab("reviews", "/reviews", "Reviews", _count_badge(
-                "SELECT COUNT(*) n FROM reviews WHERE status='pending'"))
-            + tab("swaps", "/swaps", "Swaps ledger")
-            + tab("rewards", "/rewards", "Rewards", _count_badge(
-                "SELECT COUNT(*) n FROM swap_contributions WHERE status='pending'"))
-            + "</div>")
+def _nav(active: str, queue_count: int = 0) -> str:
+    # The sidebar is now rendered centrally by _page(); each page just declares
+    # which item is active via an invisible marker, so no page body changed.
+    return f"<!--BO-ACT:{active}-->"
+
+
+def _ic(p: str) -> str:
+    return ("<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' "
+            f"stroke-linecap='round' stroke-linejoin='round'>{p}</svg>")
+
+
+ICONS = {
+    "queue":     _ic("<circle cx='11' cy='11' r='7'/><path d='M21 21l-4-4'/>"),
+    "subs":      _ic("<path d='M4 6h16v12H4z'/><path d='M4 12h5l2 2h2l2-2h5'/>"),
+    "members":   _ic("<circle cx='9' cy='8' r='3.2'/><path d='M3.5 20c0-3.2 2.5-5.5 5.5-5.5c1.5 0 2.9.6 3.9 1.5'/><path d='M15.5 15.5l2 2 3.5-3.5'/>"),
+    "curation":  _ic("<path d='M3 5h18l-7 8v6l-4-2v-4z'/>"),
+    "reviews":   _ic("<path d='M12 3.6l2.5 5.1 5.6.8-4 3.9 1 5.6L12 16.4 6.9 19l1-5.6-4-3.9 5.6-.8z'/>"),
+    "shots":     _ic("<rect x='3' y='5' width='18' height='14' rx='2'/><circle cx='8.5' cy='10' r='1.6'/><path d='M21 16l-5-4-8 6'/>"),
+    "sites":     _ic("<circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18'/>"),
+    "import":    _ic("<path d='M12 15V4M8 8l4-4 4 4'/><path d='M5 20h14'/>"),
+    "blacklist": _ic("<circle cx='12' cy='12' r='9'/><path d='M6 6l12 12'/>"),
+    "swaps":     _ic("<path d='M4 8h13l-3-3'/><path d='M20 16H7l3 3'/>"),
+    "rewards":   _ic("<rect x='4' y='9' width='16' height='11' rx='1.5'/><path d='M4 13h16M12 9v11'/><path d='M12 9c-2.2 0-4-1-4-2.6C8 5 9.8 5.4 12 9c2.2-3.6 4-4 4-2.6C16 8 14.2 9 12 9z'/>"),
+    "chat":      _ic("<path d='M5 5h14v10H9l-4 4z'/>"),
+}
+
+# grouped left-nav: (section, [(key, href, label, count_sql_or_None)])
+_SUB = ("(SELECT site_id FROM swap_contributions WHERE status='pending' AND site_id IS NOT NULL)")
+_SIDEBAR = [
+    ("Review", [
+        ("queue", "/", "New affiliate · SEO",
+         f"SELECT COUNT(*) n FROM sites WHERE classification='candidate' AND id NOT IN {_SUB}"),
+        ("subs", "/queue-members", "Submitted",
+         f"SELECT COUNT(*) n FROM sites WHERE classification='candidate' AND id IN {_SUB}"),
+        ("members", "/members", "Member approvals",
+         "SELECT COUNT(*) n FROM chat_managers WHERE status='pending' "
+         "AND linkedin_verified=1 AND work_email_confirmed=1"),
+        ("curation", "/curation", "Curation",
+         "SELECT COUNT(*) n FROM site_signals sg JOIN sites s ON s.id=sg.site_id "
+         "WHERE s.classification='affiliate' AND (sg.review IS NULL OR sg.review='') AND sg.flagged=1"),
+        ("reviews", "/reviews", "Reviews",
+         "SELECT COUNT(*) n FROM reviews WHERE status='pending'"),
+        ("shots", "/screenshots", "Homepages",
+         "SELECT COUNT(*) n FROM sites s WHERE s.classification='affiliate' "
+         "AND s.id NOT IN (SELECT site_id FROM blacklist) "
+         "AND s.id NOT IN (SELECT site_id FROM screenshots WHERE provider<>'mock') "
+         "AND EXISTS (SELECT 1 FROM site_regions rg WHERE rg.site_id=s.id "
+         "AND rg.etv > (CASE WHEN s.etv>=10000 THEN 1500 ELSE 500 END))"),
+    ]),
+    ("Catalogue", [
+        ("sites", "/sites", "All sites", None),
+        ("import", "/import", "Bulk import", None),
+        ("blacklist", "/blacklist", "Blacklist", None),
+    ]),
+    ("Network", [
+        ("swaps", "/swaps", "Swaps ledger", None),
+        ("rewards", "/rewards", "Rewards",
+         "SELECT COUNT(*) n FROM swap_contributions WHERE status='pending'"),
+        ("chat", "/chat", "Chat reports", None),
+    ]),
+]
+
+
+def _sidebar(active: str) -> str:
+    out = ["<aside class='sidebar'>",
+           f"<a class='side-brand' href='/'>{MARK_SVG}"
+           "<span class='sb-name'>Aff<span>swap</span></span>"
+           "<span class='sb-tag'>Back office</span></a>",
+           "<nav class='side-nav'>"]
+    for group, rows in _SIDEBAR:
+        out.append(f"<div class='side-group'>{group}</div>")
+        for key, href, label, sql in rows:
+            cls = " active" if key == active else ""
+            badge = _count_badge(sql) if sql else ""
+            out.append(f"<a class='side-item{cls}' href='{href}'>{ICONS.get(key,'')}"
+                       f"<span class='si-label'>{label}</span>{badge}</a>")
+    out.append("</nav><div class='side-foot'>Affswap · admin</div></aside>")
+    return "".join(out)
 
 
 def _count_badge(sql: str) -> str:
@@ -220,15 +295,20 @@ MARK_SVG = ("<svg viewBox='0 0 44 44' width='24' height='24' fill='none' stroke-
 
 
 def _page(body: str, title: str = "Affswap · Back office") -> bytes:
+    # Each page declares its active nav item via an invisible <!--BO-ACT:key-->
+    # marker (emitted by _nav). Pull it out, then render the shared left sidebar.
+    m = re.search(r"<!--BO-ACT:([a-z]+)-->", body)
+    active = m.group(1) if m else ""
+    body = re.sub(r"<!--BO-ACT:[a-z]+-->", "", body)
     return (f"<!doctype html><html lang='en'><head><meta charset='utf-8'>"
             f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
             f"<link rel='icon' type='image/svg+xml' href='{FAVICON}'>"
             f"<link rel='preconnect' href='https://fonts.googleapis.com'>"
             f"<link href='https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap' rel='stylesheet'>"
             f"<title>{title}</title><style>{CSS}</style></head><body>"
-            f"<div class='topbar'><span class='brand'>{MARK_SVG}"
-            f"<span class='blogo'>Aff<span>swap</span></span></span><span class='bo'>Back office</span></div>"
-            f"<div class='wrap'>{body}</div></body></html>").encode()
+            f"<div class='layout'>{_sidebar(active)}"
+            f"<main class='main'><div class='main-inner'>{body}</div></main>"
+            f"</div></body></html>").encode()
 
 
 def _esc(v) -> str:
@@ -950,9 +1030,13 @@ def _members_page(conn, flash: str = "") -> bytes:
     ]
     if flash:
         body.append(f"<div class='note'>{_esc(flash)}</div>")
+
+    # --- applications awaiting manual review (status='pending') ---
+    body.append(f"<h2 style='font-size:16px;margin:24px 0 12px'>Awaiting review "
+                f"<span class='ev'>· {len(pending)}</span></h2>")
     if not pending:
-        body.append("<div class='empty'><div class='big'>🪪</div>No applications awaiting review.</div>")
-        return _page("".join(body), title="Member approvals")
+        body.append("<div class='owner-note'>Nothing awaiting manual review. "
+                    "LinkedIn sign-ups are auto-verified and appear under <b>Members</b> below.</div>")
     for a in pending:
         yrs = f" · {a['years']}y" if a["years"] else ""
         li = _esc(a["linkedin_url"] or "")
@@ -973,6 +1057,32 @@ def _members_page(conn, flash: str = "") -> bytes:
             + "</div>"
             + (f"<div class='qmeta' style='margin-top:4px'><a href='https://{li}' target='_blank' rel='noopener' class='ev'>{li}</a></div>" if li else "")
             + "</div><div class='qactions'>" + actions + "</div></div>")
+
+    # --- verified members already in the network (this is where LinkedIn
+    #     sign-ups like a new office colleague show up — previously invisible) ---
+    body.append(f"<h2 style='font-size:16px;margin:32px 0 12px'>Members "
+                f"<span class='ev'>· {len(verified)}</span></h2>")
+    if not verified:
+        body.append("<div class='owner-note'>No verified members yet.</div>")
+    else:
+        rws = []
+        for a in verified:
+            li = _esc(a["linkedin_url"] or "")
+            lilink = (f"<a href='https://{li}' target='_blank' rel='noopener'>LinkedIn ↗</a>"
+                      if li else "<span class='ev'>—</span>")
+            rws.append(
+                "<tr>"
+                f"<td><b>{_esc(a['real_name'] or a['handle'] or '—')}</b>"
+                f"<div class='ev' style='font-size:11.5px'>@{_esc(a['handle'] or '')}</div></td>"
+                f"<td>{_esc(a['company'] or '—')}</td>"
+                f"<td class='src'>{_esc(a['work_email'] or '—')}</td>"
+                f"<td>{sig(a['linkedin_verified'],'LinkedIn')} &nbsp; {sig(a['work_email_confirmed'],'email')}</td>"
+                f"<td class='src'>{_esc((a['applied_at'] or '')[:10])}</td>"
+                f"<td>{lilink}</td></tr>")
+        body.append(
+            "<table><thead><tr><th>Member</th><th>Company</th><th>Work email</th>"
+            "<th>Signals</th><th>Joined</th><th></th></tr></thead><tbody>"
+            + "".join(rws) + "</tbody></table>")
     return _page("".join(body), title="Member approvals")
 
 

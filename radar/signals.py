@@ -55,6 +55,10 @@ GAMBLE = (
     # Romanian
     "cazino", "cazinou", "pacanele", "pacanea", "pariuri", "rotiri", "sloturi",
     "invartiri", "jocuri de noroc", "ruleta",
+    # Thai (grey market — casino/slots + football betting dominate)
+    "คาสิโน", "สล็อต", "บาคาร่า", "รูเล็ต", "แทงบอล", "พนัน", "เดิมพัน",
+    "โป๊กเกอร์", "ป๊อกเด้ง", "บิงโก", "ราคาบอล", "ทีเด็ด", "หวย", "ไฮโล",
+    "เว็บพนัน", "พนันบอล",
     # German / Dutch extra
     "spielautomat", "gokkast", "wedden", "goksite",
 )
@@ -108,6 +112,21 @@ def _affiliate_program(dom: str) -> bool:
     # a partner/affiliate TLD (banzai.partners), or the word in the domain body
     return tld in _PROGRAM_TOKENS or any(t in d for t in ("partners", "affiliates",
                                                            "partnerprogram", "affiliateprogram"))
+
+
+# Government / academic / military domains are NEVER genuine affiliates. In grey
+# markets (e.g. Thailand) hackers inject gambling pages into legit gov/edu sites,
+# so these rank high for gambling keywords — a false positive the relevance score
+# can't catch. A domain LABEL of gov/edu/ac/go/mil/gob/gouv → hard reject.
+_INSTITUTIONAL_LABELS = {"gov", "gob", "gouv", "go", "mil", "int", "edu", "ac",
+                         "k12", "police", "govt", "gv"}
+
+
+def _institutional(dom: str) -> bool:
+    labels = dom.lower().split(".")
+    # inspect every label EXCEPT the SLD (labels[0]) — so 'bingo' in the SLD is
+    # fine, but a 'go'/'ac'/'edu'/'gov' label anywhere in the suffix is not.
+    return any(l in _INSTITUTIONAL_LABELS for l in labels[1:])
 
 
 def _derive_signals(dom: str, kws: list) -> tuple:

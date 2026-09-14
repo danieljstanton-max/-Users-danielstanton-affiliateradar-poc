@@ -91,13 +91,16 @@ def _shot_url(image_ref, domain=None):
 # --------------------------------------------------------------------------- #
 def api_home(conn):
     idx = views.countries_index(conn)
-    websites = conn.execute(
-        "SELECT COUNT(*) c FROM sites WHERE classification='affiliate'").fetchone()["c"]
-    # websites + countries are REAL live DB counts. managers_joined / swaps_to_date
-    # / online are representative launch figures for the demo — replace with real
-    # analytics + presence once the network is live.
-    stats = {"managers_joined": 340, "websites": websites,
-             "swaps_to_date": 1240, "online": 48}
+    # All four hero stats are REAL, live DB values (data-scale framing — no vanity
+    # metrics that read as zero pre-launch). websites = DISTINCT visible sites
+    # (matches the Markets page), not a per-market sum.
+    total_traffic = conn.execute(
+        "SELECT COALESCE(SUM(etv),0) t FROM sites WHERE classification='affiliate'"
+    ).fetchone()["t"]
+    stats = {"websites": idx.get("total_sites") or 0,
+             "markets": idx["markets"],
+             "monthly_traffic": _fmt_traffic(total_traffic),
+             "verticals": 4}
     return {"markets": sorted(idx["countries"], key=lambda c: -c["count"])[:8],
             "total_markets": idx["markets"], "stats": stats}
 
@@ -128,7 +131,8 @@ def api_markets(conn):
         c["etv"] = c.get("total_etv") or 0
         c["tf"] = _fmt_traffic(c["etv"])
         c["verts"] = verts_by_country.get(c["iso"], [])
-    return {"markets": idx.get("markets", len(countries)), "countries": countries}
+    return {"markets": idx.get("markets", len(countries)), "countries": countries,
+            "total_sites": idx.get("total_sites")}
 
 
 def api_account(conn, mid):

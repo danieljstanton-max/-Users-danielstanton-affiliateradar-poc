@@ -314,7 +314,14 @@ def countries_index(conn: sqlite3.Connection) -> dict:
          "blacklisted": bl.get(r["iso"], 0)}
         for r in rows]
     countries.sort(key=lambda c: (-c["total_etv"], c["name"]))
-    return {"markets": len(countries), "countries": countries}
+    # DISTINCT network total — a site that qualifies in several markets counts
+    # ONCE here (summing the per-market counts would treble-count multi-market
+    # sites, since the average site lists in ~3 markets).
+    total_sites = conn.execute(
+        f"""SELECT COUNT(DISTINCT s.id) FROM sites s JOIN site_regions rg ON rg.site_id = s.id
+            WHERE s.classification='affiliate' AND {_QUALIFIES} {_NOT_BLACKLISTED} {_NOT_EXCLUDED}"""
+    ).fetchone()[0]
+    return {"markets": len(countries), "countries": countries, "total_sites": total_sites}
 
 
 def blacklist(conn: sqlite3.Connection) -> dict:

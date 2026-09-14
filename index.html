@@ -1374,10 +1374,10 @@ function renderHome(){
     '</section>'+
     '<section class="stats-outer">'+
       '<div class="stats-grid">'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="6" cy="6" r="3" stroke="currentColor" stroke-width="1.6"/><circle cx="13" cy="7" r="2.4" stroke="currentColor" stroke-width="1.6"/><path d="M1 16 C 1 12, 3.5 10, 6 10 C 8.5 10, 11 12, 11 16" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-managers">—</span><span class="stat-delta">↑ 24%</span></div><span class="stat-lab">Managers joined</span></div></div>'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M2 9 H16 M9 2 C 6 5, 6 13, 9 16" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-sites">—</span><span class="stat-delta">↑ 18%</span></div><span class="stat-lab">Affiliate websites</span></div></div>'+
-        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><path d="M3 6 L15 6 L12 3 M15 12 L3 12 L6 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-swaps">—</span><span class="stat-delta">↑ 52%</span></div><span class="stat-lab">Swaps to date</span></div></div>'+
-        '<div class="stat g"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3.4" stroke="currentColor" stroke-width="1.6"/><path d="M2 16 C 2 12, 5 10, 9 10 C 13 10, 16 12, 16 16" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-online">—</span><span class="stat-live">Live now</span></div><span class="stat-lab">Managers online</span></div></div>'+
+        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M2 9 H16 M9 2 C 6 5, 6 13, 9 16 M9 2 C 12 5, 12 13, 9 16" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-sites">—</span></div><span class="stat-lab">Affiliate websites</span></div></div>'+
+        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><path d="M9 16.5 C 9 16.5, 3.2 10.6, 3.2 6.8 A 5.8 5.8 0 0 1 14.8 6.8 C 14.8 10.6, 9 16.5, 9 16.5 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="9" cy="6.8" r="2" stroke="currentColor" stroke-width="1.6"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-markets">—</span></div><span class="stat-lab">Markets covered</span></div></div>'+
+        '<div class="stat"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><path d="M2 15 L6 9.5 L9.5 12 L16 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 4 H16 V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-traffic">—</span></div><span class="stat-lab">Monthly traffic tracked</span></div></div>'+
+        '<div class="stat g"><span class="sico"><svg viewBox="0 0 18 18" fill="none"><path d="M9 2 L16 6 L9 10 L2 6 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 9.5 L9 13 L15.5 9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div class="stat-body"><div class="stat-num-row"><span class="stat-num" id="h-verticals">—</span></div><span class="stat-lab">Verticals tracked</span></div></div>'+
       '</div>'+
     '</section>'+
     '<section class="section">'+
@@ -1412,7 +1412,8 @@ function hydrateHome(){
   apiGet('/api/home').then(function(d){
     var s=d.stats||{};
     var setN=function(id,v){var el=document.getElementById(id);if(el&&v!=null)el.textContent=fmtNum(v)};
-    setN('h-managers',s.managers_joined);setN('h-sites',s.websites);setN('h-swaps',s.swaps_to_date);setN('h-online',s.online);
+    var setS=function(id,v){var el=document.getElementById(id);if(el&&v!=null)el.textContent=v};
+    setN('h-sites',s.websites);setN('h-markets',s.markets);setS('h-traffic',s.monthly_traffic);setN('h-verticals',s.verticals);
   }).catch(function(){});
   // Featured opportunities: pull top sites from a couple of markets
   Promise.all([apiGet('/api/geo?iso=GB'),apiGet('/api/geo?iso=US')]).then(function(res){
@@ -1495,7 +1496,10 @@ function hydrateMarkets(){
     var cs=(d.countries||[]).slice().sort(function(a,b){return b.count-a.count});
     MKT_STATE.all=cs;
     document.getElementById('mk-count').textContent = cs.length+' countries';
-    document.getElementById('mk-sites-total').textContent = fmtNum(cs.reduce(function(s,c){return s+c.count;},0));
+    // DISTINCT sites across the network (server-computed). NOT the sum of
+    // per-market counts — a site in UK+US+DE must count once, not three times.
+    document.getElementById('mk-sites-total').textContent =
+      fmtNum(d.total_sites!=null ? d.total_sites : cs.reduce(function(s,c){return s+c.count;},0));
     document.getElementById('mk-all-count').textContent = cs.length;
     // Top 5
     document.getElementById('mk-top-body').innerHTML = cs.slice(0,5).map(function(c,i){
