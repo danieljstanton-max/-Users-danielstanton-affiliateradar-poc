@@ -1276,6 +1276,8 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
   <section id="v-account" class="view"></section>
   <section id="v-signup" class="view"></section>
   <section id="v-login" class="view"></section>
+  <section id="v-forgot" class="view"></section>
+  <section id="v-reset" class="view"></section>
   <section id="v-privacy" class="view"></section>
   <section id="v-terms" class="view"></section>
   <section id="v-payments" class="view"></section>
@@ -2759,7 +2761,7 @@ function renderLogin(){
       '<div class="or-sep"><span>or with email</span></div>'+
       '<form onsubmit="event.preventDefault();loginSubmit();return false" style="display:flex;flex-direction:column;gap:14px">'+
         '<div class="field"><label>Work email</label><div class="inp"><input id="li-email" type="email" required placeholder="you@company.com" autocomplete="email"></div></div>'+
-        '<div class="field"><label>Password</label><div class="inp"><input id="li-password" type="password" required placeholder="••••••••" autocomplete="current-password"></div></div>'+
+        '<div class="field"><label style="display:flex;justify-content:space-between;align-items:baseline">Password<a onclick="go(\'#/forgot\')" style="color:var(--blue);cursor:pointer;font-size:12px;font-weight:500;text-decoration:none">Forgot?</a></label><div class="inp"><input id="li-password" type="password" required placeholder="••••••••" autocomplete="current-password"></div></div>'+
         '<button type="submit" class="btn" style="width:100%;margin-top:6px">Sign in →</button>'+
       '</form>'+
       '<p id="login-msg" class="form-msg"></p>'+
@@ -2768,6 +2770,79 @@ function renderLogin(){
     '</div>';
   setTimeout(function(){var el=document.getElementById('li-email');if(el)el.focus();},50);
 }
+
+/* ==================== FORGOT / RESET PASSWORD ==================== */
+function renderForgot(){
+  document.getElementById('v-forgot').innerHTML =
+    '<div class="loy-hero"><h1>Reset your password</h1><p class="sub">Enter your work email and we\'ll send you a link to set a new password.</p></div>'+
+    '<div class="form-card">'+
+      '<form onsubmit="event.preventDefault();forgotSubmit();return false" style="display:flex;flex-direction:column;gap:14px">'+
+        '<div class="field"><label>Work email</label><div class="inp"><input id="fp-email" type="email" required placeholder="you@company.com" autocomplete="email"></div></div>'+
+        '<button type="submit" class="btn" style="width:100%">Send reset link →</button>'+
+      '</form>'+
+      '<p id="fp-msg" class="form-msg"></p>'+
+      '<p style="color:var(--ink-mute);font-size:13px;margin-top:12px;text-align:center">Remembered it? <a onclick="go(\'#/login\')" style="color:var(--blue);cursor:pointer;font-weight:600">Back to sign in</a></p>'+
+    '</div>';
+  setTimeout(function(){var el=document.getElementById('fp-email');if(el)el.focus();},50);
+}
+function forgotSubmit(){
+  var e=document.getElementById('fp-email').value.trim();
+  var m=document.getElementById('fp-msg');
+  if(!e){m.textContent='Enter your work email.';return;}
+  m.textContent='Sending…';
+  apiPost('/api/forgot',{email:e}).then(function(j){
+    if(!j||j.ok===false){
+      m.textContent = j.error==='email_provider_not_configured'
+        ? 'Email service is currently down — try again later.'
+        : (j.error||'Could not send the reset link.');
+      return;
+    }
+    /* Deliberately vague — we don't reveal whether the email exists. */
+    m.style.color='var(--up)';
+    m.innerHTML = '✓ If that email belongs to an Affswap member, a reset link is on its way. Check your inbox (and spam) within a minute.';
+  }).catch(function(){m.textContent='Network error.';});
+}
+
+function renderReset(){
+  var token = (window.ROUTE_QS && window.ROUTE_QS.token) || '';
+  if(!token){
+    document.getElementById('v-reset').innerHTML =
+      '<div class="loy-hero"><h1>Reset link missing</h1><p class="sub">This reset link is incomplete. Start over from the sign-in page.</p></div>'+
+      '<div class="form-card"><button class="btn" onclick="go(\'#/forgot\')" style="width:100%">Request a new link</button></div>';
+    return;
+  }
+  document.getElementById('v-reset').innerHTML =
+    '<div class="loy-hero"><h1>Set a new password</h1><p class="sub">Choose something at least 6 characters. Once saved you\'ll be signed in.</p></div>'+
+    '<div class="form-card">'+
+      '<form onsubmit="event.preventDefault();resetSubmit();return false" style="display:flex;flex-direction:column;gap:14px">'+
+        '<div class="field"><label>New password</label><div class="inp"><input id="rp-pw" type="password" required minlength="6" placeholder="••••••••" autocomplete="new-password"></div></div>'+
+        '<div class="field"><label>Confirm</label><div class="inp"><input id="rp-pw2" type="password" required minlength="6" placeholder="••••••••" autocomplete="new-password"></div></div>'+
+        '<button type="submit" class="btn" style="width:100%">Save new password →</button>'+
+      '</form>'+
+      '<p id="rp-msg" class="form-msg"></p>'+
+    '</div>';
+  setTimeout(function(){var el=document.getElementById('rp-pw');if(el)el.focus();},50);
+}
+function resetSubmit(){
+  var token = (window.ROUTE_QS && window.ROUTE_QS.token) || '';
+  var pw = document.getElementById('rp-pw').value;
+  var pw2 = document.getElementById('rp-pw2').value;
+  var m = document.getElementById('rp-msg');
+  if(pw.length < 6){m.textContent='Password must be at least 6 characters.';return;}
+  if(pw !== pw2){m.textContent='Passwords don\'t match.';return;}
+  m.textContent='Saving…';
+  apiPost('/api/reset',{token:token, password:pw}).then(function(j){
+    if(!j||j.ok===false){
+      var msgs={invalid_or_expired_token:'This reset link is invalid or has expired. Request a new one.',
+                password_min_6_chars:'Password must be at least 6 characters.'};
+      m.textContent = msgs[j.error]||(j.error||'Could not reset the password.');
+      return;
+    }
+    toast('Password reset — you\'re signed in');
+    updateMeChip().then(function(){go('#/account');});
+  }).catch(function(){m.textContent='Network error.';});
+}
+
 /* ==================== PRIVACY ==================== */
 function renderPrivacy(){
   document.getElementById('v-privacy').innerHTML =
@@ -3527,6 +3602,8 @@ function route(){
   else if(s==='account'){if(!window._ACCT_TAB_REDIRECT) window.ACCT_TAB='profile';window._ACCT_TAB_REDIRECT=false;renderAccount();hydrateAccount();switchTo('v-account')}
   else if(s==='signup'){renderSignup();switchTo('v-signup')}
   else if(s==='login'){renderLogin();switchTo('v-login')}
+  else if(s==='forgot'){renderForgot();switchTo('v-forgot')}
+  else if(s==='reset'){renderReset();switchTo('v-reset')}
   else if(s==='privacy'){renderPrivacy();switchTo('v-privacy')}
   else if(s==='terms'){renderTerms();switchTo('v-terms')}
   else if(s==='leaderboard'){go('#/home');return;}

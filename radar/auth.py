@@ -76,6 +76,50 @@ def _b64u_decode(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + pad)
 
 
+RESET_TOKEN_TTL_SECONDS = 60 * 60   # 1 hour reset window
+
+
+def make_reset_token(manager_id: int, password_hash: str | None) -> str:
+    """Signed one-hour reset token. The current password_hash is folded
+    into the signing key so once the password changes the token becomes
+    invalid automatically — no server-side used-tokens table required."""
+    payload = f"{int(manager_id)}.{int(time.time())}"
+    key = _secret() + (password_hash or "").encode()[-16:]
+    sig = hmac.new(key, payload.encode(), hashlib.sha256).digest()
+    return f"{payload}.{_b64u(sig)}"
+
+
+def read_reset_token(token: str | None,
+                     lookup_hash) -> int | None:
+    """Verify a reset token. `lookup_hash(mid)` should return the
+    member's current password_hash (or None) so the token invalidates
+    the moment the password is changed. Returns manager_id or None."""
+    if not token:
+        return None
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    mid_str, ts_str, sig_b64 = parts
+    try:
+        mid = int(mid_str)
+        ts = int(ts_str)
+    except ValueError:
+        return None
+    if time.time() - ts > RESET_TOKEN_TTL_SECONDS:
+        return None
+    current_hash = lookup_hash(mid) or ""
+    key = _secret() + current_hash.encode()[-16:]
+    expected = hmac.new(key, f"{mid_str}.{ts_str}".encode(),
+                        hashlib.sha256).digest()
+    try:
+        got = _b64u_decode(sig_b64)
+    except Exception:
+        return None
+    if not hmac.compare_digest(expected, got):
+        return None
+    return mid
+
+
 def make_session_cookie(manager_id: int) -> str:
     payload = f"{int(manager_id)}.{int(time.time())}"
     sig = hmac.new(_secret(), payload.encode(), hashlib.sha256).digest()

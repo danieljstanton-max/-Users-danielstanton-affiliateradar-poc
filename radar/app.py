@@ -988,6 +988,94 @@ def api_login(conn, payload):
             auth.set_cookie_header(auth.make_session_cookie(row["id"])))
 
 
+def api_forgot_password(conn, payload, public_base: str) -> dict:
+    """Emails a signed one-hour reset link to the address on file. Always
+    responds ok=True regardless of whether the email exists — prevents
+    account enumeration."""
+    email = (payload.get("email") or payload.get("work_email") or "").strip().lower()
+    if not email or "@" not in email:
+        return {"ok": False, "error": "valid_email_required"}
+    row = conn.execute(
+        "SELECT id, handle, real_name, work_email, password_hash "
+        "FROM chat_managers WHERE lower(work_email)=?", (email,)).fetchone()
+    if not row:
+        # Don't leak whether the email exists.
+        return {"ok": True}
+    from . import emailer
+    if not emailer.configured():
+        return {"ok": False, "error": "email_provider_not_configured"}
+    token = auth.make_reset_token(row["id"], row["password_hash"])
+    link = f"{public_base}/#/reset?token={token}"
+    first = ((row["real_name"] or row["handle"] or "").split(" ")[0]) or "there"
+    subject = "Reset your Affswap password"
+    html = f"""<!doctype html>
+<html><body style="margin:0;background:#F5F7FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1A2332">
+ <div style="max-width:560px;margin:32px auto;padding:0 16px">
+  <div style="padding:0 4px 20px">
+   <span style="font-weight:800;font-size:22px;letter-spacing:-0.02em;color:#1A2332">Affswap</span>
+  </div>
+  <div style="background:#fff;border:1px solid #E4E8EE;border-radius:14px;padding:28px 28px 24px">
+   <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 14px;line-height:1.25;color:#1A2332">Reset your password</h1>
+   <p style="color:#485062;font-size:14.5px;line-height:1.55;margin:0 0 22px">Hi {_h(first)}, someone (hopefully you) asked to reset your Affswap password. Click below to set a new one — the link expires in 60 minutes.</p>
+   <a href="{_h(link)}" style="display:inline-block;background:#3D7CFF;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(61,124,255,0.28)">Set a new password →</a>
+   <p style="color:#6B7480;font-size:12.5px;line-height:1.5;margin:22px 0 0">Didn't ask for this? You can safely ignore this email — your password stays unchanged.</p>
+  </div>
+  <div style="text-align:center;padding:20px 4px;color:#6B7480;font-size:12px">Affswap · the verified network for iGaming affiliate managers</div>
+ </div></body></html>"""
+    text = (f"Reset your Affswap password\n\n"
+            f"Hi {first}, someone asked to reset your Affswap password. "
+            f"Open this link within 60 minutes to set a new one:\n\n{link}\n\n"
+            f"Didn't ask for this? Ignore this email; your password stays "
+            f"unchanged.\n")
+    try:
+        emailer.send(to=row["work_email"], subject=subject,
+                     html=html, text=text, tag="password_reset")
+    except Exception as e:
+        # Log but still return ok=True (don't leak deliverability
+        # issues to the caller / attacker).
+        print(f"[forgot] send failed for {email}: {e}")
+    return {"ok": True}
+
+
+def api_reset_password(conn, payload) -> tuple[dict, str | None]:
+    """Verify a reset token and set a new password. On success also
+    starts a fresh session for the member (so they're signed in on the
+    device that clicked the link).
+
+    Returns (json_body, session_cookie_header_or_None).
+    """
+    token = (payload.get("token") or "").strip()
+    new_pw = payload.get("password") or ""
+    if len(new_pw) < 6:
+        return {"ok": False, "error": "password_min_6_chars"}, None
+
+    def _lookup(mid):
+        r = conn.execute(
+            "SELECT password_hash FROM chat_managers WHERE id=?",
+            (mid,)).fetchone()
+        return r["password_hash"] if r else None
+
+    mid = auth.read_reset_token(token, _lookup)
+    if mid is None:
+        return {"ok": False, "error": "invalid_or_expired_token"}, None
+    hashed = auth.hash_password(new_pw)
+    conn.execute(
+        "UPDATE chat_managers SET password_hash=?, last_login_at=? WHERE id=?",
+        (hashed, now_iso(), mid))
+    swaps.ensure_account(conn, mid)
+    conn.commit()
+    cookie = auth.set_cookie_header(auth.make_session_cookie(mid))
+    return {"ok": True, "id": mid}, cookie
+
+
+def _h(s):
+    """Tiny HTML escaper for email templates."""
+    if s is None:
+        return ""
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
 def api_geo(conn, iso, vertical, mid):
     d = views.country_list(conn, iso, vertical=vertical or None, sort="traffic")
     cards = d.get("cards") or []
@@ -1254,6 +1342,15 @@ class _H(BaseHTTPRequestHandler):
                 return
             if u.path == "/api/logout":
                 self._json({"ok": True}, set_cookie=auth.clear_cookie_header())
+                return
+            if u.path == "/api/forgot":
+                base = _public_base(host)
+                res = api_forgot_password(conn, payload, base)
+                self._json(res, 200 if res.get("ok") else 400)
+                return
+            if u.path == "/api/reset":
+                res, cookie_hdr = api_reset_password(conn, payload)
+                self._json(res, 200 if res.get("ok") else 400, set_cookie=cookie_hdr)
                 return
             if u.path == "/api/review":
                 try:
