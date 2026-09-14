@@ -690,13 +690,15 @@ def api_chat_rooms(conn):
 # Default toggles a fresh member sees before they've saved anything. Matches
 # the labels shown in the Account "Email alerts" card.
 ALERT_PREFS_DEFAULT = {
+    # Opt-in: every alert type starts OFF. A new member gets no emails until they
+    # turn alerts on themselves in Account → Email alerts.
     "events": {
-        "new_affiliate": True,
-        "traffic_up":    True,
-        "traffic_down":  True,
-        "match_ready":   True,
-        "swap_completed": True,
-        "review_approved": True,
+        "new_affiliate": False,
+        "traffic_up":    False,
+        "traffic_down":  False,
+        "match_ready":   False,
+        "swap_completed": False,
+        "review_approved": False,
         "suggested_site_approved": False,
     },
     "frequency": "instant",   # instant | daily | weekly
