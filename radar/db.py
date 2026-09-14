@@ -85,6 +85,13 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             "CREATE INDEX idx_chat_room_id ON chat_messages(room, id DESC);"
             "CREATE INDEX idx_chat_mgr ON chat_messages(manager_id);")
         applied.append("chat_messages")
+    # chat_managers.email_manually_set — flipped to 1 when a member
+    # verifies a manual email change from the Profile form. linkedin_land
+    # respects this flag: once set, LinkedIn's OIDC email claim will not
+    # overwrite the member's chosen work_email on subsequent sign-ins.
+    if not _column_exists(conn, "chat_managers", "email_manually_set"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN email_manually_set INTEGER NOT NULL DEFAULT 0")
+        applied.append("chat_managers.email_manually_set")
     # chat_managers.alert_prefs — JSON blob storing the member's alert
     # preferences (which event types they want, delivery frequency,
     # channels enabled). Loaded/saved by /api/alerts/prefs.

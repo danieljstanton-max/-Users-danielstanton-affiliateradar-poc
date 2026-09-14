@@ -194,16 +194,17 @@ def _normalize_linkedin_url(raw: str | None) -> str | None:
     return "https://www." + s
 
 
-def api_account_update(conn, mid, payload):
+def api_account_update(conn, mid, payload, public_base: str = ""):
     """Member-editable profile fields. Returns the persisted row so the
-    client can populate the form from ground truth without a second
-    fetch. Note: work_email is editable so members can point alerts /
-    contact at a different address than the one LinkedIn shares; but
-    LinkedIn Refresh will overwrite it again if they re-sync from
-    LinkedIn."""
+    client can populate the form without a second fetch.
+
+    work_email changes go through a verification flow: instead of
+    writing the new value directly, we email the NEW address a signed
+    24-hour confirmation link, and also notify the OLD address that a
+    change was requested. work_email stays at its current value until
+    the link is clicked.
+    """
     email_in = (payload.get("work_email") or "").strip().lower()
-    # Ignore obviously bad values so the caller doesn't wipe a valid
-    # email by accident; a missing key leaves the DB value alone.
     if "work_email" in payload and (not email_in or "@" not in email_in):
         email_in = None
     editable = {
@@ -213,17 +214,127 @@ def api_account_update(conn, mid, payload):
         "site_url":  (payload.get("site_url") or "").strip() or None,
         "sector":    (payload.get("sector") or "").strip() or None,
     }
-    if email_in:
-        editable["work_email"] = email_in
     sets = ", ".join(f"{k}=?" for k in editable)
     conn.execute(
         f"UPDATE chat_managers SET {sets} WHERE id=?",
         (*editable.values(), mid))
     conn.commit()
+
+    pending_email = None
+    email_error = None
+    if email_in:
+        current = conn.execute(
+            "SELECT work_email, real_name, handle FROM chat_managers WHERE id=?",
+            (mid,)).fetchone()
+        current_email = (current["work_email"] or "").lower() if current else ""
+        if email_in != current_email:
+            # Confirm the new address isn't already claimed by someone else.
+            clash = conn.execute(
+                "SELECT id FROM chat_managers WHERE lower(work_email)=? AND id<>?",
+                (email_in, mid)).fetchone()
+            if clash:
+                email_error = "email_already_registered"
+            else:
+                pending_email = email_in
+                try:
+                    _send_email_change_verification(
+                        conn, mid, email_in, current, public_base)
+                except Exception as e:
+                    print(f"[account] email change send failed: {e}")
+                    email_error = "email_send_failed"
+
     row = conn.execute(
         "SELECT real_name, company, work_email, linkedin_url, site_url, sector "
         "FROM chat_managers WHERE id=?", (mid,)).fetchone()
-    return {"ok": True, "saved": (dict(row) if row else None)}
+    return {"ok": True,
+            "saved": (dict(row) if row else None),
+            "pending_email": pending_email,
+            "email_error": email_error}
+
+
+def _send_email_change_verification(conn, mid, new_email, current_row,
+                                    public_base: str) -> None:
+    """Fire both halves of the change flow — a confirmation link to the
+    new address and a "change requested" notice to the old address."""
+    from . import auth, emailer
+    if not emailer.configured():
+        raise RuntimeError("email_provider_not_configured")
+    current_email = (current_row["work_email"] or "").lower() if current_row else ""
+    first = ((current_row["real_name"] or current_row["handle"] or "").split(" ")[0]) or "there"
+    token = auth.make_email_verify_token(mid, new_email, current_email)
+    link = f"{public_base or 'https://www.affswap.com'}/api/verify-email?token={token}"
+
+    # Confirmation email to the NEW address.
+    html_new = f"""<!doctype html>
+<html><body style="margin:0;background:#F5F7FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1A2332">
+ <div style="max-width:560px;margin:32px auto;padding:0 16px">
+  <div style="padding:0 4px 20px"><span style="font-weight:800;font-size:22px;letter-spacing:-0.02em">Affswap</span></div>
+  <div style="background:#fff;border:1px solid #E4E8EE;border-radius:14px;padding:28px">
+   <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 14px;line-height:1.25">Confirm your new email</h1>
+   <p style="color:#485062;font-size:14.5px;line-height:1.55;margin:0 0 22px">Hi {_h(first)}, click below to confirm <b>{_h(new_email)}</b> as your Affswap contact address. Link expires in 24 hours.</p>
+   <a href="{_h(link)}" style="display:inline-block;background:#3D7CFF;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(61,124,255,0.28)">Confirm this email →</a>
+   <p style="color:#6B7480;font-size:12.5px;line-height:1.5;margin:22px 0 0">Didn't ask for this? Ignore it — nothing changes on your account.</p>
+  </div>
+ </div></body></html>"""
+    emailer.send(to=new_email,
+                 subject="Confirm your new Affswap email",
+                 html=html_new,
+                 text=(f"Confirm your new Affswap email\n\nHi {first}, click the "
+                       f"link below within 24 hours to confirm {new_email} as your "
+                       f"Affswap contact address:\n\n{link}\n\nDidn't ask for this? "
+                       f"Ignore this email.\n"),
+                 tag="email_change_confirm")
+
+    # Notice to the OLD address so an attacker can't quietly hijack.
+    if current_email and current_email != new_email:
+        html_old = f"""<!doctype html>
+<html><body style="margin:0;background:#F5F7FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1A2332">
+ <div style="max-width:560px;margin:32px auto;padding:0 16px">
+  <div style="padding:0 4px 20px"><span style="font-weight:800;font-size:22px;letter-spacing:-0.02em">Affswap</span></div>
+  <div style="background:#fff;border:1px solid #E4E8EE;border-radius:14px;padding:28px">
+   <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 14px;line-height:1.25">Someone requested to change your email</h1>
+   <p style="color:#485062;font-size:14.5px;line-height:1.55;margin:0 0 12px">Hi {_h(first)}, someone (hopefully you) asked to change the email on your Affswap account to <b>{_h(new_email)}</b>. Your account still uses <b>{_h(current_email)}</b> — it will not change until the new address is confirmed by clicking a link we sent to it.</p>
+   <p style="color:#485062;font-size:14.5px;line-height:1.55;margin:0 0 12px"><b>Wasn't you?</b> Ignore this — the request expires in 24 hours and no changes are made until confirmed. Consider changing your Affswap password if you're worried.</p>
+  </div>
+ </div></body></html>"""
+        try:
+            emailer.send(to=current_email,
+                         subject="Affswap: email change requested",
+                         html=html_old,
+                         text=(f"Someone asked to change your Affswap email to "
+                               f"{new_email}. Your account still uses {current_email} "
+                               f"and will not change unless the new address is "
+                               f"confirmed. Wasn't you? Ignore this email.\n"),
+                         tag="email_change_notice")
+        except Exception as e:
+            # Best-effort — the primary confirmation email is what matters.
+            print(f"[account] old-address notice failed: {e}")
+
+
+def api_verify_email(conn, token: str) -> tuple[str, dict]:
+    """GET handler for the email-change confirmation link. Returns
+    (redirect_target, extra_headers). We redirect the browser to
+    /#/account?email=<status> so the SPA can toast the result."""
+    from . import auth
+    def _lookup_current(mid):
+        r = conn.execute(
+            "SELECT work_email FROM chat_managers WHERE id=?", (mid,)).fetchone()
+        return (r["work_email"] or "").lower() if r else ""
+    result = auth.read_email_verify_token(token, _lookup_current)
+    if result is None:
+        return "/#/account?email=invalid", {}
+    mid, new_email = result
+    # Ensure nobody else grabbed the address between request and click.
+    clash = conn.execute(
+        "SELECT id FROM chat_managers WHERE lower(work_email)=? AND id<>?",
+        (new_email.lower(), mid)).fetchone()
+    if clash:
+        return "/#/account?email=taken", {}
+    conn.execute(
+        "UPDATE chat_managers SET work_email=?, email_manually_set=1 WHERE id=?",
+        (new_email, mid))
+    conn.commit()
+    return "/#/account?email=verified", {}
 
 
 # --- Stripe / billing ------------------------------------------------------- #
@@ -914,12 +1025,17 @@ def linkedin_land(conn, ui: dict) -> int:
     #    placeholder ("You", "member", empty) so members keep the
     #    display name they've chosen.
     row = conn.execute(
-        "SELECT id, handle FROM chat_managers WHERE linkedin_sub=?", (sub,)).fetchone()
+        "SELECT id, handle, email_manually_set FROM chat_managers "
+        "WHERE linkedin_sub=?", (sub,)).fetchone()
     if row:
         placeholder_handles = {"", "you", "member", "user"}
         current_handle = (row["handle"] or "").strip().lower()
         new_handle = given or (name.split(" ")[0] if name else "")
         set_handle = new_handle if current_handle in placeholder_handles else None
+        # Respect a member's manually-set + verified email choice — LinkedIn
+        # sign-in must not silently overwrite it on every refresh.
+        email_to_set = "" if row["email_manually_set"] else (email or "")
+        email_verified_flag = 0 if row["email_manually_set"] else email_verified
         conn.execute(
             "UPDATE chat_managers SET last_login_at=?, "
             "avatar_url=COALESCE(NULLIF(?, ''), avatar_url), "
@@ -929,8 +1045,8 @@ def linkedin_land(conn, ui: dict) -> int:
             "handle=COALESCE(NULLIF(?, ''), handle), "
             "linkedin_verified=1 "
             "WHERE id=?",
-            (when, picture or "", name or "", email or "",
-             email_verified, set_handle or "", row["id"]))
+            (when, picture or "", name or "", email_to_set,
+             email_verified_flag, set_handle or "", row["id"]))
         conn.commit()
         return row["id"]
 
@@ -1176,6 +1292,14 @@ class _H(BaseHTTPRequestHandler):
             host = self._forwarded_host() or "127.0.0.1"
             url, state = auth.linkedin_start(host)
             return self._redirect(url, cookies=[auth.linkedin_state_cookie(state)])
+        if u.path == "/api/verify-email":
+            token = (qs.get("token", [""])[0] or "").strip()
+            conn = connect()
+            try:
+                target, _hdrs = api_verify_email(conn, token)
+                return self._redirect(target)
+            finally:
+                conn.close()
         if u.path == "/api/oauth/linkedin/callback":
             code = (qs.get("code", [""])[0] or "").strip()
             state = (qs.get("state", [""])[0] or "").strip()
@@ -1472,7 +1596,8 @@ class _H(BaseHTTPRequestHandler):
                     self._json({"ok": False, "error": "not_authenticated"}, 401)
                 else:
                     try:
-                        self._json(api_account_update(conn, mid, payload))
+                        self._json(api_account_update(conn, mid, payload,
+                                                        _public_base(host)))
                     except Exception as e:
                         self._json({"ok": False, "error": str(e)}, 400)
             elif u.path == "/api/chat/send":

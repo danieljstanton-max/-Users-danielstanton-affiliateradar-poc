@@ -120,6 +120,51 @@ def read_reset_token(token: str | None,
     return mid
 
 
+EMAIL_VERIFY_TTL_SECONDS = 24 * 60 * 60   # 24 hours to confirm an email change
+
+
+def make_email_verify_token(manager_id: int, new_email: str,
+                            current_email: str | None) -> str:
+    """Signed 24h token to confirm an email change. Signature includes the
+    current email so a second change request auto-invalidates the first."""
+    payload = f"{int(manager_id)}.{_b64u(new_email.encode())}.{int(time.time())}"
+    key = _secret() + (current_email or "").encode()
+    sig = hmac.new(key, payload.encode(), hashlib.sha256).digest()
+    return f"{payload}.{_b64u(sig)}"
+
+
+def read_email_verify_token(token: str | None,
+                            lookup_current_email) -> tuple[int, str] | None:
+    """Verify + decode. Returns (manager_id, new_email) or None. Callers
+    pass a lookup_current_email(mid) fn so signature can be checked
+    against the DB's current email at verify time."""
+    if not token:
+        return None
+    parts = token.split(".")
+    if len(parts) != 4:
+        return None
+    mid_str, new_b64, ts_str, sig_b64 = parts
+    try:
+        mid = int(mid_str)
+        ts = int(ts_str)
+        new_email = _b64u_decode(new_b64).decode()
+    except Exception:
+        return None
+    if time.time() - ts > EMAIL_VERIFY_TTL_SECONDS:
+        return None
+    current = lookup_current_email(mid) or ""
+    key = _secret() + current.encode()
+    expected = hmac.new(key, f"{mid_str}.{new_b64}.{ts_str}".encode(),
+                        hashlib.sha256).digest()
+    try:
+        got = _b64u_decode(sig_b64)
+    except Exception:
+        return None
+    if not hmac.compare_digest(expected, got):
+        return None
+    return (mid, new_email)
+
+
 def make_session_cookie(manager_id: int) -> str:
     payload = f"{int(manager_id)}.{int(time.time())}"
     sig = hmac.new(_secret(), payload.encode(), hashlib.sha256).digest()

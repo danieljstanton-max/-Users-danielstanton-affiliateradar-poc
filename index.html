@@ -2640,6 +2640,14 @@ function saveProfile(btn){
     if(payload.site_url && !saved.site_url) missed.push('Site');
     if(missed.length){
       toast('Saved, but '+missed.join(' + ')+' didn\'t stick — refresh & retry');
+    } else if(j.pending_email){
+      // Email changes now require verification — the old value stays live
+      // in the form until the confirmation link is clicked.
+      toast('Confirmation link sent to '+j.pending_email+' — click it to complete the change');
+    } else if(j.email_error==='email_already_registered'){
+      toast('That email is already used by another Affswap account');
+    } else if(j.email_error==='email_send_failed'){
+      toast('Saved, but we couldn\'t send the confirmation email. Try again later.');
     } else {
       toast('Profile saved');
     }
@@ -3578,6 +3586,14 @@ function route(){
   // Post-OAuth toast — surfaced from route() so it fires no matter
   // which section owns the URL.
   if(window.ROUTE_QS.li==='synced'){setTimeout(function(){toast('Profile synced from LinkedIn');},250);}
+  if(window.ROUTE_QS.email){
+    var msgs = {
+      verified: '✓ Email confirmed — your new address is live',
+      invalid:  'This confirmation link is invalid or has expired. Save your profile again to send a new one.',
+      taken:    'That email was claimed by another Affswap account. Try a different address.'
+    };
+    setTimeout(function(){toast(msgs[window.ROUTE_QS.email] || 'Email status: '+window.ROUTE_QS.email);},300);
+  }
   if(window.ROUTE_QS.checkout==='success'){
     setTimeout(function(){
       var msg = window.ROUTE_QS.kind==='topup'
