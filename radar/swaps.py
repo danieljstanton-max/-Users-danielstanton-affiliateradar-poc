@@ -541,6 +541,51 @@ def pending_contribution_for(conn: sqlite3.Connection, site_id: int) -> dict | N
     return {"by": _handle(conn, r["manager_id"]), "reward": r["reward_swaps"]} if r else None
 
 
+def _email_contribution_approved(conn, manager_id: int, domain: str,
+                                 reward: int, swaps_left) -> None:
+    """Congratulate a member whose suggested site was just approved + credited.
+    Best-effort — respects the operator email block and never raises."""
+    from . import emailer
+    from html import escape as _e
+    if not emailer.configured():
+        return
+    try:
+        row = conn.execute(
+            "SELECT real_name, handle, work_email, COALESCE(email_blocked,0) AS email_blocked "
+            "FROM chat_managers WHERE id=?", (manager_id,)).fetchone()
+    except Exception:
+        row = conn.execute(
+            "SELECT real_name, handle, work_email, 0 AS email_blocked "
+            "FROM chat_managers WHERE id=?", (manager_id,)).fetchone()
+    if not row or not row["work_email"] or row["email_blocked"]:
+        return
+    base = emailer.public_url()
+    first = (row["real_name"] or row["handle"] or "").split(" ")[0] or "there"
+    s = "s" if (reward or 0) != 1 else ""
+    acct = f"{base}/#/account"
+    subject = f"🎉 Your suggestion {domain} is live — {reward} free swap{s} added"
+    html = f"""<!doctype html>
+<html><body style="margin:0;background:#F5F7FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1A2332">
+  <div style="max-width:560px;margin:32px auto;padding:0 16px">
+    <div style="padding:0 4px 20px"><span style="font-weight:800;font-size:22px;letter-spacing:-0.02em;color:#1A2332">Affswap</span></div>
+    <div style="background:#fff;border:1px solid #E4E8EE;border-radius:14px;padding:28px 28px 24px;box-shadow:0 1px 3px rgba(20,30,50,0.04)">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#12A150;margin-bottom:10px">Suggestion approved</div>
+      <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 14px;line-height:1.25;color:#1A2332">Nice one, {_e(first)} &mdash; {_e(domain)} is now on Affswap 🎉</h1>
+      <p style="color:#485062;font-size:14.5px;line-height:1.55;margin:0 0 18px">The site you suggested has been reviewed and approved, and it&rsquo;s now live in the network. As a thank-you we&rsquo;ve credited your account with <b>{reward} free swap{s}</b>.</p>
+      <div style="background:#F1FAF5;border:1px solid rgba(18,161,80,0.24);border-radius:10px;padding:14px 16px;margin:0 0 22px;font-size:14px;color:#0E7A3D"><b>+{reward} swap{s}</b> &middot; you now have <b>{_e(str(swaps_left))}</b> to spend</div>
+      <a href="{_e(acct)}" style="display:inline-block;background:#3D7CFF;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(61,124,255,0.28)">Go to your account &rarr;</a>
+    </div>
+    <div style="text-align:center;padding:20px 4px;color:#6B7480;font-size:12px;line-height:1.5">You&rsquo;re getting this because you suggested a site on Affswap.</div>
+  </div>
+</body></html>"""
+    text = (f"Nice one, {first} — {domain} is now on Affswap!\n\n"
+            f"The site you suggested has been reviewed and approved. We've credited your "
+            f"account with {reward} free swap{s} — you now have {swaps_left} to spend.\n\n"
+            f"Go to your account: {acct}\n")
+    emailer.send(to=row["work_email"], subject=subject, html=html, text=text,
+                 tag="contribution_approved")
+
+
 def on_site_published(conn: sqlite3.Connection, site_id: int,
                       by: str = "operator") -> dict | None:
     """Hook the New-affiliate queue APPROVE calls here. If the approved site came
@@ -554,6 +599,12 @@ def on_site_published(conn: sqlite3.Connection, site_id: int,
     conn.execute("UPDATE swap_contributions SET status='approved', resolved_at=?, "
                  "resolved_by=? WHERE id=?", (now_iso(), by, r["id"]))
     conn.commit()
+    # Congratulate the submitter now the swap is credited (best-effort).
+    try:
+        _email_contribution_approved(conn, r["manager_id"], r["domain"],
+                                     r["reward_swaps"], left)
+    except Exception:
+        pass
     return {"granted": r["reward_swaps"], "to": _handle(conn, r["manager_id"]),
             "swaps_left": left, "domain": r["domain"]}
 
