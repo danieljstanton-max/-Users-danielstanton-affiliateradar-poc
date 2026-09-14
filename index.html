@@ -2105,6 +2105,17 @@ var ACC_FREQUENCY = 'instant';   // instant | daily | weekly
 var ACC_SEL=['gb','us','de'];
 
 function renderAccount(){document.getElementById('v-account').innerHTML='<div style="padding:60px 0;text-align:center;color:var(--ink-mute)">Loading…</div>';}
+// Email nudge: focus the Work email field, and remember dismissal so it shows once.
+function focusWorkEmail(){
+  var el=document.getElementById('acct-email');
+  if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus();
+    el.style.boxShadow='0 0 0 3px rgba(61,124,255,0.35)';
+    setTimeout(function(){el.style.boxShadow='';},1800); }
+}
+function dismissEmailNudge(){
+  try{ localStorage.setItem('affswap_emailnudge','1'); }catch(e){}
+  var n=document.getElementById('email-nudge'); if(n) n.remove();
+}
 function hydrateAccount(){
   // Auth gate. Without a valid session the shared demo user's row
   // gets rendered — and any Save profile writes would then land on
@@ -2218,6 +2229,16 @@ function _hydrateAccountFull(meArg){
           '<button class="btn btn-sm" style="background:#B45309;border-color:#B45309;color:#fff;white-space:nowrap" onclick="focusLinkedInUrl()">Add URL →</button>'+
         '</div>';
       })())+
+      /* One-time email nudge — shown to every member once; dismissal is remembered. */
+      (function(){
+        try{ if(localStorage.getItem('affswap_emailnudge')==='1') return ''; }catch(e){}
+        return '<div class="li-nudge" id="email-nudge" style="border-color:rgba(61,124,255,0.26);background:linear-gradient(90deg,#F5F9FF,#EAF1FF)">'+
+          '<span class="li-nudge-ico" style="color:var(--blue)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg></span>'+
+          '<div class="li-nudge-body"><b>Where should your alerts land?</b><span>Many members signed up with LinkedIn using a personal email. If you\'d like your affiliate alerts sent to your <b>work inbox</b> instead, update your <b>Work email</b> in the section below.</span></div>'+
+          '<button class="btn btn-gho btn-sm" style="white-space:nowrap" onclick="focusWorkEmail()">Update email</button>'+
+          '<button aria-label="Dismiss" onclick="dismissEmailNudge()" style="background:none;border:0;font-size:22px;line-height:1;color:var(--ink-mute);cursor:pointer;padding:0 4px;flex:0 0 auto">&times;</button>'+
+        '</div>';
+      })()+
       '<div class="acct-grid">'+
         '<div class="acct-card">'+
           '<div class="acct-card-head"><div><h2>Profile</h2><p>Your identity across the network — used by matches and reviews.</p></div>'+
