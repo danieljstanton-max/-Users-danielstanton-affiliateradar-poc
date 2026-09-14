@@ -1134,10 +1134,14 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
   .pay-tbl th,.pay-tbl td{padding:10px 12px;font-size:12.5px}
 
   /* ---- Chat ---- */
-  .chat-shell{margin:16px 0;min-height:calc(100vh - 200px)}
-  .chat-side{padding:10px;gap:8px}
-  .chat-room-btn{min-width:auto;padding:10px}
+  .chat-shell{margin:16px 0;min-height:calc(100vh - 190px);gap:12px}
+  /* rooms = a compact horizontal pill strip (name + count, no description) */
+  .chat-side{flex-direction:row;overflow-x:auto;gap:8px;padding:10px;-webkit-overflow-scrolling:touch}
+  .chat-room-btn{flex-direction:row;align-items:center;text-align:left;min-width:auto;padding:9px 13px;flex:0 0 auto;white-space:nowrap}
+  .chat-room-btn .lbl span{display:none}
+  .chat-room-btn .lbl b{white-space:nowrap}
   .chat-room-btn .n{font-size:10px}
+  .chat-main{min-height:62vh}
   .chat-head{padding:12px 16px;gap:10px}
   .chat-head h1{font-size:15px}
   .chat-head-sub{font-size:12px}
