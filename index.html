@@ -1367,12 +1367,18 @@ function renderHome(){
     '<section class="hero">'+
       '<div class="hero-grid">'+
         '<div>'+
-          '<div class="eyebrow">The verified affiliate network</div>'+
+          '<div class="eyebrow" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">The verified affiliate network'+
+            '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--up-soft);color:#0E9760;border:1px solid rgba(20,184,122,0.30);border-radius:999px;padding:3px 11px;font-size:11px;font-weight:800;letter-spacing:0.02em;text-transform:none;font-family:var(--f-body)">✓ Free to join</span>'+
+          '</div>'+
           '<h1 class="hero-h">Swap connections.<br>Build partnerships.<br><span class="grad">Grow faster.</span></h1>'+
           '<p class="hero-lede">Affswap connects verified iGaming affiliate managers and websites. Mark sites as <b>Have</b> or <b>Want</b>, and when there\'s a match, you connect directly — powered by <b>live SEO data</b>.</p>'+
           '<div class="hero-cta">'+
-            '<a class="btn" onclick="go(\'#/signup\')">Get started <span>→</span></a>'+
+            '<a class="btn" onclick="go(\'#/signup\')">Get started free <span>→</span></a>'+
             '<a class="btn btn-gho" onclick="go(\'#/markets\')">View markets</a>'+
+          '</div>'+
+          '<div style="margin-top:14px;font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:8px">'+
+            '<svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="flex:0 0 auto"><circle cx="10" cy="10" r="9" fill="var(--up-soft)"/><path d="M6.2 10 L9 12.6 L13.8 7.3" stroke="#0E9760" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>'+
+            '<span><b style="color:var(--ink);font-weight:700">Completely free to join</b> — no credit card, no commitment.</span>'+
           '</div>'+
           '<div class="trust-row">'+
             '<span class="trust"><span class="tico"><svg viewBox="0 0 12 12" fill="none"><path d="M6 1 L10 3 V7 C10 9.5 6 11 6 11 C6 11 2 9.5 2 7 V3 Z" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 6 L5.5 7 L7.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>Verified managers only</span>'+
