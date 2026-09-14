@@ -1329,7 +1329,7 @@ function sensitiveGate(viewId,kind){
   var el=document.getElementById(viewId); if(!el) return;
   var title = kind==='site' ? 'Sign in to view this site' : 'Sign in to view this market';
   var desc = kind==='site'
-    ? 'Full site profiles — live traffic, 12-month trends, market breakdown and swap contacts — are for registered Affswap members.'
+    ? 'Full site profiles — live traffic, 12-month trends, market breakdown and swap connections — are for registered Affswap members.'
     : 'Live market data — every affiliate site, traffic estimates, movers and trends — is for registered Affswap members.';
   el.innerHTML =
     '<div class="wrap">'
@@ -1357,8 +1357,8 @@ function renderHome(){
       '<div class="hero-grid">'+
         '<div>'+
           '<div class="eyebrow">The verified affiliate network</div>'+
-          '<h1 class="hero-h">Swap contacts.<br>Build partnerships.<br><span class="grad">Grow faster.</span></h1>'+
-          '<p class="hero-lede">Affswap connects verified iGaming affiliate managers and websites. Mark sites as <b>Have</b> or <b>Want</b>, and when there\'s a match, swap contact details — powered by <b>live SEO data</b>.</p>'+
+          '<h1 class="hero-h">Swap connections.<br>Build partnerships.<br><span class="grad">Grow faster.</span></h1>'+
+          '<p class="hero-lede">Affswap connects verified iGaming affiliate managers and websites. Mark sites as <b>Have</b> or <b>Want</b>, and when there\'s a match, you connect directly — powered by <b>live SEO data</b>.</p>'+
           '<div class="hero-cta">'+
             '<a class="btn" onclick="go(\'#/signup\')">Get started <span>→</span></a>'+
             '<a class="btn btn-gho" onclick="go(\'#/markets\')">View markets</a>'+
@@ -1390,7 +1390,7 @@ function renderHome(){
         '<div class="step-arrow"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10 L16 10 M12 6 L16 10 L12 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
         '<div class="step"><span class="step-num">2</span><span class="ico"><svg viewBox="0 0 22 22" fill="none"><path d="M5 3 H17 V19 L11 15 L5 19 Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9 L10 11 L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><h3>Mark sites as Have or Want</h3><p>Let others know which sites you have and which you want.</p></div>'+
         '<div class="step-arrow"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10 L16 10 M12 6 L16 10 L12 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
-        '<div class="step"><span class="step-num">3</span><span class="ico"><svg viewBox="0 0 22 22" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="15" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M2 19 C 2 15, 4 13, 7 13 C 10 13, 12 15, 12 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><h3>Match and swap connections</h3><p>When there\'s a match, swap contact details and start a conversation.</p></div>'+
+        '<div class="step"><span class="step-num">3</span><span class="ico"><svg viewBox="0 0 22 22" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="15" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M2 19 C 2 15, 4 13, 7 13 C 10 13, 12 15, 12 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><h3>Match and swap connections</h3><p>When there\'s a match, you connect directly and start a conversation.</p></div>'+
       '</div>'+
     '</section>'+
     '<section class="section">'+
@@ -2302,7 +2302,7 @@ function _hydrateAccountFull(meArg){
       '<div id="acct-pane-matches" class="acct-pane"'+(initialTab==='matches'?'':' hidden')+'>'+
         (matches.length ?
           '<div class="acct-card">'+
-            '<div class="acct-card-head"><span class="ico-hero" style="background:#EAF7EF;color:#0E9760"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="9" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M9 17 C 9 14, 11 13, 13 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><h2>Your matches</h2><p>'+(pendingMatches?'<b style="color:#E5484D">'+pendingMatches+' need your action</b> &mdash; ':(openMatches?'':'All matches complete &mdash; '))+'someone has a site you want and you have a site they want. Confirm to swap contact details.</p></div></div>'+
+            '<div class="acct-card-head"><span class="ico-hero" style="background:#EAF7EF;color:#0E9760"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="9" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M9 17 C 9 14, 11 13, 13 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><h2>Your matches</h2><p>'+(pendingMatches?'<b style="color:#E5484D">'+pendingMatches+' need your action</b> &mdash; ':(openMatches?'':'All matches complete &mdash; '))+'someone has a site you want and you have a site they want. Confirm to connect and swap details.</p></div></div>'+
             matches.map(function(m){
               var btn;
               if(m.status==='completed'){
@@ -2572,7 +2572,13 @@ function saveProfile(btn){
 }
 /* openUpgrade / openTopup are defined in the Payments section and
    redirect to /#/payments — kept for callers elsewhere in the app. */
-function suggestSite(){var u=document.getElementById('sugg-url');if(!u||!u.value.trim()){toast('Enter a site URL');return;}document.getElementById('sugg-form').innerHTML='<div style="padding:16px;background:var(--up-soft);border:1px solid rgba(20,184,122,0.28);border-radius:10px;color:#0E9760;font-weight:600;display:flex;align-items:center;gap:10px"><span style="width:24px;height:24px;background:var(--up);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">✓</span>Submitted for review — you\'ll earn a swap when it\'s approved.</div>';}
+function suggestSite(){
+  var u=document.getElementById('sugg-url');if(!u||!u.value.trim()){toast('Enter a site URL');return;}
+  var btn=document.querySelector('#sugg-form button');if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+  var ok=function(){document.getElementById('sugg-form').innerHTML='<div style="padding:16px;background:var(--up-soft);border:1px solid rgba(20,184,122,0.28);border-radius:10px;color:#0E9760;font-weight:600;display:flex;align-items:center;gap:10px"><span style="width:24px;height:24px;background:var(--up);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">✓</span>Submitted for review — you\'ll earn a swap when it\'s approved.</div>';};
+  var fail=function(m){toast(m||'Could not submit — please try again');if(btn){btn.disabled=false;btn.textContent='Submit for review';}};
+  apiPost('/api/swap/contribute',{url:u.value.trim()}).then(function(j){ if(j&&j.ok){ok();} else {fail(j&&j.error);} }).catch(function(){fail();});
+}
 
 function markSharePosted(){
   var step2=document.getElementById('share-step-2'); if(step2) step2.hidden=false;

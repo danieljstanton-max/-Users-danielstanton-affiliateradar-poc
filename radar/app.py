@@ -1241,6 +1241,20 @@ class _H(BaseHTTPRequestHandler):
                     self._json({"ok": True})
                 except swaps.SwapError as e:
                     self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path in ("/api/swap/contribute", "/api/contribute"):
+                # A member suggests a missing affiliate site -> creates a candidate
+                # + a pending swap_contribution (shows in back office · Submitted).
+                if not authed:
+                    self._json({"ok": False, "error": "Please sign in to suggest a site."}, 401)
+                else:
+                    try:
+                        res = swaps.submit_contribution(
+                            conn, mid, payload.get("url") or payload.get("domain"),
+                            payload.get("country"), payload.get("vertical"),
+                            payload.get("comment"))
+                        self._json({"ok": True, **res})
+                    except swaps.SwapError as e:
+                        self._json({"ok": False, "error": str(e)}, 400)
             elif u.path in ("/api/want/remove", "/api/have/remove"):
                 dom = (payload.get("domain") or "").strip()
                 if not dom:
