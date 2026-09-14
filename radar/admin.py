@@ -1239,6 +1239,37 @@ def _member_detail_page(conn, mid: int, flash: str = "", temp_pw: str = "") -> b
         + info("Member ID", str(mid))
         + "</div>")
 
+    # Swap lists — what they WANT vs what they HAVE, so you can test matches.
+    wants = conn.execute(
+        "SELECT s.id, s.domain, s.top_country, s.etv FROM swap_wants w "
+        "JOIN sites s ON s.id=w.site_id WHERE w.manager_id=? ORDER BY (s.etv IS NULL), s.etv DESC",
+        (mid,)).fetchall()
+    haves = conn.execute(
+        "SELECT s.id, s.domain, s.top_country, s.etv FROM swap_haves h "
+        "JOIN sites s ON s.id=h.site_id WHERE h.manager_id=? ORDER BY (s.etv IS NULL), s.etv DESC",
+        (mid,)).fetchall()
+
+    def _swaplist(rows, empty):
+        if not rows:
+            return f"<div class='hint' style='padding:8px 0'>{empty}</div>"
+        return "".join(
+            f"<a href='/site?id={r['id']}' style='display:flex;justify-content:space-between;gap:10px;"
+            "align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px'>"
+            f"<span>{(flag(r['top_country']) + ' ') if r['top_country'] else ''}{_esc(r['domain'])}</span>"
+            f"<span class='ev' style='font-family:var(--mono)'>{int(r['etv'] or 0):,}/mo</span></a>"
+            for r in rows)
+
+    body.append(
+        "<div class='card' style='max-width:none;margin-top:16px'>"
+        "<label style='margin-top:0'>Swap lists <span class='hint' style='font-weight:400'>"
+        "— what this member wants vs. has, for testing matches</span></label>"
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:4px'>"
+        f"<div><div style='font-weight:800;color:var(--blue-d);margin-bottom:2px'>Wants · {len(wants)}</div>"
+        + _swaplist(wants, "Nothing on their Want list yet.") + "</div>"
+        f"<div><div style='font-weight:800;color:var(--up);margin-bottom:2px'>Has · {len(haves)}</div>"
+        + _swaplist(haves, "Nothing on their Have list yet.") + "</div>"
+        "</div></div>")
+
     # company — editable here so an operator can fill it in (it shows in chat)
     body.append(
         f"<form class='card' method='post' action='/member-company?id={mid}' style='max-width:none;margin-top:16px'>"
