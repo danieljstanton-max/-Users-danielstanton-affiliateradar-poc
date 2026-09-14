@@ -2862,9 +2862,11 @@ function hydratePayments(){
     apiGet('/api/me'),
     apiGet('/api/swaps').catch(function(){return{ledger:[]};}),
     apiGet('/api/loyalty').catch(function(){return{};}),
-    apiGet('/api/pricing').catch(function(){return null;})
+    apiGet('/api/pricing').catch(function(){return null;}),
+    apiGet('/api/billing').catch(function(){return{receipts:[]};})
   ]).then(function(res){
     var me=res[0]||{}, sw=res[1]||{ledger:[]}, l=res[2]||{}, pricing=res[3]||null;
+    var receipts=(res[4]||{}).receipts||[];
     var unlim = (pricing && pricing.unlimited) || {price:'£79.99',standard_price:'£79.99',earlybird_price:'£49.99',is_earlybird:false,seats_left:0,seats_total:100,seats_taken:100};
     var proPrice = (pricing && pricing.pro && pricing.pro.price) || '£29.99';
     if(pricing && pricing.swap_topup && pricing.swap_topup.unit_price){
@@ -2934,12 +2936,16 @@ function hydratePayments(){
       '</div>'+
 
       /* Billing history */
-      '<div class="pay-sec-head" style="margin-top:40px"><h2>Billing history</h2><p>Downloadable receipts for every plan payment and top-up.</p></div>'+
+      '<div class="pay-sec-head" style="margin-top:40px"><h2>Billing history</h2><p>Receipts for every plan payment and swap top-up.</p></div>'+
       '<div class="acct-card">'+
-        (ledger.length ?
-          '<table class="pay-tbl"><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th></th></tr></thead><tbody>'+
-            /* No real billing yet — show a placeholder empty row so the shape is real */
-            '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--ink-mute);font-size:13.5px">No payment history yet. When you upgrade or buy swaps, receipts appear here.</td></tr>'+
+        (receipts.length ?
+          '<table class="pay-tbl"><thead><tr><th>Date</th><th>Description</th><th>Amount</th></tr></thead><tbody>'+
+            receipts.map(function(r){
+              var dt = r.at ? new Date(r.at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
+              var desc = (r.kind||'').indexOf('subscription')>=0 ? 'Plan payment' : 'Swap top-up';
+              var sym = r.currency==='GBP'?'£':(r.currency==='USD'?'$':(r.currency==='EUR'?'€':(r.currency||'')+' '));
+              return '<tr><td>'+h(dt)+'</td><td>'+desc+'</td><td>'+sym+Number(r.amount||0).toFixed(2)+'</td></tr>';
+            }).join('')+
           '</tbody></table>'
           :
           '<div style="text-align:center;padding:36px 24px">'+

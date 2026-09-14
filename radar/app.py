@@ -345,6 +345,35 @@ def _find_manager_by_customer(conn, customer_id: str | None) -> int | None:
     return row["id"] if row else None
 
 
+def _event_manager_id(conn, obj: dict) -> int | None:
+    """Resolve the member a Stripe event belongs to: by saved customer id, else
+    the manager_id we stamped into checkout metadata. BOTH the swap grant and the
+    billing receipt must use this — otherwise a receipt can be filed under NULL
+    while the swap is still granted via metadata (invisible in Billing history)."""
+    mid = _find_manager_by_customer(conn, obj.get("customer"))
+    if mid is None:
+        try:
+            mid = int(((obj.get("metadata") or {}).get("manager_id") or 0)) or None
+        except Exception:
+            mid = None
+    return mid
+
+
+def api_billing(conn, mid) -> dict:
+    """A member's payment receipts (top-ups + plan charges) for Billing history."""
+    rows = conn.execute(
+        "SELECT kind, amount_cents, currency, created_at FROM billing_events "
+        "WHERE manager_id=? AND amount_cents IS NOT NULL "
+        "ORDER BY created_at DESC LIMIT 100", (mid,)).fetchall()
+    receipts = [{
+        "kind": r["kind"],
+        "amount": round((r["amount_cents"] or 0) / 100.0, 2),
+        "currency": (r["currency"] or "gbp").upper(),
+        "at": r["created_at"],
+    } for r in rows]
+    return {"receipts": receipts}
+
+
 def _plan_from_price(price_id: str | None) -> str | None:
     """Reverse-lookup: which of our internal plan slugs does this
     Stripe Price ID belong to? Returns None if it isn't ours."""
@@ -364,15 +393,7 @@ def _handle_stripe_event(conn, event: dict) -> None:
     dedupes by event id before invoking us."""
     kind = event.get("type", "")
     obj = ((event.get("data") or {}).get("object") or {})
-    # Which member?
-    mid = _find_manager_by_customer(conn, obj.get("customer"))
-    if mid is None:
-        # Best-effort fallback via metadata on the object.
-        try:
-            mid = int(((obj.get("metadata") or {}).get("manager_id") or 0))
-        except Exception:
-            mid = 0
-        mid = mid or None
+    mid = _event_manager_id(conn, obj)
     if kind == "checkout.session.completed":
         mode = obj.get("mode")
         if mode == "payment":
@@ -450,7 +471,7 @@ def api_stripe_webhook(conn, payload_bytes: bytes,
     if already:
         return {"ok": True, "duplicate": True}, 200
     obj = ((event.get("data") or {}).get("object") or {})
-    mid = _find_manager_by_customer(conn, obj.get("customer"))
+    mid = _event_manager_id(conn, obj)
     try:
         _handle_stripe_event(conn, event)
     except Exception as e:
@@ -1140,6 +1161,8 @@ class _H(BaseHTTPRequestHandler):
                 self._json(a) if a else self._json({"error": "not_found"}, 404)
             elif u.path == "/api/swaps":
                 self._json(api_swaps(conn, mid))
+            elif u.path == "/api/billing":
+                self._json(api_billing(conn, mid) if authed else {"receipts": []})
             elif u.path == "/api/lists":
                 self._json(api_lists(conn, mid))
             elif u.path == "/api/alerts/prefs":
