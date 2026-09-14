@@ -2414,7 +2414,7 @@ function _hydrateAccountFull(meArg){
             '</div>' :
             '<div class="share-locked"><div class="share-locked-t"><b>Next share unlocks '+(share.next_claim_at?new Date(share.next_claim_at).toLocaleDateString():'soon')+'</b><span>Come back after the cooldown to share and earn again.</span></div></div>'
           )+
-          '<div class="share-suggest"><b>Suggested caption</b><span id="share-caption">Just joined <b>Affswap</b>, a private trading network for verified iGaming affiliate managers. If you\'re running an affiliate site and want to swap connections with the people who own the sites you want, this is worth a look. 👉 affswap.com</span><button class="share-copy" onclick="copyCaption(this)">Copy</button></div>'+
+          '<div class="share-suggest"><b>Suggested caption</b><span id="share-caption" data-copy="Just joined Affswap.com — really useful tool for Affiliate Managers. Find new affiliates faster, see key site info and get alerts when SEO traffic moves. Definitely worth a look if you work in iGaming affiliates.&#10;👉 affswap.com&#10;#iGamingAffiliates #AffiliateManagers">Just joined <b>Affswap.com</b> — really useful tool for Affiliate Managers. Find new affiliates faster, see key site info and get alerts when SEO traffic moves. Definitely worth a look if you work in iGaming affiliates.<br>👉 affswap.com<br>#iGamingAffiliates #AffiliateManagers</span><button class="share-copy" onclick="copyCaption(this)">Copy</button></div>'+
         '</div>'+
 
         /* Suggest a site */
@@ -2626,7 +2626,8 @@ function claimShareSwap(btn){
 }
 function copyCaption(btn){
   var el=document.getElementById('share-caption'); if(!el) return;
-  var text = el.textContent||'';
+  // data-copy keeps line breaks + hashtags intact (textContent would flatten them).
+  var text = el.getAttribute('data-copy') || el.textContent || '';
   navigator.clipboard.writeText(text).then(function(){
     var orig=btn.textContent; btn.textContent='Copied ✓';
     setTimeout(function(){btn.textContent=orig;},1600);
