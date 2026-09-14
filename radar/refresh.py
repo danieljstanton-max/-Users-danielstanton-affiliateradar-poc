@@ -159,6 +159,66 @@ def refresh_all(conn: sqlite3.Connection, week_index: int = LATEST_WEEK,
             "verticals_retagged": tagged["retagged"]}
 
 
+# The markets probed when a single site is refreshed on approval — the geos where
+# gambling affiliates realistically draw traffic. Kept focused so an operator's
+# Approve click returns in a few seconds; the weekly refresh fills any long tail.
+_APPROVE_MARKETS = ["US", "GB", "DE", "CA", "AU", "NZ", "IE", "FR", "ES", "IT",
+                    "NL", "BE", "SE", "FI", "NO", "DK", "PL", "RO", "BR", "IN",
+                    "ZA", "AT", "CH", "PT", "GR"]
+
+
+def refresh_one_site(conn: sqlite3.Connection, site_id: int,
+                     client: DataForSEOClient | None = None) -> dict:
+    """Fetch CURRENT traffic for ONE site (across a focused market set incl. its
+    submitted country) and write its regions/etv/snapshot — so a just-approved
+    site can appear in the app immediately instead of waiting for the weekly run.
+    No-op when the provider is in MOCK mode (never writes fake traffic to prod)."""
+    client = client or DataForSEOClient()
+    if not getattr(client, "live", False):
+        return {"skipped": "not_live"}
+    row = conn.execute("SELECT domain FROM sites WHERE id=?", (site_id,)).fetchone()
+    if not row:
+        return {"skipped": "no_site"}
+    dom = row["domain"]
+    isos = list(_APPROVE_MARKETS)
+    sub = conn.execute("SELECT country FROM swap_contributions WHERE site_id=? "
+                       "ORDER BY id DESC LIMIT 1", (site_id,)).fetchone()
+    if sub and sub["country"] and sub["country"].upper() not in isos:
+        isos.insert(0, sub["country"].upper())
+    codes = []
+    for iso in isos:
+        c = code_for(iso)
+        if c and c not in codes:
+            codes.append(c)
+
+    by_country = {}
+    for code in codes:
+        lang = language_for(iso_for(code)) or "en"
+        try:
+            etv = client.bulk_domain_traffic([dom], code, lang).get(dom, 0)
+        except Exception:
+            etv = 0
+        if etv and etv > 0:
+            by_country[iso_for(code)] = round(etv, 1)
+    if not by_country:
+        return {"domain": dom, "markets": 0, "etv": 0}
+
+    total = round(sum(by_country.values()), 1)
+    top = max(by_country, key=by_country.get)
+    _write_regions(conn, site_id, by_country, total, top)
+    iso_week = iso_week_for(LATEST_WEEK)
+    conn.execute(
+        """INSERT INTO traffic_snapshots (site_id, iso_week, etv, top_country, captured_at)
+           VALUES (?,?,?,?,?) ON CONFLICT(site_id, iso_week) DO UPDATE SET
+             etv=excluded.etv, top_country=excluded.top_country""",
+        (site_id, iso_week, total, top, datetime.now(timezone.utc).isoformat(timespec="seconds")))
+    ownership.apply_api_update(conn, site_id,
+                               {"etv": total, "top_country": top, "last_api_refresh": iso_week},
+                               source="dataforseo:labs")
+    conn.commit()
+    return {"domain": dom, "markets": len(by_country), "etv": total, "top": top}
+
+
 def build_history(conn: sqlite3.Connection, months: int = 12,
                   client: DataForSEOClient | None = None,
                   progress=None, cache_dir: str | None = None) -> dict:

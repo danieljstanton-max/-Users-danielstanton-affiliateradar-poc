@@ -1719,8 +1719,21 @@ class _Handler(BaseHTTPRequestHandler):
                     reward = swaps.on_site_published(conn, site_id, by="backoffice")
                     # any swaps that were agreed but waiting on this site now complete
                     settled = swaps.settle_ready_matches(conn, site_id)
-                    msg = (f"Approved {domain} — now live in the app"
-                           + (" (screenshot captured)" if shot else "")
+                    # fetch this site's traffic NOW so it can appear immediately —
+                    # a no-op in MOCK mode (then it shows after the next refresh).
+                    try:
+                        from . import refresh as _refresh
+                        tr = _refresh.refresh_one_site(conn, site_id)
+                    except Exception:
+                        tr = None
+                    if tr and tr.get("markets"):
+                        vis = f" — live now ({int(tr['etv']):,}/mo, top {tr['top']})"
+                    elif tr and tr.get("skipped") == "not_live":
+                        vis = " — will show after the next traffic refresh (add DataForSEO creds for instant traffic)"
+                    else:
+                        vis = " — approved; appears once its traffic clears the floor on a refresh"
+                    msg = (f"Approved {domain}{vis}"
+                           + (" · screenshot captured" if shot else "")
                            + (f" · +{reward['granted']} swap to {reward['to']}" if reward else "")
                            + (f" · {len(settled)} pending swap(s) completed" if settled else "") + ".")
                 else:
