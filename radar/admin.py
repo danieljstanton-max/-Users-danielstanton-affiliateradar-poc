@@ -209,6 +209,7 @@ ICONS = {
     "queue":     _ic("<circle cx='11' cy='11' r='7'/><path d='M21 21l-4-4'/>"),
     "subs":      _ic("<path d='M4 6h16v12H4z'/><path d='M4 12h5l2 2h2l2-2h5'/>"),
     "members":   _ic("<circle cx='9' cy='8' r='3.2'/><path d='M3.5 20c0-3.2 2.5-5.5 5.5-5.5c1.5 0 2.9.6 3.9 1.5'/><path d='M15.5 15.5l2 2 3.5-3.5'/>"),
+    "fullmembers": _ic("<circle cx='8' cy='9' r='3'/><path d='M2.5 19c0-3 2.4-5 5.5-5s5.5 2 5.5 5'/><circle cx='17' cy='8' r='2.3'/><path d='M15.6 13.6c2.1.3 3.9 2 3.9 4.4'/>"),
     "curation":  _ic("<path d='M3 5h18l-7 8v6l-4-2v-4z'/>"),
     "reviews":   _ic("<path d='M12 3.6l2.5 5.1 5.6.8-4 3.9 1 5.6L12 16.4 6.9 19l1-5.6-4-3.9 5.6-.8z'/>"),
     "shots":     _ic("<rect x='3' y='5' width='18' height='14' rx='2'/><circle cx='8.5' cy='10' r='1.6'/><path d='M21 16l-5-4-8 6'/>"),
@@ -249,6 +250,8 @@ _SIDEBAR = [
         ("blacklist", "/blacklist", "Blacklist", None),
     ]),
     ("Network", [
+        ("fullmembers", "/full-members", "Members",
+         "SELECT COUNT(*) n FROM chat_managers WHERE status='verified'"),
         ("swaps", "/swaps", "Swaps ledger", None),
         ("rewards", "/rewards", "Rewards",
          "SELECT COUNT(*) n FROM swap_contributions WHERE status='pending'"),
@@ -1008,37 +1011,34 @@ def _reviews_page(conn, flash: str = "") -> bytes:
     return _page("".join(body), title="Reviews")
 
 
-def _members_page(conn, flash: str = "") -> bytes:
-    from . import members
-    pending = members.list_applications(conn, "pending")
-    verified = members.list_applications(conn, "verified")
-    rejected = members.list_applications(conn, "rejected")
+def _member_sig(ok, label):
     ck = ("<svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' "
           "stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M20 6L9 17l-5-5'/></svg>")
-    def sig(ok, label):
-        c = "var(--ok,#3aa66f)" if ok else "var(--ink3)"
-        mark = ck if ok else "○"
-        return f"<span style='color:{c};font-weight:600'>{mark} {label}</span>"
+    c = "#3aa66f" if ok else "var(--ink3)"
+    return f"<span style='color:{c};font-weight:600'>{ck if ok else '○'} {label}</span>"
+
+
+def _members_page(conn, flash: str = "") -> bytes:
+    """APPROVALS ONLY — people trying to sign up who still need a human yes/no.
+    Approved/verified members live on their own page (/full-members)."""
+    from . import members
+    pending = members.list_applications(conn, "pending")
     body = [
         "<div class='eyebrow'>Affswap · Back office</div>",
         "<h1>Member approvals</h1>",
-        "<p class='sub'>Sign-ups are applications, not instant access. Every member must clear the "
-        "legitimacy signals — <b>LinkedIn</b>, a confirmed <b>work email</b> (no free providers), and the "
-        "<b>company</b> they work for. Approving starts their 48-hour free trial and opens "
-        "their swap wallet. Reject anyone who doesn't check out.</p>",
-        f"<p class='mode'>Awaiting review: <b>{len(pending)}</b> &nbsp;·&nbsp; "
-        f"Verified members: <b>{len(verified)}</b> &nbsp;·&nbsp; Rejected: <b>{len(rejected)}</b></p>",
+        "<p class='sub'>Sign-ups awaiting your yes/no. Each must clear the legitimacy signals — "
+        "<b>LinkedIn</b>, a confirmed <b>work email</b> (no free providers), and their <b>company</b>. "
+        "Approving starts their 48-hour trial and opens their swap wallet. Approved members move to "
+        "<a href='/full-members'>Members</a>.</p>",
+        f"<p class='mode'>Awaiting review: <b>{len(pending)}</b></p>",
         _nav("members", _queue_count(conn)),
     ]
     if flash:
         body.append(f"<div class='note'>{_esc(flash)}</div>")
-
-    # --- applications awaiting manual review (status='pending') ---
-    body.append(f"<h2 style='font-size:16px;margin:24px 0 12px'>Awaiting review "
-                f"<span class='ev'>· {len(pending)}</span></h2>")
     if not pending:
-        body.append("<div class='owner-note'>Nothing awaiting manual review. "
-                    "LinkedIn sign-ups are auto-verified and appear under <b>Members</b> below.</div>")
+        body.append("<div class='empty'><div class='big'>🪪</div>No sign-ups awaiting approval."
+                    "<div class='hint' style='margin-top:8px'>Approved members are under "
+                    "<a href='/full-members'>Members</a>.</div></div>")
     for a in pending:
         yrs = f" · {a['years']}y" if a["years"] else ""
         li = _esc(a["linkedin_url"] or "")
@@ -1053,36 +1053,50 @@ def _members_page(conn, flash: str = "") -> bytes:
             f"<div class='qdomain'>{_esc(a['real_name'])} <span class='ev'>· {_esc(a['handle'])}</span></div>"
             f"<div class='qmeta'><span><b>{_esc(a['company'] or '—')}</b></span>"
             f"<span class='ev'>{_esc(a['sector'] or '—')}{yrs}</span></div>"
-            f"<div class='qmeta' style='margin-top:6px'>{sig(a['linkedin_verified'],'LinkedIn')}"
-            f"<span class='ev'>{sig(a['work_email_confirmed'], _esc(a['work_email'] or 'work email'))}</span>"
+            f"<div class='qmeta' style='margin-top:6px'>{_member_sig(a['linkedin_verified'],'LinkedIn')}"
+            f"<span class='ev'>{_member_sig(a['work_email_confirmed'], _esc(a['work_email'] or 'work email'))}</span>"
             + ("" if ready else "<span class='ev' style='color:var(--down)'>waiting on verification</span>")
             + "</div>"
             + (f"<div class='qmeta' style='margin-top:4px'><a href='https://{li}' target='_blank' rel='noopener' class='ev'>{li}</a></div>" if li else "")
             + "</div><div class='qactions'>" + actions + "</div></div>")
-
-    # --- verified members already in the network (this is where LinkedIn
-    #     sign-ups like a new office colleague show up — previously invisible) ---
-    body.append(f"<h2 style='font-size:16px;margin:32px 0 12px'>Members "
-                f"<span class='ev'>· {len(verified)}</span></h2>")
-    if not verified:
-        body.append("<div class='owner-note'>No verified members yet.</div>")
-    else:
-        rws = []
-        for a in verified:
-            rws.append(
-                "<tr>"
-                f"<td><a href='/member?id={a['id']}'><b>{_esc(a['real_name'] or a['handle'] or '—')}</b></a>"
-                f"<div class='ev' style='font-size:11.5px'>@{_esc(a['handle'] or '')}</div></td>"
-                f"<td>{_esc(a['company'] or '—')}</td>"
-                f"<td class='src'>{_esc(a['work_email'] or '—')}</td>"
-                f"<td>{sig(a['linkedin_verified'],'LinkedIn')} &nbsp; {sig(a['work_email_confirmed'],'email')}</td>"
-                f"<td class='src'>{_esc((a['applied_at'] or '')[:10])}</td>"
-                f"<td><a class='editlink' href='/member?id={a['id']}'>Manage ›</a></td></tr>")
-        body.append(
-            "<table><thead><tr><th>Member</th><th>Company</th><th>Work email</th>"
-            "<th>Signals</th><th>Joined</th><th></th></tr></thead><tbody>"
-            + "".join(rws) + "</tbody></table>")
     return _page("".join(body), title="Member approvals")
+
+
+def _full_members_page(conn, flash: str = "") -> bytes:
+    """The member DIRECTORY — everyone approved/verified. Click through to manage."""
+    from . import members
+    verified = members.list_applications(conn, "verified")
+    rejected = members.list_applications(conn, "rejected")
+    body = [
+        "<div class='eyebrow'>Affswap · Back office</div>",
+        "<h1>Members</h1>",
+        "<p class='sub'>Approved, verified members of the network. Click any member to manage their "
+        "account — gift swaps, reset password, block chat or email, suspend. New sign-ups awaiting "
+        "approval are under <a href='/members'>Member approvals</a>.</p>",
+        f"<p class='mode'>Verified: <b>{len(verified)}</b> &nbsp;·&nbsp; Rejected: <b>{len(rejected)}</b></p>",
+        _nav("fullmembers", 0),
+    ]
+    if flash:
+        body.append(f"<div class='note'>{_esc(flash)}</div>")
+    if not verified:
+        body.append("<div class='empty'><div class='big'>👥</div>No verified members yet.</div>")
+        return _page("".join(body), title="Members")
+    rws = []
+    for a in verified:
+        rws.append(
+            "<tr>"
+            f"<td><a href='/member?id={a['id']}'><b>{_esc(a['real_name'] or a['handle'] or '—')}</b></a>"
+            f"<div class='ev' style='font-size:11.5px'>@{_esc(a['handle'] or '')}</div></td>"
+            f"<td>{_esc(a['company'] or '—')}</td>"
+            f"<td class='src'>{_esc(a['work_email'] or '—')}</td>"
+            f"<td>{_member_sig(a['linkedin_verified'],'LinkedIn')} &nbsp; {_member_sig(a['work_email_confirmed'],'email')}</td>"
+            f"<td class='src'>{_esc((a['applied_at'] or '')[:10])}</td>"
+            f"<td><a class='editlink' href='/member?id={a['id']}'>Manage ›</a></td></tr>")
+    body.append(
+        "<table><thead><tr><th>Member</th><th>Company</th><th>Work email</th>"
+        "<th>Signals</th><th>Joined</th><th></th></tr></thead><tbody>"
+        + "".join(rws) + "</tbody></table>")
+    return _page("".join(body), title="Members")
 
 
 def _ensure_member_cols(conn) -> None:
@@ -1339,6 +1353,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(_rewards_page(conn, flash=flash))
             elif parsed.path == "/members":
                 self._send(_members_page(conn, flash=flash))
+            elif parsed.path == "/full-members":
+                self._send(_full_members_page(conn, flash=flash))
             elif parsed.path == "/member":
                 self._send(_member_detail_page(conn, int(qs["id"][0]), flash=flash))
             elif parsed.path == "/reviews":
