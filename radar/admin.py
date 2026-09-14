@@ -393,7 +393,9 @@ def _queue_page(conn, kind: str = "seo", flash: str = "") -> bytes:
         body.append(
             f"<div class='qcard'>"
             f"<div class='qthumb'>{'🎁' if sub else _esc(r['domain'][0].upper())}</div>"
-            f"<div class='qmain'><div class='qdomain'>{_esc(r['domain'])}</div>"
+            f"<div class='qmain'><div class='qdomain'>{_esc(r['domain'])}"
+            f"<a href='https://{_esc(r['domain'])}/' target='_blank' rel='noopener noreferrer' "
+            f"style='font-size:12px;font-weight:700;color:var(--blue-d);margin-left:10px'>Visit&nbsp;↗</a></div>"
             f"<div class='qmeta'>{meta}</div>{reason}</div>"
             f"<div class='qactions'>"
             f"<form method='post' action='/review?id={r['id']}'>"
@@ -1067,23 +1069,144 @@ def _members_page(conn, flash: str = "") -> bytes:
     else:
         rws = []
         for a in verified:
-            li = _esc(a["linkedin_url"] or "")
-            lilink = (f"<a href='https://{li}' target='_blank' rel='noopener'>LinkedIn ↗</a>"
-                      if li else "<span class='ev'>—</span>")
             rws.append(
                 "<tr>"
-                f"<td><b>{_esc(a['real_name'] or a['handle'] or '—')}</b>"
+                f"<td><a href='/member?id={a['id']}'><b>{_esc(a['real_name'] or a['handle'] or '—')}</b></a>"
                 f"<div class='ev' style='font-size:11.5px'>@{_esc(a['handle'] or '')}</div></td>"
                 f"<td>{_esc(a['company'] or '—')}</td>"
                 f"<td class='src'>{_esc(a['work_email'] or '—')}</td>"
                 f"<td>{sig(a['linkedin_verified'],'LinkedIn')} &nbsp; {sig(a['work_email_confirmed'],'email')}</td>"
                 f"<td class='src'>{_esc((a['applied_at'] or '')[:10])}</td>"
-                f"<td>{lilink}</td></tr>")
+                f"<td><a class='editlink' href='/member?id={a['id']}'>Manage ›</a></td></tr>")
         body.append(
             "<table><thead><tr><th>Member</th><th>Company</th><th>Work email</th>"
             "<th>Signals</th><th>Joined</th><th></th></tr></thead><tbody>"
             + "".join(rws) + "</tbody></table>")
     return _page("".join(body), title="Member approvals")
+
+
+def _ensure_member_cols(conn) -> None:
+    """Additive, idempotent — the admin columns for member management. Existing
+    prod DBs get them on the first back-office member view (no formal migration)."""
+    for col in ("is_admin INTEGER DEFAULT 0", "chat_blocked INTEGER DEFAULT 0",
+                "email_blocked INTEGER DEFAULT 0"):
+        try:
+            conn.execute("ALTER TABLE chat_managers ADD COLUMN " + col)
+        except Exception:
+            pass
+
+
+def _member_detail_page(conn, mid: int, flash: str = "", temp_pw: str = "") -> bytes:
+    """A member's profile + operator controls: gift swaps, reset password, make
+    admin, block chat / email, suspend."""
+    _ensure_member_cols(conn)
+    from . import swaps
+    m = conn.execute("SELECT * FROM chat_managers WHERE id=?", (mid,)).fetchone()
+    if not m:
+        return _page(_nav("members", 0) + "<div class='eyebrow'><a href='/members'>← Members</a></div>"
+                     "<h1>Member not found</h1>", title="Member")
+
+    def g(k):
+        try:
+            return m[k]
+        except Exception:
+            return None
+
+    try:
+        acc = swaps.access(conn, mid) or {}
+    except Exception:
+        acc = {}
+    name = _esc(g("real_name") or g("handle") or "—")
+    handle = _esc(g("handle") or "")
+    status = g("status") or "—"
+    is_admin, chat_blk, email_blk = bool(g("is_admin")), bool(g("chat_blocked")), bool(g("email_blocked"))
+    li = _esc(g("linkedin_url") or "")
+    swaps_lbl = ("∞ unlimited" if acc.get("unlimited")
+                 else (str(acc.get("swaps")) if acc.get("swaps") is not None else "—"))
+    plan = _esc(acc.get("plan") or "standard")
+    av_url = g("avatar_url")
+    av = (f"<img src='{_esc(av_url)}' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:16px'>"
+          if av_url else _esc((g("real_name") or g("handle") or "?")[0].upper()))
+    badge_cls = "affiliate" if status == "verified" else ("rejected" if status in ("rejected", "suspended") else "candidate")
+
+    def info(label, val):
+        return (f"<div><div style='font-size:11px;color:var(--ink3);text-transform:uppercase;"
+                f"letter-spacing:.04em'>{label}</div><div style='font-weight:700;margin-top:2px'>{val}</div></div>")
+
+    def toggle(field, on, act_on, act_off, desc):
+        return (f"<form method='post' action='/member-flag?id={mid}&field={field}' "
+                "style='display:flex;justify-content:space-between;align-items:center;gap:14px;"
+                "padding:13px 0;border-bottom:1px solid var(--line)'>"
+                f"<div><div style='font-weight:700'>{desc}</div>"
+                f"<div class='hint' style='margin-top:2px'>Currently: <b>{'ON' if on else 'off'}</b></div></div>"
+                f"<button class='btn secondary' type='submit'>{act_off if on else act_on}</button></form>")
+
+    body = [
+        _nav("members", 0),
+        "<div class='eyebrow'><a href='/members'>← Members</a></div>",
+        "<div style='display:flex;gap:16px;align-items:center;margin:6px 0 18px'>"
+        f"<div class='qthumb' style='width:64px;height:64px;font-size:26px;border-radius:16px'>{av}</div>"
+        f"<div><h1 style='margin:0'>{name}</h1>"
+        f"<div class='sub' style='margin:3px 0 0'>@{handle} &nbsp;<span class='badge {badge_cls}'>{_esc(status)}</span>"
+        + ("&nbsp;<span class='badge' style='color:var(--blue-dd);background:#EAF1FF'>ADMIN</span>" if is_admin else "")
+        + ("&nbsp;<span class='badge rejected'>CHAT BLOCKED</span>" if chat_blk else "")
+        + ("&nbsp;<span class='badge rejected'>EMAIL BLOCKED</span>" if email_blk else "")
+        + "</div></div></div>",
+    ]
+    if temp_pw:
+        body.append("<div class='note' style='background:#FFF7E6;border-color:#F5D998;color:#8A5A00'>"
+                    f"Temporary password for {name}: <b style='font-family:var(--mono);font-size:15px'>{_esc(temp_pw)}</b>"
+                    " — share it securely. They can change it after signing in.</div>")
+    if flash:
+        body.append(f"<div class='note'>{_esc(flash)}</div>")
+
+    joined = _esc((g("applied_at") or g("created_at") or "")[:10])
+    last = _esc((g("last_login_at") or "")[:16].replace("T", " "))
+    lilink = f"<a href='https://{li}' target='_blank' rel='noopener'>{li}</a>" if li else "—"
+    body.append(
+        "<div class='owner-note' style='border:1px solid var(--line);border-left:3px solid var(--blue);"
+        "display:grid;grid-template-columns:repeat(3,1fr);gap:18px 16px;padding:18px'>"
+        + info("Work email", _esc(g("work_email") or "—"))
+        + info("Company", _esc(g("company") or "—"))
+        + info("Sector", _esc(g("sector") or "—"))
+        + info("Swap balance", f"{swaps_lbl} <span class='ev'>· {plan}</span>")
+        + info("Joined", joined or "—")
+        + info("Last login", last or "—")
+        + info("LinkedIn", lilink)
+        + info("Signals", ("LinkedIn ✓ " if g("linkedin_verified") else "LinkedIn ✗ ")
+               + ("email ✓" if g("work_email_confirmed") else "email ✗"))
+        + info("Member ID", str(mid))
+        + "</div>")
+
+    body.append(
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px'>"
+        f"<form class='card' method='post' action='/member-gift?id={mid}' style='max-width:none;margin:0'>"
+        "<label style='margin-top:0'>Gift swaps</label>"
+        "<div style='display:flex;gap:10px;align-items:center'>"
+        "<input type='number' name='count' value='1' min='1' max='999' style='max-width:110px'>"
+        "<button type='submit'>Gift swaps</button></div>"
+        "<div class='hint'>Adds swap credits to this member's wallet immediately.</div></form>"
+        f"<form class='card' method='post' action='/member-reset-pw?id={mid}' style='max-width:none;margin:0'>"
+        "<label style='margin-top:0'>Password</label>"
+        "<button type='submit' class='btn secondary'>Reset password</button>"
+        "<div class='hint'>Sets a new temporary password and shows it once so you can share it. "
+        "LinkedIn sign-ins are unaffected.</div></form>"
+        "</div>")
+
+    body.append(
+        "<div class='card' style='max-width:none;margin-top:16px'>"
+        "<label style='margin-top:0'>Role &amp; access</label>"
+        + toggle("is_admin", is_admin, "Make admin", "Remove admin",
+                 "Admin — marks this member as an operator")
+        + toggle("chat_blocked", chat_blk, "Block chat", "Unblock chat",
+                 "Chat — a blocked member can't open a chat session")
+        + toggle("email_blocked", email_blk, "Block email", "Unblock email",
+                 "Email — a blocked member receives no alert emails")
+        + toggle("status", status == "suspended", "Suspend member", "Reactivate member",
+                 "Account status — suspending revokes access")
+        + "</div>")
+
+    return _page("".join(body), title=f"Member · {name}")
 
 
 def _curation_page(conn, flash: str = "") -> bytes:
@@ -1216,6 +1339,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(_rewards_page(conn, flash=flash))
             elif parsed.path == "/members":
                 self._send(_members_page(conn, flash=flash))
+            elif parsed.path == "/member":
+                self._send(_member_detail_page(conn, int(qs["id"][0]), flash=flash))
             elif parsed.path == "/reviews":
                 self._send(_reviews_page(conn, flash=flash))
             elif parsed.path == "/blacklist":
@@ -1331,6 +1456,13 @@ class _Handler(BaseHTTPRequestHandler):
                 m = service.manager_by_handle(conn, who)
                 if not m:
                     self._json({"error": "unknown_manager"}, 404); return
+                try:                                            # operator chat block
+                    blk = conn.execute("SELECT chat_blocked FROM chat_managers WHERE id=?",
+                                       (m["id"],)).fetchone()
+                    if blk and blk["chat_blocked"]:
+                        self._json({"error": "CHAT_BLOCKED"}, 403); return
+                except Exception:
+                    pass
                 try:
                     s = service.issue_session(conn, m["id"], CometChatClient())
                     self._json({k: s[k] for k in ("appId", "region", "uid", "authToken", "allowedGroups")})
@@ -1427,6 +1559,49 @@ class _Handler(BaseHTTPRequestHandler):
                 members.reject(conn, int(qs["id"][0]), by="backoffice")
                 self._send(b"", code=303,
                            headers={"Location": "/members?flash=" + urllib.parse.quote("Application rejected.")})
+                return
+            if parsed.path == "/member-gift":                 # operator: gift swap credits
+                from . import swaps
+                mid = int(qs["id"][0])
+                try:
+                    n = int((form.get("count", ["1"])[0]) or 1)
+                except ValueError:
+                    n = 1
+                n = max(1, min(n, 999))
+                left = swaps.grant_swaps(conn, mid, n)
+                conn.commit()
+                self._send(b"", code=303, headers={"Location": f"/member?id={mid}&flash=" +
+                           urllib.parse.quote(f"Gifted {n} swap(s). Balance: {left}.")})
+                return
+            if parsed.path == "/member-reset-pw":             # operator: set a temp password
+                from . import auth
+                import secrets
+                mid = int(qs["id"][0])
+                temp = secrets.token_urlsafe(9)
+                conn.execute("UPDATE chat_managers SET password_hash=? WHERE id=?",
+                             (auth.hash_password(temp), mid))
+                conn.commit()
+                # render the page directly (200) so the temp password never rides in a URL
+                self._send(_member_detail_page(conn, mid, temp_pw=temp))
+                return
+            if parsed.path == "/member-flag":                 # operator: toggle admin/blocks/status
+                _ensure_member_cols(conn)
+                mid = int(qs["id"][0])
+                field = qs.get("field", [""])[0]
+                if field == "status":
+                    cur = conn.execute("SELECT status FROM chat_managers WHERE id=?", (mid,)).fetchone()["status"]
+                    new = "verified" if cur == "suspended" else "suspended"
+                    conn.execute("UPDATE chat_managers SET status=? WHERE id=?", (new, mid))
+                    msg = "Member reactivated." if new == "verified" else "Member suspended."
+                elif field in ("is_admin", "chat_blocked", "email_blocked"):
+                    cur = conn.execute(f"SELECT {field} AS v FROM chat_managers WHERE id=?", (mid,)).fetchone()["v"] or 0
+                    conn.execute(f"UPDATE chat_managers SET {field}=? WHERE id=?", (0 if cur else 1, mid))
+                    nm = {"is_admin": "Admin rights", "chat_blocked": "Chat block", "email_blocked": "Email block"}[field]
+                    msg = f"{nm} {'removed' if cur else 'applied'}."
+                else:
+                    msg = "Unknown action."
+                conn.commit()
+                self._send(b"", code=303, headers={"Location": f"/member?id={mid}&flash=" + urllib.parse.quote(msg)})
                 return
             # --- review moderation (approve → recompute ★ + loyalty reward) ----
             if parsed.path == "/review-moderate":

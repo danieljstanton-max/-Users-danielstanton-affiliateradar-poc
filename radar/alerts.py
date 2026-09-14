@@ -224,11 +224,15 @@ def _deliver_email(conn, event: dict) -> bool:
     from . import emailer
     if not emailer.configured():
         return False
-    row = conn.execute(
-        "SELECT handle, real_name, work_email "
-        "FROM chat_managers WHERE id=?",
-        (event["manager_id"],)).fetchone()
-    if not row or not row["work_email"]:
+    try:                                                  # respect operator email block
+        row = conn.execute(
+            "SELECT handle, real_name, work_email, COALESCE(email_blocked,0) AS email_blocked "
+            "FROM chat_managers WHERE id=?", (event["manager_id"],)).fetchone()
+    except Exception:
+        row = conn.execute(
+            "SELECT handle, real_name, work_email, 0 AS email_blocked "
+            "FROM chat_managers WHERE id=?", (event["manager_id"],)).fetchone()
+    if not row or not row["work_email"] or row["email_blocked"]:
         return False
     subject, html, text = _render_email(event, row)
     emailer.send(
