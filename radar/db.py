@@ -140,7 +140,7 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     # existing CHECK constraint on sites.classification allows. Idempotent:
     # once flipped, the SELECT no-ops on subsequent boots.
     # Add new entries to this tuple as needed.
-    _NOT_AFFILIATES = ("fotmob.com",)
+    _NOT_AFFILIATES = ("fotmob.com", "gameshub.com")
     for dom in _NOT_AFFILIATES:
         row = conn.execute(
             "SELECT id FROM sites WHERE domain=? AND classification='affiliate'",
