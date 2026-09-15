@@ -1488,7 +1488,11 @@ class _H(BaseHTTPRequestHandler):
                 try:
                     fn = swaps.register_want if u.path == "/api/want" else swaps.register_have
                     fn(conn, mid, payload.get("domain"))
-                    self._json({"ok": True})
+                    # Run the match engine now so a new Have/Want creates any
+                    # mutual match immediately (was previously only recomputed on
+                    # operator site-approval, so matches never fired from the app).
+                    new_matches = swaps.find_matches(conn, mid)
+                    self._json({"ok": True, "new_matches": len(new_matches)})
                 except swaps.SwapError as e:
                     self._json({"ok": False, "error": str(e)}, 400)
             elif u.path in ("/api/swap/contribute", "/api/contribute"):
