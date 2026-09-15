@@ -253,6 +253,10 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .mk-table{width:100%;border-collapse:collapse;font-size:14.5px}
 .mk-table thead th{text-align:left;padding:16px 20px;font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:0.09em;text-transform:uppercase;color:var(--ink-mute);background:#FAFCFE;border-bottom:1px solid var(--line)}
 .mk-table thead th.sortable{color:var(--blue);cursor:pointer}
+.mk-table thead th.th-sort{cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s}
+.mk-table thead th.th-sort:hover{color:var(--blue)}
+.mk-table thead th.th-sort.on{color:var(--blue)}
+.th-arr{font-size:9px;margin-left:3px;vertical-align:middle}
 .mk-table tbody td{padding:16px 20px;border-bottom:1px solid var(--line);vertical-align:middle}
 .mk-table tbody tr:last-child td{border-bottom:0}
 .mk-table tbody tr:hover{background:#F9FBFD}
@@ -1745,7 +1749,7 @@ function hydrateMarket(iso){
       /* Toolbar — search + sort + view toggle */
       '<div class="mk-toolbar" style="margin-top:24px">'+
         '<label class="mk-search"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11 L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input type="text" id="mkd-search" placeholder="Search sites in '+h(country.name)+'…"></label>'+
-        '<div class="mk-dd"><select id="mkd-sort"><option value="traffic">Sort: Most traffic</option><option value="authority">Sort: Highest authority</option><option value="name">Sort: A–Z</option></select><svg class="dd-caret" viewBox="0 0 12 12" fill="none"><path d="M3 5 L6 8 L9 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>'+
+        '<div class="mk-dd"><select id="mkd-sort"><option value="traffic">Sort: Most traffic</option><option value="traffic_asc">Sort: Least traffic</option><option value="authority">Sort: Highest authority</option><option value="name">Sort: A–Z</option></select><svg class="dd-caret" viewBox="0 0 12 12" fill="none"><path d="M3 5 L6 8 L9 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>'+
         '<div class="mkd-viewtog" role="tablist" aria-label="Toggle list or grid view">'+
           '<button id="mkd-view-list" class="on" onclick="setMkdView(\'list\')" title="List view"><svg viewBox="0 0 16 16" fill="none"><path d="M2 4 H14 M2 8 H14 M2 12 H14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>'+
           '<button id="mkd-view-grid" onclick="setMkdView(\'grid\')" title="Grid view"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/><rect x="9" y="2" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/><rect x="2" y="9" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/><rect x="9" y="9" width="5" height="5" stroke="currentColor" stroke-width="1.6" rx="1"/></svg></button>'+
@@ -1762,7 +1766,7 @@ function hydrateMarket(iso){
       '</div>'+
 
       /* Site rows — table (list) or cards (grid), swapped by view toggle */
-      '<div id="mkd-list-wrap" class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th>Monthly traffic</th><th>Authority</th><th>Trend</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
+      '<div id="mkd-list-wrap" class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th class="th-sort" id="mkd-th-traffic" onclick="mkdSortTraffic()" title="Click to flip — highest / lowest traffic">Monthly traffic <span class="th-arr" id="mkd-tarr">▼</span></th><th>Authority</th><th>Trend</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
       '<div id="mkd-grid-wrap" class="mkd-cards" hidden></div>'+
 
       /* Footer callout */
@@ -1836,14 +1840,30 @@ function mkdFavHtml(r, color){
   '</span>';
 }
 
+// Click the "Monthly traffic" column to flip highest <-> lowest first. Lowest-
+// first is handy for surfacing newer / smaller sites.
+function mkdSortTraffic(){
+  MKD_STATE.sort = (MKD_STATE.sort==='traffic') ? 'traffic_asc' : 'traffic';
+  renderMkdRows();
+}
 function renderMkdRows(){
   var rows=MKD_STATE.rows.slice();
   if(MKD_STATE.cat!=='all') rows=rows.filter(function(r){return r.verts.some(function(v){return v.toLowerCase()===MKD_STATE.cat.toLowerCase();});});
   if(MKD_STATE.q) rows=rows.filter(function(r){return (r.name||'').toLowerCase().includes(MKD_STATE.q) || (r.domain||'').toLowerCase().includes(MKD_STATE.q);});
   if(MKD_STATE.sort==='traffic') rows.sort(function(a,b){return b.etv-a.etv;});
+  else if(MKD_STATE.sort==='traffic_asc') rows.sort(function(a,b){return a.etv-b.etv;});
   else if(MKD_STATE.sort==='authority') rows.sort(function(a,b){return b.authority-a.authority;});
   else if(MKD_STATE.sort==='name') rows.sort(function(a,b){return a.name.localeCompare(b.name);});
-  var maxEtv=rows[0]?rows[0].etv:1;
+  // keep the traffic-bar scale tied to the biggest site, not the first row
+  // (which is the SMALLEST when sorted ascending)
+  var maxEtv=rows.reduce(function(m,r){return Math.max(m,r.etv||0);},0)||1;
+  // reflect the current traffic sort on the column header + the dropdown
+  var tarr=document.getElementById('mkd-tarr');
+  if(tarr) tarr.textContent=MKD_STATE.sort==='traffic'?'▼':MKD_STATE.sort==='traffic_asc'?'▲':'';
+  var tth=document.getElementById('mkd-th-traffic');
+  if(tth) tth.classList.toggle('on',MKD_STATE.sort==='traffic'||MKD_STATE.sort==='traffic_asc');
+  var dd=document.getElementById('mkd-sort');
+  if(dd && dd.value!==MKD_STATE.sort) dd.value=MKD_STATE.sort;
   var body=document.getElementById('mkd-body');
   var grid=document.getElementById('mkd-grid-wrap');
   if(!rows.length){
