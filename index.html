@@ -415,6 +415,11 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .sp-delta{font-size:12.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .sp-delta.up{background:var(--up-soft);color:#0E9760}.sp-delta.down{background:rgba(229,72,77,0.10);color:#C53034}
 .sp-chart-note{font-size:11.5px;color:var(--ink-mute);margin-top:12px;font-family:var(--f-mono)}
+.sp-chart-empty{height:172px;display:flex;align-items:center;justify-content:center;gap:14px;text-align:left;color:var(--ink-mute);padding:0 24px}
+.sp-chart-empty svg{color:var(--blue);flex:0 0 auto;opacity:.8}
+.sp-chart-empty b{color:var(--ink)}
+.sp-chart-empty div{display:flex;flex-direction:column;gap:3px}
+.sp-chart-empty span{font-size:12.5px;line-height:1.5;max-width:42ch}
 .sp-rangeseg{display:inline-flex;background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:2px;flex:none}
 .sp-rangeseg .rgbtn{font-family:var(--f-mono);font-size:11.5px;font-weight:600;color:var(--ink-mute);padding:5px 11px;border-radius:7px;cursor:pointer;user-select:none;transition:background .12s}
 .sp-rangeseg .rgbtn.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm)}
@@ -1957,14 +1962,14 @@ function hydrateSite(domain){
         '<div class="sp-chart-card">'+
           '<div class="sp-chart-head"><div><div class="sp-etv">'+fmt(p.etv||0)+'<span class="u">/mo</span></div><div class="sp-sublbl" id="sp-sublbl"></div></div><span class="sp-rangeseg"><span class="rgbtn" onclick="spSetRange(this,3)">3M</span><span class="rgbtn" onclick="spSetRange(this,6)">6M</span><span class="rgbtn on" onclick="spSetRange(this,12)">1Y</span></span></div>'+
           '<div class="sp-chart" id="sp-chart" style="height:172px"></div>'+
-          '<div class="sp-chart-note">live monthly · DataForSEO'+(peak?' · peak '+fmt(peak)+(peakLabel?' '+peakLabel:''):'')+'</div>'+
+          '<div class="sp-chart-note">'+(hist.length>=2?('live monthly · DataForSEO'+(peak?' · peak '+fmt(peak)+(peakLabel?' '+peakLabel:''):'')):'current estimate · 12-month history builds after the next data refresh')+'</div>'+
         '</div>'+
         '<div class="sp-markets-card"><h4>Traffic by market</h4>'+mktRows+moreMkts+'</div>'+
       '</div>'+
       '<div class="sp-about"><h4>About this site</h4><p>'+narrative+'</p>'+hlHtml+updatedHtml+'</div>'+
       '<div class="sp-reviews"><h4>Reviews</h4><div class="sp-rev-head"><div class="sp-rev-score">'+revScore+(p.review_count?' <span style="font-size:13px;color:var(--ink-mute);font-weight:600">/5 · '+p.review_count+' review'+(p.review_count===1?'':'s')+'</span>':' <span style="font-size:13px;color:var(--ink-mute);font-weight:600">not yet rated</span>')+'</div><button class="btn btn-gho btn-sm" onclick="reviewPrompt(\''+domain+'\')"'+(p.you_reviewed?' disabled':'')+'>'+(p.you_reviewed?'✓ Reviewed':'Add review')+'</button></div>'+revItems+'</div>'+
       '<div class="sp-locked">🔒 Contact details hidden — complete a swap to unlock this manager\'s contact.</div>';
-    SP_HIST=p.traffic_history||[];
+    SP_HIST=p.traffic_history||[]; SP_ETV=p.etv||0;
     spRenderRange(12);
   }).catch(function(){document.getElementById('v-site').innerHTML='<div class="wrap" style="padding:60px 0;text-align:center;color:var(--ink-mute)">Couldn\'t load site.</div>';});
 }
@@ -1990,7 +1995,7 @@ function reviewPrompt(domain){
   }).catch(function(){toast('Network error')});
 }
 
-var SP_HIST=[];
+var SP_HIST=[], SP_ETV=0;
 function spDeltaHtml(vals){
   var f=vals[0]||0,l=vals[vals.length-1]||0;
   if(vals.length<2||f<300) return '';                 // % unreliable on a tiny base
@@ -2001,8 +2006,16 @@ function spDeltaHtml(vals){
 function spRenderRange(n){
   var series=SP_HIST.slice(Math.max(0,SP_HIST.length-n));
   var lbl=document.getElementById('sp-sublbl');
+  var el=document.getElementById('sp-chart');
+  // A brand-new/just-approved site only has this month's reading — there's no
+  // real history to plot yet. Show an honest placeholder instead of a flat line.
+  if(series.length<2){
+    if(lbl) lbl.innerHTML='Traffic history · building';
+    if(el) el.innerHTML='<div class="sp-chart-empty"><svg viewBox="0 0 24 24" fill="none" width="26" height="26"><path d="M3 17 L9 11 L13 15 L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 7 L21 12 M21 7 L16 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Building traffic history</b><span>We have this month’s reading (<b>'+fmt(SP_ETV)+'</b>/mo). The full 12-month graph appears after the next data refresh.</span></div></div>';
+    return;
+  }
   if(lbl) lbl.innerHTML='Traffic history · '+series.length+' month'+(series.length===1?'':'s')+' '+spDeltaHtml(series.map(function(x){return x.etv||0;}));
-  drawSpChart(0,series);
+  drawSpChart(SP_ETV,series);
 }
 function spSetRange(btn,n){
   var seg=btn.parentNode;[].forEach.call(seg.querySelectorAll('.rgbtn'),function(b){b.classList.toggle('on',b===btn);});
@@ -2467,7 +2480,6 @@ function _hydrateAccountFull(meArg){
           '</div>'+
           '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
             '<button class="btn savebtn" onclick="saveAlertPrefs(this)">Save email preferences</button>'+
-            '<button class="btn btn-gho" onclick="testAlertEmail(this)">Send test email</button>'+
           '</div>'+
         '</div>'+
       '</div>'+
