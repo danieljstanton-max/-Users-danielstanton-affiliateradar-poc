@@ -946,9 +946,45 @@ def _swaps_page(conn, flash: str = "") -> bytes:
     ]
     if flash:
         body.append(f"<div class='note'>{_esc(flash)}</div>")
+
+    # --- live & test matches (with a reset control for testing) ---------------
+    allm = swaps.all_matches(conn)
+    if allm:
+        body.append("<h2 style='margin:22px 0 6px;font-size:16px'>Matches</h2>")
+        body.append("<p class='sub' style='margin-top:0'>Every mutual match, live and completed. "
+                    "<b>Reset</b> returns a match to the un-confirmed state so both members can walk "
+                    "through the swap again — it refunds the swap each side spent, clears the contacts "
+                    "they entered, and keeps the pairing so it reappears as &lsquo;action needed&rsquo;. "
+                    "Handy for testing.</p>")
+        body.append("<table><thead><tr><th>Match</th><th>Between</th><th>Exchange</th>"
+                    "<th>Agreed</th><th>Contacts entered</th><th>Status</th><th></th></tr></thead><tbody>")
+        for mm in allm:
+            st = {"ready": "<span style='color:var(--ink3)'>ready</span>",
+                  "completed": "<span style='color:var(--up,#3aa66f);font-weight:700'>✓ completed</span>",
+                  "void": "<span style='color:var(--ink3)'>void</span>"}.get(mm["status"], mm["status"])
+            agreed = ("✓ " + _esc(mm["a"]) if mm["a_agreed"] else "· " + _esc(mm["a"])) + "<br>" + \
+                     ("✓ " + _esc(mm["b"]) if mm["b_agreed"] else "· " + _esc(mm["b"]))
+            contacts = "<br>".join(filter(None, [
+                (_esc(mm["a"]) + ": " + _esc(mm["a_contact"])) if mm["a_contact"] else "",
+                (_esc(mm["b"]) + ": " + _esc(mm["b_contact"])) if mm["b_contact"] else ""])) or "<span class='ev'>none yet</span>"
+            reset = (f"<form method='post' action='/swap-reset?id={mm['id']}' "
+                     f"onsubmit=\"return confirm('Reset match #{mm['id']} so both sides confirm again?')\">"
+                     f"<button class='btn secondary' type='submit'>↺ Reset</button></form>")
+            body.append(
+                f"<tr><td class='mono'>#{mm['id']}</td>"
+                f"<td><b>{_esc(mm['a'])}</b> ↔ <b>{_esc(mm['b'])}</b></td>"
+                f"<td class='mono' style='font-size:11px'>{_esc(mm['a'])} gets {_esc(mm['a_gets'])}<br>"
+                f"{_esc(mm['b'])} gets {_esc(mm['b_gets'])}</td>"
+                f"<td style='font-size:11px'>{agreed}</td>"
+                f"<td style='font-size:11px'>{contacts}</td>"
+                f"<td>{st}</td><td>{reset}</td></tr>")
+        body.append("</tbody></table>")
+
     if not rows:
+        body.append("<h2 style='margin:22px 0 6px;font-size:16px'>Transfer ledger</h2>")
         body.append("<div class='empty'><div class='big'>🔄</div>No swaps have completed yet.</div>")
         return _page("".join(body), title="Swaps ledger")
+    body.append("<h2 style='margin:22px 0 6px;font-size:16px'>Transfer ledger</h2>")
     body.append("<table><thead><tr>"
                 "<th>When</th><th>From</th><th>To</th><th>Website</th>"
                 "<th>Contact sent</th><th>Status</th><th></th></tr></thead><tbody>")
@@ -1667,6 +1703,18 @@ class _Handler(BaseHTTPRequestHandler):
                 reason = (form.get("reason", [""])[0].strip() or "flagged by operator")
                 res = swaps.flag_transfer(conn, int(qs["id"][0]), reason, ban=ban)
                 msg = ("Flagged transfer" + (f" and banned {res['banned']}." if res.get("banned") else "."))
+                self._send(b"", code=303,
+                           headers={"Location": "/swaps?flash=" + urllib.parse.quote(msg)})
+                return
+            if parsed.path == "/swap-reset":               # operator: reset a match for testing
+                from . import swaps
+                try:
+                    r = swaps.reset_match(conn, int(qs["id"][0]))
+                    pair = " ↔ ".join(r["pair"])
+                    msg = (f"Reset match #{r['match_id']} ({pair}) — both must confirm again"
+                           + (f"; refunded 1 swap to {', '.join(r['refunded'])}" if r["refunded"] else "") + ".")
+                except swaps.SwapError as e:
+                    msg = f"Could not reset match: {e}"
                 self._send(b"", code=303,
                            headers={"Location": "/swaps?flash=" + urllib.parse.quote(msg)})
                 return

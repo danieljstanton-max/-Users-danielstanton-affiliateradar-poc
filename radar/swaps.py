@@ -376,6 +376,58 @@ def _transfer(conn: sqlite3.Connection, m: sqlite3.Row) -> dict:
     }
 
 
+def reset_match(conn: sqlite3.Connection, match_id: int) -> dict:
+    """Operator / testing tool: return a match to its fresh 'ready, nobody agreed'
+    state so the swap can be walked through again. Refunds the swap each side spent
+    if it had completed, clears the entered contacts, and deletes the match's ledger
+    rows. The underlying want/have pairing is left intact, so the match stays valid
+    and reappears as 'action needed' for both members."""
+    _ensure_match_cols(conn)
+    m = conn.execute("SELECT * FROM swap_matches WHERE id=?", (match_id,)).fetchone()
+    if not m:
+        raise SwapError("unknown match")
+    refunded = []
+    if m["status"] == "completed":
+        for mid in (m["a_manager"], m["b_manager"]):
+            acct = ensure_account(conn, mid)
+            if plan_allowance(acct["plan"]) is None:
+                continue  # unlimited plan — nothing was spent, nothing to refund
+            if acct["swaps_used"] > 0:
+                conn.execute("UPDATE swap_accounts SET swaps_used=swaps_used-1, "
+                             "updated_at=? WHERE manager_id=?", (now_iso(), mid))
+            else:
+                conn.execute("UPDATE swap_accounts SET extra_swaps=extra_swaps+1, "
+                             "updated_at=? WHERE manager_id=?", (now_iso(), mid))
+            refunded.append(_handle(conn, mid))
+    conn.execute("DELETE FROM swap_ledger WHERE match_id=?", (match_id,))
+    conn.execute(
+        "UPDATE swap_matches SET status='ready', a_agreed=0, b_agreed=0, "
+        "a_contact_channel=NULL, a_contact_value=NULL, "
+        "b_contact_channel=NULL, b_contact_value=NULL, completed_at=NULL "
+        "WHERE id=?", (match_id,))
+    conn.commit()
+    return {"ok": True, "match_id": match_id, "refunded": refunded,
+            "pair": [_handle(conn, m["a_manager"]), _handle(conn, m["b_manager"])]}
+
+
+def all_matches(conn: sqlite3.Connection) -> list:
+    """Every match, with handles + domains, for the back-office matches panel."""
+    _ensure_match_cols(conn)
+    out = []
+    for r in conn.execute("SELECT * FROM swap_matches ORDER BY "
+                          "CASE status WHEN 'ready' THEN 0 WHEN 'completed' THEN 1 ELSE 2 END, "
+                          "created_at DESC"):
+        out.append({
+            "id": r["id"], "status": r["status"],
+            "a": _handle(conn, r["a_manager"]), "b": _handle(conn, r["b_manager"]),
+            "a_agreed": bool(r["a_agreed"]), "b_agreed": bool(r["b_agreed"]),
+            "a_gets": _domain(conn, r["a_gets_site"]), "b_gets": _domain(conn, r["b_gets_site"]),
+            "a_contact": _fmt_contact(r["a_contact_channel"], r["a_contact_value"]) if r["a_contact_value"] else "",
+            "b_contact": _fmt_contact(r["b_contact_channel"], r["b_contact_value"]) if r["b_contact_value"] else "",
+        })
+    return out
+
+
 def _record_transfer(conn, match_id, from_mgr, to_mgr, site_id, contact=None) -> None:
     ts, dom = now_iso(), _domain(conn, site_id)
     if contact is None:
