@@ -1858,7 +1858,7 @@ function renderMkdRows(){
         '<td data-label="Trend"><div class="mkd-trend">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div></td>'+
         '<td>'+verts+'</td>'+
         '<td><div class="mkd-acts" onclick="event.stopPropagation()">'+
-          '<a class="mkd-visit" href="'+(r.landing||('https://'+encodeURI(r.domain)+'/'))+'" target="_blank" rel="noopener" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
+          '<a class="mkd-visit" href="https://'+encodeURI(r.domain)+'/" target="_blank" rel="noopener nofollow" title="Visit '+h(r.domain)+'"><svg viewBox="0 0 14 14" fill="none"><path d="M4 4 H10 V10 M10 4 L4 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></a>'+
           '<button class="mkd-btn have'+(r.have?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'have\',this)">'+(r.have?'Have ✓':'Have')+'</button>'+
           '<button class="mkd-btn want'+(r.want?' on':'')+'" onclick="actSite(\''+r.domain+'\',\'want\',this)">'+(r.want?'Wanted':'Want')+'</button>'+
         '</div></td>'+
@@ -1945,7 +1945,7 @@ function hydrateSite(domain){
         '<div class="sp-shot-lg">'+shot+'</div>'+
         '<div>'+
           '<div class="sp-name-row"><span class="sp-name2">'+h(p.name||domain)+'</span>'+verts+'</div>'+
-          '<div class="sp-sub"><span class="mq-flag">'+prim.flag+'</span> Primarily '+h(prim.name||'—')+' · live in '+mktCount+' markets · <a class="sp-visit" href="'+(p.landing_url||('https://'+encodeURI(domain)+'/'))+'" target="_blank" rel="noopener">'+h(domain)+' →</a></div>'+
+          '<div class="sp-sub"><span class="mq-flag">'+prim.flag+'</span> Primarily '+h(prim.name||'—')+' · live in '+mktCount+' markets · <a class="sp-visit" href="https://'+encodeURI(domain)+'/" target="_blank" rel="noopener nofollow">'+h(domain)+' →</a></div>'+
           '<div class="sp-cta">'+
             '<button class="sp-btn want'+(p.you_want?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'want\',this)">'+(p.you_want?'✓ On your Want list':'I want this')+'</button>'+
             '<button class="sp-btn have'+(p.you_have?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'have\',this)">'+(p.you_have?'✓ On your Have list':'I have this')+'</button>'+
