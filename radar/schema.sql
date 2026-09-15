@@ -324,6 +324,12 @@ CREATE TABLE IF NOT EXISTS swap_matches (
     b_gets_site  INTEGER NOT NULL REFERENCES sites(id),
     a_agreed     INTEGER NOT NULL DEFAULT 0,
     b_agreed     INTEGER NOT NULL DEFAULT 0,
+    -- the contact each side enters when they confirm — this is what the OTHER
+    -- side receives on completion. channel is email/teams/telegram/whatsapp/other.
+    a_contact_channel TEXT,
+    a_contact_value   TEXT,
+    b_contact_channel TEXT,
+    b_contact_value   TEXT,
     status       TEXT NOT NULL DEFAULT 'ready'
                    CHECK (status IN ('ready','completed','void')),
     created_at   TEXT NOT NULL,

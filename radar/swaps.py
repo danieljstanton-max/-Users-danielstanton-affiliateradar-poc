@@ -209,6 +209,7 @@ def _domain(conn, sid):
 def list_matches(conn: sqlite3.Connection, manager_id: int) -> list:
     """The 'Matches' view for one manager: who they matched with, what each side
     gives/gets, whether each has agreed, and whether it's completed."""
+    _ensure_match_cols(conn)
     rows = conn.execute(
         "SELECT * FROM swap_matches WHERE (a_manager=? OR b_manager=?) "
         "AND status!='void' ORDER BY created_at DESC", (manager_id, manager_id)).fetchall()
@@ -220,14 +221,21 @@ def list_matches(conn: sqlite3.Connection, manager_id: int) -> list:
         they_get = r["b_gets_site"] if me_is_a else r["a_gets_site"]
         i_agreed = bool(r["a_agreed"] if me_is_a else r["b_agreed"])
         they_agreed = bool(r["b_agreed"] if me_is_a else r["a_agreed"])
+        # the contact I receive is the one the OTHER side entered when they confirmed
+        their_contact = _provided_by(conn, r, other)
+        my_channel = r["a_contact_channel"] if me_is_a else r["b_contact_channel"]
+        my_value = r["a_contact_value"] if me_is_a else r["b_contact_value"]
         out.append({
             "match_id": r["id"],
             "with": _handle(conn, other), "with_id": other,
             "you_give": _domain(conn, they_get),   # you give them the contact they get
             "you_get": _domain(conn, i_get),
             "you_agreed": i_agreed, "they_agreed": they_agreed,
+            # what the viewer already entered (so the app can pre-fill / skip the form)
+            "your_contact_channel": my_channel or "",
+            "your_contact_value": my_value or "",
             "status": r["status"],
-            "unlocked_contact": _contact_snapshot(conn, i_get) if r["status"] == "completed" else None,
+            "unlocked_contact": their_contact if r["status"] == "completed" else None,
         })
     return out
 
@@ -238,25 +246,47 @@ def _is_verified(conn, mid) -> bool:
     return bool(r and r["status"] == "verified")
 
 
-def _contact_snapshot(conn, site_id: int) -> str:
-    """The contact string exactly as it will be handed over (the evidence)."""
-    c = conn.execute(
-        "SELECT contact_email, contact_telegram, contact_teams FROM site_contacts "
-        "WHERE site_id=?", (site_id,)).fetchone()
-    if not c:
-        return "(no contact on file)"
-    parts = []
-    if c["contact_email"]:    parts.append(c["contact_email"])
-    if c["contact_telegram"]: parts.append(c["contact_telegram"])
-    if c["contact_teams"]:    parts.append("Teams: " + c["contact_teams"])
-    return " · ".join(parts) or "(no contact on file)"
+_CONTACT_LABELS = {"email": "Email", "teams": "Microsoft Teams",
+                   "telegram": "Telegram", "whatsapp": "WhatsApp",
+                   "other": "Contact"}
 
 
-def agree(conn: sqlite3.Connection, match_id: int, manager_id: int) -> dict:
-    """Record this manager's agreement. If both have now agreed, run the
-    transfer. Returns {status, ...}. When both agree but a side is out of swaps,
-    the match stays 'ready' (both agreed) and we report needs_swaps so the app
-    can prompt an upgrade / top-up."""
+def _ensure_match_cols(conn) -> None:
+    """Idempotently add the per-confirm contact columns (persistent prod DBs
+    created before this feature won't have them)."""
+    have = {r["name"] for r in conn.execute("PRAGMA table_info(swap_matches)")}
+    for col in ("a_contact_channel TEXT", "a_contact_value TEXT",
+                "b_contact_channel TEXT", "b_contact_value TEXT"):
+        if col.split()[0] not in have:
+            conn.execute("ALTER TABLE swap_matches ADD COLUMN " + col)
+    conn.commit()
+
+
+def _fmt_contact(channel: str, value: str) -> str:
+    """The contact string exactly as it will be handed over (the evidence).
+    Members enter this themselves when they confirm a swap."""
+    value = (value or "").strip()
+    if not value:
+        return "(contact pending)"
+    label = _CONTACT_LABELS.get((channel or "").lower())
+    return (label + ": " + value) if label else value
+
+
+def _provided_by(conn, m, manager_id: int) -> str:
+    """The contact THIS manager entered on the given match (what they hand over)."""
+    if manager_id == m["a_manager"]:
+        return _fmt_contact(m["a_contact_channel"], m["a_contact_value"])
+    return _fmt_contact(m["b_contact_channel"], m["b_contact_value"])
+
+
+def agree(conn: sqlite3.Connection, match_id: int, manager_id: int,
+          contact: dict = None) -> dict:
+    """Record this manager's agreement. The manager MUST supply the contact they
+    want handed to the other side (contact={'channel','value'}) — that is what the
+    other member receives when the swap completes. If both have now agreed, run the
+    transfer. When both agree but a side is out of swaps, the match stays 'ready'
+    (both agreed) and we report needs_swaps so the app can prompt a top-up."""
+    _ensure_match_cols(conn)
     m = conn.execute("SELECT * FROM swap_matches WHERE id=?", (match_id,)).fetchone()
     if not m:
         raise SwapError("unknown match")
@@ -267,8 +297,23 @@ def agree(conn: sqlite3.Connection, match_id: int, manager_id: int) -> dict:
     if not _is_verified(conn, manager_id):
         raise SwapError("only verified managers can swap")
 
-    col = "a_agreed" if manager_id == m["a_manager"] else "b_agreed"
-    conn.execute(f"UPDATE swap_matches SET {col}=1 WHERE id=?", (match_id,))
+    is_a = manager_id == m["a_manager"]
+    # the contact this side hands over — required to confirm (fall back to what
+    # they entered on a previous confirm attempt for this match)
+    channel = ((contact or {}).get("channel") or "").strip().lower()
+    value = ((contact or {}).get("value") or "").strip()
+    if not value:
+        value = (m["a_contact_value"] if is_a else m["b_contact_value"]) or ""
+        channel = (m["a_contact_channel"] if is_a else m["b_contact_channel"]) or channel
+    if not value:
+        raise SwapError("add the contact details to share before you confirm")
+    if channel not in _CONTACT_LABELS:
+        channel = "other"
+
+    cc, cv = ("a_contact_channel", "a_contact_value") if is_a else ("b_contact_channel", "b_contact_value")
+    col = "a_agreed" if is_a else "b_agreed"
+    conn.execute(f"UPDATE swap_matches SET {col}=1, {cc}=?, {cv}=? WHERE id=?",
+                 (channel, value, match_id))
     conn.commit()
 
     m = conn.execute("SELECT * FROM swap_matches WHERE id=?", (match_id,)).fetchone()
@@ -299,9 +344,12 @@ def _transfer(conn: sqlite3.Connection, m: sqlite3.Row) -> dict:
                 "topup": config.SWAP_TOPUP_PRICE,
                 "note": "both agreed — waiting on a swap to spend"}
 
-    # A receives a_gets_site (B provides it); B receives b_gets_site (A provides it)
-    _record_transfer(conn, m["id"], from_mgr=b, to_mgr=a, site_id=m["a_gets_site"])
-    _record_transfer(conn, m["id"], from_mgr=a, to_mgr=b, site_id=m["b_gets_site"])
+    # the contact each side entered when confirming — handed to the OTHER side
+    a_gives = _fmt_contact(m["a_contact_channel"], m["a_contact_value"])
+    b_gives = _fmt_contact(m["b_contact_channel"], m["b_contact_value"])
+    # A receives a_gets_site (B provides it → B's contact); B receives b_gets_site (A's contact)
+    _record_transfer(conn, m["id"], from_mgr=b, to_mgr=a, site_id=m["a_gets_site"], contact=b_gives)
+    _record_transfer(conn, m["id"], from_mgr=a, to_mgr=b, site_id=m["b_gets_site"], contact=a_gives)
     _spend_one(conn, a)
     _spend_one(conn, b)
     conn.execute("UPDATE swap_matches SET status='completed', completed_at=? WHERE id=?",
@@ -320,16 +368,18 @@ def _transfer(conn: sqlite3.Connection, m: sqlite3.Row) -> dict:
         "status": "completed",
         "transfers": [
             {"to": _handle(conn, a), "site": _domain(conn, m["a_gets_site"]),
-             "contact": _contact_snapshot(conn, m["a_gets_site"])},
+             "contact": b_gives},
             {"to": _handle(conn, b), "site": _domain(conn, m["b_gets_site"]),
-             "contact": _contact_snapshot(conn, m["b_gets_site"])},
+             "contact": a_gives},
         ],
         "notices": notices,
     }
 
 
-def _record_transfer(conn, match_id, from_mgr, to_mgr, site_id) -> None:
-    ts, dom, contact = now_iso(), _domain(conn, site_id), _contact_snapshot(conn, site_id)
+def _record_transfer(conn, match_id, from_mgr, to_mgr, site_id, contact=None) -> None:
+    ts, dom = now_iso(), _domain(conn, site_id)
+    if contact is None:
+        contact = "(no contact on file)"
     conn.execute(
         """INSERT INTO swap_ledger
            (match_id, from_manager, to_manager, site_id, domain, contact_snapshot,

@@ -488,6 +488,14 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .match-arrow svg{width:28px;height:28px}
 .match-btn{width:100%;padding:12px;background:var(--blue);color:#fff;border:0;border-radius:10px;font-weight:600;font-size:14px;box-shadow:var(--glow-blue)}
 .match-btn:disabled{background:var(--blue-soft);color:var(--blue-hi);box-shadow:none;cursor:default}
+.swconf{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--blue-softer)}
+.swc-h{font-weight:700;font-size:13.5px;letter-spacing:-0.01em;margin-bottom:4px}
+.swc-note{font-size:12.5px;color:var(--ink-mute);line-height:1.45;margin-bottom:10px}
+.swc-row{display:flex;gap:8px;margin-bottom:10px}
+.swc-sel{flex:0 0 148px;padding:10px;border:1px solid var(--line-strong);border-radius:9px;background:var(--card);font-size:13px;font-weight:500;color:var(--ink)}
+.swc-inp{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;background:var(--card);font-size:13.5px}
+.swc-inp:focus,.swc-sel:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+@media(max-width:640px){.swc-row{flex-direction:column}.swc-sel{flex:1 1 auto}}
 .sw-empty{background:var(--card);border:1px dashed var(--line-strong);border-radius:14px;padding:40px;text-align:center;color:var(--ink-mute)}
 
 /* Want / Have lists on Swaps view */
@@ -1998,8 +2006,9 @@ function hydrateSwaps(){
       /* Matches ready */
       '<h2 class="section-h" style="margin-bottom:16px">Matches ready</h2>'+
       (matches.length?matches.map(function(m){
-        var btn = m.status==='completed'?'<button class="match-btn" disabled>Contact unlocked ✓</button>':(m.you_agreed?'<button class="match-btn" disabled>Waiting for '+h(m.with||'')+'</button>':'<button class="match-btn" onclick="swapAgree('+m.match_id+',this)">Connect · 1 swap</button>');
-        return '<div class="match-card"><div class="who">Match with <b>'+h(m.with||'someone')+'</b></div><div class="match-row"><div class="match-tile get"><div class="lbl">You get</div><div class="dom">'+h(m.you_get||'—')+'</div></div><div class="match-arrow"><svg viewBox="0 0 28 28" fill="none"><path d="M4 10 L22 10 L18 6 M24 18 L6 18 L10 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="match-tile"><div class="lbl">You give</div><div class="dom">'+h(m.you_give||'—')+'</div></div></div>'+ (m.unlocked_contact?'<div class="sp-locked" style="background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28)">✓ '+h(m.unlocked_contact)+'</div>':'') +btn+'</div>';
+        var btn = m.status==='completed'?'<button class="match-btn" disabled>Contact unlocked ✓</button>':(m.you_agreed?'<button class="match-btn" disabled>Waiting for '+h(m.with||'')+'</button>':'<button class="match-btn" onclick="toggleSwapForm('+m.match_id+',this)">Connect · 1 swap</button>');
+        var form = (m.status!=='completed' && !m.you_agreed) ? swapConfirmForm(m) : '';
+        return '<div class="match-card"><div class="who">Match with <b>'+h(m.with||'someone')+'</b></div><div class="match-row"><div class="match-tile get"><div class="lbl">You get</div><div class="dom">'+h(m.you_get||'—')+'</div></div><div class="match-arrow"><svg viewBox="0 0 28 28" fill="none"><path d="M4 10 L22 10 L18 6 M24 18 L6 18 L10 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="match-tile"><div class="lbl">You give</div><div class="dom">'+h(m.you_give||'—')+'</div></div></div>'+ (m.unlocked_contact?'<div class="sp-locked" style="background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28)">✓ '+h(m.unlocked_contact)+'</div>':'') +btn+form+'</div>';
       }).join(''):'<div class="sw-empty">No matches yet. Add sites to your <a onclick="go(\'#/markets\')" style="color:var(--blue);cursor:pointer">Want list</a> to get matched.</div>')+
       /* Two-column lists */
       '<div class="lists-grid" style="margin-top:32px">'+
@@ -2070,12 +2079,38 @@ function llRow(x, kind, monoColor){
    care about. Falls back to the ISO code so the row still renders. */
 var _ISO_NAMES = {AF:'Afghanistan',AL:'Albania',DZ:'Algeria',AR:'Argentina',AU:'Australia',AT:'Austria',BE:'Belgium',BR:'Brazil',BG:'Bulgaria',CA:'Canada',CL:'Chile',CN:'China',CO:'Colombia',HR:'Croatia',CY:'Cyprus',CZ:'Czechia',DK:'Denmark',EG:'Egypt',EE:'Estonia',FI:'Finland',FR:'France',DE:'Germany',GR:'Greece',HK:'Hong Kong',HU:'Hungary',IS:'Iceland',IN:'India',ID:'Indonesia',IE:'Ireland',IL:'Israel',IT:'Italy',JP:'Japan',KZ:'Kazakhstan',KE:'Kenya',KR:'South Korea',LV:'Latvia',LT:'Lithuania',LU:'Luxembourg',MY:'Malaysia',MT:'Malta',MX:'Mexico',NL:'Netherlands',NZ:'New Zealand',NG:'Nigeria',NO:'Norway',PK:'Pakistan',PE:'Peru',PH:'Philippines',PL:'Poland',PT:'Portugal',RO:'Romania',RU:'Russia',SA:'Saudi Arabia',RS:'Serbia',SG:'Singapore',SK:'Slovakia',SI:'Slovenia',ZA:'South Africa',ES:'Spain',SE:'Sweden',CH:'Switzerland',TW:'Taiwan',TH:'Thailand',TR:'Turkey',UA:'Ukraine',AE:'UAE',GB:'United Kingdom',UK:'United Kingdom',US:'United States',UY:'Uruguay',VN:'Vietnam'};
 function isoName(iso){if(!iso) return '';var k=iso.toUpperCase();return _ISO_NAMES[k]||k;}
+// The inline "share your contact" form shown when a member confirms a match.
+// They pick a channel (email/teams/telegram/whatsapp/other) and paste the detail
+// the OTHER side receives once both confirm.
+function swapConfirmForm(m){
+  var id=m.match_id, ch=(m.your_contact_channel||'email'), val=(m.your_contact_value||'');
+  var opts=[['email','Email'],['teams','Microsoft Teams'],['telegram','Telegram'],['whatsapp','WhatsApp'],['other','Other']]
+    .map(function(o){return '<option value="'+o[0]+'"'+(o[0]===ch?' selected':'')+'>'+o[1]+'</option>';}).join('');
+  return '<div class="swconf" id="swconf-'+id+'" hidden>'+
+    '<div class="swc-h">Share your contact to complete the swap</div>'+
+    '<div class="swc-note">Choose how <b>'+h(m.with||'they')+'</b> should reach you and paste your details. It\'s only revealed once you both confirm.</div>'+
+    '<div class="swc-row"><select class="swc-sel" id="swch-'+id+'">'+opts+'</select>'+
+    '<input class="swc-inp" id="swcv-'+id+'" value="'+h(val)+'" placeholder="you@brand.com · @handle · +44…" autocomplete="off"></div>'+
+    '<button class="match-btn" onclick="swapAgree('+id+',this)">Confirm swap · 1 swap</button></div>';
+}
+function toggleSwapForm(id,btn){
+  var f=document.getElementById('swconf-'+id); if(!f) return;
+  if(f.hasAttribute('hidden')){f.removeAttribute('hidden'); if(btn) btn.style.display='none';
+    var inp=document.getElementById('swcv-'+id); if(inp && !inp.value) inp.focus();}
+  else {f.setAttribute('hidden',''); if(btn) btn.style.display='';}
+}
 function swapAgree(matchId,btn){
+  var sel=document.getElementById('swch-'+matchId), inp=document.getElementById('swcv-'+matchId);
+  var channel=sel?sel.value:'other', value=inp?(inp.value||'').trim():'';
+  if(!value){toast('Add the contact details to share first');if(inp)inp.focus();return;}
   btn.disabled=true;var orig=btn.innerHTML;btn.innerHTML='Confirming…';
-  apiPost('/api/swap/agree',{match_id:matchId}).then(function(j){
+  apiPost('/api/swap/agree',{match_id:matchId,contact_channel:channel,contact_value:value}).then(function(j){
     if(j.ok===false){toast(j.error||'Could not confirm');btn.disabled=false;btn.innerHTML=orig;return;}
-    toast(j.status==='completed'?'Contact unlocked':'Agreed — waiting for the other side');
-    hydrateSwaps();updateMeChip();
+    toast(j.status==='completed'?'Swap complete — contact unlocked 🎉':'Confirmed — waiting for the other side');
+    window.ACCT_TAB='matches';
+    if(typeof hydrateAccount==='function') hydrateAccount();
+    if(typeof hydrateSwaps==='function') hydrateSwaps();
+    updateMeChip();
   }).catch(function(){toast('Network error');btn.disabled=false;btn.innerHTML=orig});
 }
 // Interest signal: add a wanted site to complete a mutual swap. The API runs the
@@ -2414,14 +2449,15 @@ function _hydrateAccountFull(meArg){
               } else if(m.you_agreed){
                 btn = '<button class="match-btn" disabled>Waiting for '+h(m.with||'them')+'</button>';
               } else {
-                btn = '<button class="match-btn" onclick="swapAgree('+m.match_id+',this)">Connect · 1 swap</button>';
+                btn = '<button class="match-btn" onclick="toggleSwapForm('+m.match_id+',this)">Connect · 1 swap</button>';
               }
+              var form = (m.status!=='completed' && !m.you_agreed) ? swapConfirmForm(m) : '';
               var pill = m.status==='completed'
                 ? '<span class="mstat mstat-done">✓ Completed</span>'
                 : (m.you_agreed
                     ? '<span class="mstat mstat-wait">⏳ Waiting on them</span>'
                     : '<span class="mstat mstat-new">● New — action needed</span>');
-              return '<div class="match-card'+(m.status!=='completed' && !m.you_agreed?' match-new':'')+'"><div class="match-head"><div class="who">Match with <b>'+h(m.with||'someone')+'</b></div>'+pill+'</div><div class="match-row"><div class="match-tile get"><div class="lbl">You get</div><div class="dom">'+h(m.you_get||'—')+'</div></div><div class="match-arrow"><svg viewBox="0 0 28 28" fill="none"><path d="M4 10 L22 10 L18 6 M24 18 L6 18 L10 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="match-tile"><div class="lbl">You give</div><div class="dom">'+h(m.you_give||'—')+'</div></div></div>'+ (m.unlocked_contact?'<div class="sp-locked" style="background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28)">✓ '+h(m.unlocked_contact)+'</div>':'') +btn+'</div>';
+              return '<div class="match-card'+(m.status!=='completed' && !m.you_agreed?' match-new':'')+'"><div class="match-head"><div class="who">Match with <b>'+h(m.with||'someone')+'</b></div>'+pill+'</div><div class="match-row"><div class="match-tile get"><div class="lbl">You get</div><div class="dom">'+h(m.you_get||'—')+'</div></div><div class="match-arrow"><svg viewBox="0 0 28 28" fill="none"><path d="M4 10 L22 10 L18 6 M24 18 L6 18 L10 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="match-tile"><div class="lbl">You give</div><div class="dom">'+h(m.you_give||'—')+'</div></div></div>'+ (m.unlocked_contact?'<div class="sp-locked" style="background:var(--up-soft);color:#0E9760;border-color:rgba(20,184,122,0.28)">✓ '+h(m.unlocked_contact)+'</div>':'') +btn+form+'</div>';
             }).join('')+
           '</div>' :
           '<div class="acct-card" style="text-align:center;padding:48px 24px">'+
@@ -2930,7 +2966,7 @@ function renderPrivacy(){
       '<h2>5. Who sees your data</h2>'+
       '<ul class="doc-list">'+
         '<li><b>You.</b> Everything on your Account page.</li>'+
-        '<li><b>The other party in a swap you agreed to.</b> When both sides agree to a match, we hand over the contact snapshot each side stored on their site. Nothing else is shared.</li>'+
+        '<li><b>The other party in a swap you agreed to.</b> When you confirm a match, you enter the contact details you want to share (email, Teams, Telegram, WhatsApp or other). Those are handed to the other member only once you both confirm. Nothing else is shared.</li>'+
         '<li><b>The Affswap moderation team.</b> Only for verification, dispute handling, and abuse review.</li>'+
         '<li><b>Third parties we rely on:</b> Render (hosting), DataForSEO (site catalogue), LinkedIn (only if you use LinkedIn sign-in). Data processors, contractually bound.</li>'+
       '</ul>'+
@@ -2981,7 +3017,7 @@ function renderTerms(){
       '<p>Reviews you post must be your honest opinion, based on real experience with the site. Fake, malicious, or paid reviews get you removed and the reviews scrubbed.</p>'+
 
       '<h2>4. Swaps</h2>'+
-      '<p>When you agree to a swap, both parties consent to exchanging the contact details stored on their side. The contact you receive is for the introduction only &mdash; do not share it further, add it to a mailing list without explicit consent, or use it for cold outreach outside the swap context.</p>'+
+      '<p>When you confirm a swap, you enter the contact details you want to share and both parties consent to exchanging them. The contact you receive is for the introduction only &mdash; do not share it further, add it to a mailing list without explicit consent, or use it for cold outreach outside the swap context.</p>'+
 
       '<h2>5. Prohibited</h2>'+
       '<ul class="doc-list">'+

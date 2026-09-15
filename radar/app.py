@@ -1603,7 +1603,9 @@ class _H(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             elif u.path == "/api/swap/agree":
                 try:
-                    res = swaps.agree(conn, int(payload.get("match_id") or 0), mid)
+                    contact = {"channel": payload.get("contact_channel"),
+                               "value": payload.get("contact_value")}
+                    res = swaps.agree(conn, int(payload.get("match_id") or 0), mid, contact)
                     self._json({"ok": True, **(res or {})})
                 except swaps.SwapError as e:
                     self._json({"ok": False, "error": str(e)}, 400)
