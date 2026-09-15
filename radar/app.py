@@ -634,6 +634,62 @@ def api_pricing(conn):
     }
 
 
+def _site_brief(conn, sid):
+    r = conn.execute("SELECT domain, display_name, top_country FROM sites WHERE id=?",
+                     (sid,)).fetchone()
+    if not r:
+        return None
+    return {"domain": r["domain"],
+            "name": r["display_name"] or r["domain"].split(".")[0].capitalize(),
+            "iso": r["top_country"]}
+
+
+def swap_interest(conn, mid):
+    """Interest signal: members who WANT a site this member HAS (one-directional,
+    not yet a match), plus the sites they have that the member could Want to turn
+    it into a mutual swap. Matches stay mutual — this just surfaces the demand."""
+    my_haves = {r["site_id"] for r in conn.execute(
+        "SELECT site_id FROM swap_haves WHERE manager_id=?", (mid,))}
+    if not my_haves:
+        return []
+    my_wants = {r["site_id"] for r in conn.execute(
+        "SELECT site_id FROM swap_wants WHERE manager_id=?", (mid,))}
+    ph = ",".join("?" * len(my_haves))
+    interested = {}
+    for r in conn.execute(
+            f"SELECT manager_id, site_id FROM swap_wants "
+            f"WHERE site_id IN ({ph}) AND manager_id<>?", (*my_haves, mid)):
+        interested.setdefault(r["manager_id"], set()).add(r["site_id"])
+    if not interested:
+        return []
+    matched = set()
+    for r in conn.execute(
+            "SELECT a_manager, b_manager FROM swap_matches "
+            "WHERE (a_manager=? OR b_manager=?) AND status<>'void'", (mid, mid)):
+        matched.add(r["a_manager"]); matched.add(r["b_manager"])
+    out = []
+    for wmid, sids in interested.items():
+        if wmid in matched:
+            continue
+        m = conn.execute("SELECT handle, real_name, company FROM chat_managers WHERE id=?",
+                         (wmid,)).fetchone()
+        if not m:
+            continue
+        their_haves = [r["site_id"] for r in conn.execute(
+            "SELECT site_id FROM swap_haves WHERE manager_id=?", (wmid,))]
+        offers = [b for b in (_site_brief(conn, s) for s in their_haves
+                              if s not in my_haves and s not in my_wants) if b][:6]
+        out.append({
+            "handle": m["handle"], "name": m["real_name"] or m["handle"],
+            "company": m["company"],
+            "wants": [b for b in (_site_brief(conn, s) for s in sids) if b],
+            "offers": offers,
+        })
+    # most actionable first (those we can actually complete a swap with)
+    out.sort(key=lambda x: (len(x["offers"]) == 0, -len(x["offers"])))
+    return out
+
+
 def api_swaps(conn, mid):
     full = swaps.ledger(conn)
     mine = [e for e in full if e.get("from_id") == mid or e.get("to_id") == mid]
@@ -641,6 +697,7 @@ def api_swaps(conn, mid):
         "matches": swaps.list_matches(conn, mid),
         "ledger": mine,
         "access": swaps.access(conn, mid),
+        "interest": swap_interest(conn, mid),
     }
 
 

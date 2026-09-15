@@ -1512,11 +1512,19 @@ function hydrateHome(){
 }
 
 function actSite(domain,kind,btn){
-  apiPost('/api/'+kind,{domain:domain}).then(function(j){
+  // toggle: if it's already on, remove it; otherwise add it
+  var isOn = btn.classList.contains('on');
+  apiPost('/api/'+kind+(isOn?'/remove':''),{domain:domain}).then(function(j){
     if(j.ok===false){toast(j.error||'Could not save');return;}
-    btn.classList.add('on');
-    btn.textContent = (kind==='want'?'Wanted':'Have ✓');
-    toast(kind==='want'?'Added to your Want list':'Added to your Have list');
+    if(isOn){
+      btn.classList.remove('on');
+      btn.textContent = (kind==='want'?'Want':'Have');
+      toast(kind==='want'?'Removed from your Want list':'Removed from your Have list');
+    } else {
+      btn.classList.add('on');
+      btn.textContent = (kind==='want'?'Wanted':'Have ✓');
+      toast(kind==='want'?'Added to your Want list':'Added to your Have list');
+    }
     updateMeChip();
   }).catch(function(){toast('Network error')});
 }
@@ -1965,7 +1973,7 @@ function renderSwaps(){document.getElementById('v-swaps').innerHTML='<div style=
 function hydrateSwaps(){
   Promise.all([apiGet('/api/swaps'), apiGet('/api/lists').catch(function(){return{wants:[],haves:[]}})]).then(function(res){
     var d=res[0], lists=res[1]||{wants:[],haves:[]};
-    var matches=d.matches||[],ledger=d.ledger||[],access=d.access||{};
+    var matches=d.matches||[],ledger=d.ledger||[],access=d.access||{},interest=d.interest||[];
     var swapsLeft = access.unlimited?'∞':(access.swaps==null?0:access.swaps);
     var el=document.getElementById('v-swaps');
     var listRow = function(item, kind){
@@ -2069,6 +2077,17 @@ function swapAgree(matchId,btn){
     toast(j.status==='completed'?'Contact unlocked':'Agreed — waiting for the other side');
     hydrateSwaps();updateMeChip();
   }).catch(function(){toast('Network error');btn.disabled=false;btn.innerHTML=orig});
+}
+// Interest signal: add a wanted site to complete a mutual swap. The API runs the
+// matcher, so if this closes the loop the new match appears immediately.
+function completeSwap(domain,btn){
+  if(btn){btn.disabled=true;btn.textContent='Adding…';}
+  apiPost('/api/want',{domain:domain}).then(function(j){
+    if(j&&j.ok){
+      toast(j.new_matches>0?'Swap matched! 🎉 See your matches below.':'Added to your Want list.');
+      window.ACCT_TAB='matches'; hydrateAccount(); updateMeChip();
+    } else { toast((j&&j.error)||'Could not add'); if(btn){btn.disabled=false;btn.textContent='+ Want';} }
+  }).catch(function(){toast('Network error');if(btn){btn.disabled=false;btn.textContent='+ Want';}});
 }
 
 /* ==================== LOYALTY ==================== */
@@ -2234,7 +2253,7 @@ function _hydrateAccountFull(meArg){
       ACC_ALERTS.forEach(function(a){ if(a.k in ev) a.on = !!ev[a.k]; });
       ACC_FREQUENCY = alertData.prefs.frequency || 'instant';
     }
-    var matches=sw.matches||[], ledger=sw.ledger||[];
+    var matches=sw.matches||[], ledger=sw.ledger||[], interest=sw.interest||[];
     var approved = l.approved_reviews||0;
     var currentStamps = approved % 5;
     var freeSwapsEarned = l.free_swaps_earned||0;
@@ -2374,6 +2393,17 @@ function _hydrateAccountFull(meArg){
       /* PANE: Matches                                                */
       /* ============================================================ */
       '<div id="acct-pane-matches" class="acct-pane"'+(initialTab==='matches'?'':' hidden')+'>'+
+        (interest.length ?
+          '<div class="acct-card" style="margin-bottom:16px;border-color:rgba(61,124,255,0.30)">'+
+            '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3 A7 7 0 1 1 3 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="10" cy="10" r="2.3" fill="currentColor"/></svg></span><div><h2>People want your sites</h2><p>They want a site you have &mdash; add one of their sites to your Want list to complete the swap.</p></div></div>'+
+            interest.map(function(it){
+              var wants=it.wants.map(function(w){return h(w.name||w.domain);}).join(', ');
+              var offers=it.offers.length
+                ? it.offers.map(function(o){return '<button class="btn btn-gho btn-sm" style="margin:0 8px 8px 0" onclick="completeSwap(\''+o.domain+'\',this)">+ Want '+h(o.name||o.domain)+'</button>';}).join('')
+                : '<span class="hint">They have no sites you can swap for yet.</span>';
+              return '<div style="padding:14px 0;border-top:1px solid var(--line)"><div style="font-size:14px"><b>'+h(it.name)+'</b>'+(it.company?' <span class="ev">&middot; '+h(it.company)+'</span>':'')+' wants your <b>'+wants+'</b></div><div style="margin-top:9px">'+offers+'</div></div>';
+            }).join('')+
+          '</div>' : '')+
         (matches.length ?
           '<div class="acct-card">'+
             '<div class="acct-card-head"><span class="ico-hero" style="background:#EAF7EF;color:#0E9760"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="13" cy="9" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M9 17 C 9 14, 11 13, 13 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><h2>Your matches</h2><p>'+(pendingMatches?'<b style="color:#E5484D">'+pendingMatches+' need your action</b> &mdash; ':(openMatches?'':'All matches complete &mdash; '))+'someone has a site you want and you have a site they want. Confirm to connect and swap details.</p></div></div>'+
