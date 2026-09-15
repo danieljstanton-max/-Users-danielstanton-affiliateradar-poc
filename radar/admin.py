@@ -532,11 +532,20 @@ def _list_page(conn, flash: str = "") -> bytes:
     return _page("".join(body))
 
 
-def _edit_page(conn, site_id: int) -> bytes:
+def _edit_page(conn, site_id: int, flash: str = "") -> bytes:
     s = conn.execute("SELECT * FROM sites WHERE id=?", (site_id,)).fetchone()
     if not s:
         return _page("<h1>Not found</h1><a href='/'>← back</a>")
     c = conn.execute("SELECT * FROM site_contacts WHERE site_id=?", (site_id,)).fetchone()
+    flash_html = f"<div class='note'>{_esc(flash)}</div>" if flash else ""
+    _snaps = conn.execute("SELECT COUNT(*) n FROM traffic_snapshots WHERE site_id=?",
+                          (site_id,)).fetchone()["n"]
+    history_html = (
+        f"<form method='post' action='/site-rebuild-history?id={site_id}' "
+        f"style='margin:0 0 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap'>"
+        f"<button class='btn secondary' type='submit'>↻ Rebuild 12-month history</button>"
+        f"<span class='hint' style='font-weight:400'>{_snaps} month{'s' if _snaps != 1 else ''} "
+        f"of history stored · pulls real DataForSEO monthly traffic for this site's markets</span></form>")
 
     # deep-link (page that ranks for the top gambling keyword) if we have one,
     # else the plain homepage — so the back office can jump straight to the site.
@@ -624,7 +633,9 @@ def _edit_page(conn, site_id: int) -> bytes:
     body = f"""
       <div class='eyebrow'><a href='/'>← Back office</a></div>
       <h1>{_esc(s['domain'])}</h1>
+      {flash_html}
       {visit_html}
+      {history_html}
       <p class='sub'>Traffic & trend are API-owned (read-only here). You own the name, classification and contact.</p>
       {shot_html}
       {regions_note}
@@ -1524,7 +1535,8 @@ class _Handler(BaseHTTPRequestHandler):
             elif parsed.path == "/screenshots":
                 self._send(_screenshots_page(conn, flash=flash))
             elif parsed.path == "/site":
-                self._send(_edit_page(conn, int(qs["id"][0])))
+                self._send(_edit_page(conn, int(qs["id"][0]),
+                                      flash=qs.get("flash", [""])[0]))
             elif parsed.path == "/import":
                 self._send(_import_page(conn, flash=flash))
             elif parsed.path == "/import/sample":
@@ -1953,6 +1965,25 @@ class _Handler(BaseHTTPRequestHandler):
                 return
 
             site_id = int(qs["id"][0])
+            if parsed.path == "/site-rebuild-history":
+                # operator: pull this one site's real 12-month history on demand
+                from . import refresh as _refresh
+                drow = conn.execute("SELECT domain FROM sites WHERE id=?", (site_id,)).fetchone()
+                dom = drow["domain"] if drow else "site"
+                try:
+                    _refresh.refresh_one_site(conn, site_id)          # refresh current regions first
+                    r = _refresh.build_history_one_site(conn, site_id)  # then backfill history
+                    if r.get("skipped") == "not_live":
+                        msg = f"Can't rebuild {dom} in MOCK mode — set DataForSEO creds."
+                    elif r.get("snapshots"):
+                        msg = f"Rebuilt {dom} — pulled {r['snapshots']} months of history."
+                    else:
+                        msg = f"No history returned for {dom} (provider had no data for its markets)."
+                except Exception as e:
+                    msg = f"Rebuild failed for {dom}: {e}"
+                self._send(b"", code=303,
+                           headers={"Location": f"/site?id={site_id}&flash=" + urllib.parse.quote(msg)})
+                return
             if parsed.path == "/review":
                 # holding-area decision: approve -> publish, reject -> hide
                 action = form.get("action", [""])[0]
