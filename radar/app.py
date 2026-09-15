@@ -135,6 +135,47 @@ def api_markets(conn):
             "total_sites": idx.get("total_sites")}
 
 
+def api_search(conn, q, limit: int = 20):
+    """Global site lookup — find a listed affiliate by domain or brand name across
+    EVERY market, so a member can jump straight to it instead of guessing which
+    market/vertical it sits in. Only surfaces sites that are actually visible in
+    the app (approved, not blacklisted, clears the traffic bar)."""
+    from .locations import flag as _flag, name as _cname
+    from .branding import display_name as _brandname
+    qn = (q or "").strip().lower()
+    if len(qn) < 2:
+        return {"results": []}
+    like = "%" + qn.replace("%", "").replace("_", "") + "%"
+    rows = conn.execute(
+        """SELECT s.id, s.domain, s.display_name, s.etv, s.top_country, s.classification,
+                  rv.rating AS rating, rv.review_count AS review_count
+             FROM sites s
+             LEFT JOIN site_reviews rv ON rv.site_id = s.id
+            WHERE s.classification='affiliate'
+              AND (lower(s.domain) LIKE ? OR lower(COALESCE(s.display_name,'')) LIKE ?)
+            ORDER BY s.etv DESC LIMIT ?""",
+        (like, like, max(limit * 4, 60))).fetchall()
+    out = []
+    for r in rows:
+        if not views._is_visible(conn, r):
+            continue
+        iso = r["top_country"] or ""
+        vrow = conn.execute("SELECT vertical FROM site_verticals WHERE site_id=? LIMIT 1",
+                            (r["id"],)).fetchone()
+        out.append({
+            "domain": r["domain"],
+            "name": r["display_name"] or _brandname(r["domain"]),
+            "iso": iso, "flag": _flag(iso) if iso else "🏳️",
+            "market": _cname(iso) if iso else "",
+            "etv": r["etv"] or 0,
+            "vertical": (vrow["vertical"] if vrow else None),
+            "rating": r["rating"], "review_count": r["review_count"] or 0,
+        })
+        if len(out) >= limit:
+            break
+    return {"results": out}
+
+
 def api_account(conn, mid):
     row = conn.execute(
         "SELECT handle, real_name, company, work_email, linkedin_url, avatar_url, "
@@ -1424,6 +1465,9 @@ class _H(BaseHTTPRequestHandler):
                     self._json(p) if p else self._json({"error": "not_found"}, 404)
             elif u.path == "/api/markets":
                 self._json(api_markets(conn))
+            elif u.path == "/api/search":
+                # Sensitive: reveals site names + traffic, so members-only.
+                self._json(api_search(conn, g("q")) if authed else {"results": []})
             elif u.path == "/api/loyalty":
                 self._json(reviews.loyalty_progress(conn, mid))
             elif u.path == "/api/plans":

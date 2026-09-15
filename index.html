@@ -231,6 +231,20 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .mk-search svg{width:16px;height:16px;color:var(--ink-mute);flex:0 0 16px}
 .mk-search input{flex:1;padding:12px 0;border:0;outline:0;background:transparent;font-size:15px;color:var(--ink)}
 .mk-search input::placeholder{color:var(--ink-mute)}
+.mk-search-wrap{position:relative}
+.mk-search-wrap .mk-search{display:flex;width:100%}
+.srch-dd{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(16,42,90,0.14);overflow:hidden;max-height:340px;overflow-y:auto}
+.srch-head{padding:8px 14px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-mute);border-bottom:1px solid var(--line)}
+.srch-item{display:flex;align-items:center;gap:11px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--line);text-decoration:none}
+.srch-item:last-child{border-bottom:0}
+.srch-item:hover{background:var(--blue-softer)}
+.srch-flag{font-size:19px;flex:0 0 auto}
+.srch-txt{display:flex;flex-direction:column;min-width:0;flex:1}
+.srch-name{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srch-meta{font-size:12px;color:var(--ink-mute)}
+.srch-go{color:var(--blue);font-weight:700;flex:0 0 auto}
+.srch-empty{padding:14px;font-size:13px;color:var(--ink-mute);line-height:1.5}
+.srch-empty a{color:var(--blue);cursor:pointer}
 .mk-dd{position:relative;display:inline-flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 34px 0 16px}
 .mk-dd:hover,.mk-dd:focus-within{border-color:var(--blue);box-shadow:0 0 0 4px rgba(61,124,255,0.08)}
 .mk-dd select{appearance:none;-webkit-appearance:none;background:transparent;border:0;outline:0;font-size:14.5px;font-weight:600;color:var(--ink);padding:12px 0;cursor:pointer}
@@ -1574,7 +1588,7 @@ function renderMarkets(){
         '<div><h2>All Markets</h2><p class="sub">Browse all <b id="mk-all-count">—</b> countries.</p></div>'+
       '</div>'+
       '<div class="mk-toolbar">'+
-        '<label class="mk-search"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11 L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input type="text" id="mk-search" placeholder="Search countries…"></label>'+
+        '<div class="mk-search-wrap"><label class="mk-search"><svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11 L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input type="text" id="mk-search" placeholder="Search a site or country…" autocomplete="off"></label><div class="srch-dd" id="mk-site-results" hidden></div></div>'+
         '<div class="mk-dd"><select id="mk-region"><option value="all">All regions</option><option value="americas">Americas</option><option value="europe">Europe</option><option value="asia">Asia</option><option value="oceania">Oceania</option><option value="africa">Africa</option></select><svg class="dd-caret" viewBox="0 0 12 12" fill="none"><path d="M3 5 L6 8 L9 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>'+
         '<div class="mk-dd"><select id="mk-sort"><option value="sites">Sort: Most sites</option><option value="traffic">Sort: Most traffic</option><option value="name">Sort: A–Z</option></select><svg class="dd-caret" viewBox="0 0 12 12" fill="none"><path d="M3 5 L6 8 L9 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>'+
       '</div>'+
@@ -1582,6 +1596,32 @@ function renderMarkets(){
     '</section>';
 }
 
+// Global site lookup — find a listed affiliate by name/domain across every
+// market and jump straight to it (the market grid keeps filtering by country name).
+var _siteSearchT=null, _siteSearchSeq=0;
+function hideSiteSearch(){var w=document.getElementById('mk-site-results');if(w){w.hidden=true;w.innerHTML='';}}
+function siteSearch(raw){
+  var q=(raw||'').trim();
+  var w=document.getElementById('mk-site-results');if(!w)return;
+  if(q.length<2){hideSiteSearch();return;}
+  clearTimeout(_siteSearchT);
+  var seq=++_siteSearchSeq;
+  _siteSearchT=setTimeout(function(){
+    apiGet('/api/search?q='+encodeURIComponent(q)).then(function(d){
+      if(seq!==_siteSearchSeq)return; // a newer keystroke already fired
+      var rs=(d&&d.results)||[];
+      if(!rs.length){
+        w.innerHTML='<div class="srch-empty">No listed site matches “'+h(q)+'”. If it should be here, suggest it from <a onclick="go(\'#/account\')">My Account</a>.</div>';
+        w.hidden=false;return;
+      }
+      w.innerHTML='<div class="srch-head">'+rs.length+' site'+(rs.length===1?'':'s')+'</div>'+rs.map(function(r){
+        var meta=[r.market, r.vertical?(r.vertical.charAt(0).toUpperCase()+r.vertical.slice(1)):'', fmt(r.etv||0)+'/mo'].filter(Boolean).join(' · ');
+        return '<a class="srch-item" onclick="hideSiteSearch();go(\'#/site/'+encodeURIComponent(r.domain)+'\')"><span class="srch-flag">'+(r.flag||'🏳️')+'</span><span class="srch-txt"><span class="srch-name">'+h(r.name||r.domain)+'</span><span class="srch-meta">'+h(meta)+'</span></span><span class="srch-go">↗</span></a>';
+      }).join('');
+      w.hidden=false;
+    }).catch(function(){});
+  },160);
+}
 function hydrateMarkets(){
   apiGet('/api/markets').then(function(d){
     var cs=(d.countries||[]).slice().sort(function(a,b){return b.count-a.count});
@@ -1603,7 +1643,9 @@ function hydrateMarkets(){
     // All markets table
     renderMarketsAll();
     // Wire filters
-    document.getElementById('mk-search').addEventListener('input',function(e){MKT_STATE.q=e.target.value.toLowerCase().trim();renderMarketsAll()});
+    document.getElementById('mk-search').addEventListener('input',function(e){MKT_STATE.q=e.target.value.toLowerCase().trim();renderMarketsAll();siteSearch(e.target.value);});
+    document.getElementById('mk-search').addEventListener('keydown',function(e){if(e.key==='Escape'){hideSiteSearch();}});
+    document.addEventListener('click',function(e){var w=document.getElementById('mk-site-results');if(w&&!e.target.closest('.mk-search-wrap'))hideSiteSearch();});
     document.getElementById('mk-region').addEventListener('change',function(e){MKT_STATE.region=e.target.value;renderMarketsAll()});
     document.getElementById('mk-sort').addEventListener('change',function(e){MKT_STATE.sort=e.target.value;renderMarketsAll()});
   }).catch(function(){});
