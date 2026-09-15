@@ -571,6 +571,28 @@ def access(conn: sqlite3.Connection, manager_id: int) -> dict:
 REWARD_SWAPS = 1   # free swaps granted when a submission is approved
 
 
+def _where_listed(conn: sqlite3.Connection, site_id: int) -> str:
+    """Human hint for where an already-listed affiliate can be found in the app:
+    the top market it qualifies in + its vertical. If it clears the bar nowhere,
+    say so plainly (listed but not currently surfaced in any market list)."""
+    from . import views
+    from .locations import name as _cname
+    srow = conn.execute("SELECT etv FROM sites WHERE id=?", (site_id,)).fetchone()
+    bar = (views.LARGE_COUNTRY_MIN_ETV if (srow and (srow["etv"] or 0) >= views.LARGE_SITE_ETV)
+           else views.COUNTRY_MIN_ETV)
+    qmk = conn.execute(
+        "SELECT country FROM site_regions WHERE site_id=? AND etv>? ORDER BY etv DESC LIMIT 1",
+        (site_id, bar)).fetchone()
+    vrow = conn.execute("SELECT vertical FROM site_verticals WHERE site_id=? LIMIT 1",
+                        (site_id,)).fetchone()
+    if not qmk:
+        return ("it's in the catalogue, but its per-market traffic is currently below the bar "
+                "to appear in a market list")
+    mkt = _cname(qmk["country"]) or qmk["country"]
+    vert = vrow["vertical"].capitalize() if vrow else ""
+    return "find it in the " + mkt + " market" + (" under " + vert if vert else "")
+
+
 def submit_contribution(conn: sqlite3.Connection, manager_id: int, url: str,
                         country: str | None = None, vertical: str | None = None,
                         comment: str | None = None) -> dict:
@@ -586,9 +608,10 @@ def submit_contribution(conn: sqlite3.Connection, manager_id: int, url: str,
     domain = normalize_domain(url or "")
     if not domain:
         raise SwapError("enter a valid affiliate URL")
-    listed = conn.execute("SELECT classification FROM sites WHERE domain=?", (domain,)).fetchone()
+    listed = conn.execute("SELECT id, classification FROM sites WHERE domain=?", (domain,)).fetchone()
     if listed and listed["classification"] == "affiliate":
-        raise SwapError("already listed — no reward for a site we already have")
+        raise SwapError("Already in Affswap — " + _where_listed(conn, listed["id"])
+                        + ". (Sites we already have don't earn a reward.)")
     if conn.execute("SELECT 1 FROM swap_contributions WHERE domain=? AND status='pending'",
                     (domain,)).fetchone():
         raise SwapError("already submitted — pending review")
