@@ -384,16 +384,23 @@ def _queue_page(conn, kind: str = "seo", flash: str = "") -> bytes:
     one also grants the submitter +1 swap."""
     from . import config, swaps
     sub = kind == "submitted"
-    membership = ("id IN" if sub else "id NOT IN") + \
-        " (SELECT site_id FROM swap_contributions WHERE status='pending' AND site_id IS NOT NULL)"
+    _pending = ("(SELECT site_id FROM swap_contributions "
+                "WHERE status='pending' AND site_id IS NOT NULL)")
+    # SEO queue: unreviewed discovered candidates. Submitted queue: any site a
+    # member vouched for that isn't already a published affiliate — INCLUDING ones
+    # discovery auto-rejected (operator/noise). Otherwise a member's submission of
+    # an already-rejected site shows as a pending reward but never appears here to
+    # be resolved. The operator can approve (rescues + pays) or reject (clears it).
+    where = (f"s.classification <> 'affiliate' AND s.id IN {_pending}" if sub
+             else f"s.classification = 'candidate' AND s.id NOT IN {_pending}")
     rows = conn.execute(f"""
-        SELECT s.id, s.domain, s.etv, s.top_country, s.rank_best,
+        SELECT s.id, s.domain, s.etv, s.top_country, s.rank_best, s.classification,
                (SELECT COUNT(*) FROM discovery_hits h WHERE h.site_id=s.id) AS hits,
                (SELECT h2.keyword FROM discovery_hits h2 WHERE h2.site_id=s.id
                   ORDER BY h2.rank_absolute LIMIT 1) AS top_keyword,
                (SELECT 1 FROM screenshots sc WHERE sc.site_id=s.id) AS has_shot
         FROM sites s
-        WHERE s.classification='candidate' AND s.{membership}
+        WHERE {where}
         ORDER BY (s.etv IS NULL), s.etv DESC
     """).fetchall()
     subs_by_site = {c["site_id"]: c for c in swaps.list_contributions(conn, "pending")} if sub else {}
@@ -428,10 +435,14 @@ def _queue_page(conn, kind: str = "seo", flash: str = "") -> bytes:
         if sub:
             c = subs_by_site.get(r["id"], {})
             mkt = (flag(c.get("country")) + " " + c["country"]) if c.get("country") else "—"
+            warn = ("<span class='ev' style='color:var(--down,#c0392b);font-weight:700'>"
+                    "⚠ discovery auto-rejected this earlier (likely an operator, not an affiliate) — "
+                    "approve only if it's genuinely an affiliate site</span>"
+                    if r["classification"] == "rejected" else "")
             meta = (f"<span>submitted by <b>{_esc(c.get('by', '—'))}</b></span>"
                     f"<span class='ev'>{_esc(mkt)} · {_esc(c.get('vertical') or '—')}</span>"
                     f"<span class='ev' style='color:var(--gold)'>+{c.get('reward', 1)} swap on approval</span>"
-                    f"<span class='ev'>{shot}</span>")
+                    f"<span class='ev'>{shot}</span>" + warn)
             reason = (f"<div class='freason' style='margin-top:8px;font-size:12.5px;color:var(--ink)'>"
                       f"<span style='font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--ink3);font-weight:700'>WHY IT MATTERS</span><br>"
                       f"{_esc(c.get('comment'))}</div>") if c.get("comment") else ""
