@@ -219,6 +219,80 @@ def refresh_one_site(conn: sqlite3.Connection, site_id: int,
     return {"domain": dom, "markets": len(by_country), "etv": total, "top": top}
 
 
+def build_history_one_site(conn: sqlite3.Connection, site_id: int, months: int = 12,
+                           client: DataForSEOClient | None = None) -> dict:
+    """Backfill ONE site's 12-month MONTHLY traffic history right after it's
+    approved, so its profile graph is populated immediately instead of showing the
+    'building history' placeholder until the next full run. Cost-lean: queries only
+    the markets the site actually draws traffic in (site_regions, just written by
+    refresh_one_site). Best-effort: if the provider returns no history the existing
+    current snapshot is left untouched. No-op in MOCK mode (never writes to prod)."""
+    client = client or DataForSEOClient()
+    if not getattr(client, "live", False):
+        return {"skipped": "not_live"}
+    row = conn.execute("SELECT domain FROM sites WHERE id=?", (site_id,)).fetchone()
+    if not row:
+        return {"skipped": "no_site"}
+    dom = row["domain"]
+    keep = months + 3
+    isos = [r["country"] for r in conn.execute(
+        "SELECT country FROM site_regions WHERE site_id=? ORDER BY etv DESC", (site_id,))]
+    if not isos:
+        isos = list(_APPROVE_MARKETS)
+    by_market: dict[int, dict] = {}
+    for iso in isos:
+        code = code_for(iso)
+        if not code or code in by_market:
+            continue
+        lang = language_for(iso) or "en"
+        try:
+            series = client.historical_bulk_traffic([dom], code, lang).get(dom, {})
+        except Exception:
+            series = {}
+        if series:
+            by_market[code] = dict(sorted(series.items())[-keep:])
+
+    all_months: set = set()
+    for s in by_market.values():
+        all_months.update(s.keys())
+    if not all_months:
+        return {"domain": dom, "months": 0, "snapshots": 0}
+    target_months = sorted(all_months)[-months:]
+
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    conn.execute("DELETE FROM traffic_snapshots WHERE site_id=?", (site_id,))
+    monthly = []
+    snaps = 0
+    for (y, m) in target_months:
+        by_country = {}
+        for code, s in by_market.items():
+            etv = s.get((y, m), 0)
+            if etv and etv > 0:
+                by_country[iso_for(code)] = round(etv, 1)
+        if not by_country:
+            continue
+        total = round(sum(by_country.values()), 1)
+        top = max(by_country, key=by_country.get)
+        iso_week = f"{y:04d}-{m:02d}-01"
+        conn.execute(
+            """INSERT INTO traffic_snapshots (site_id, iso_week, etv, top_country, captured_at)
+               VALUES (?,?,?,?,?) ON CONFLICT(site_id, iso_week) DO UPDATE SET
+                 etv=excluded.etv, top_country=excluded.top_country""",
+            (site_id, iso_week, total, top, now))
+        monthly.append((iso_week, total, top, by_country))
+        snaps += 1
+    if monthly:
+        latest_iso, latest_total, latest_top, latest_by = monthly[-1]
+        _write_regions(conn, site_id, latest_by, latest_total, latest_top)
+        fields = {"etv": latest_total, "top_country": latest_top, "last_api_refresh": latest_iso}
+        trend = _compute_trend(conn, site_id, latest_iso, latest_total)
+        if trend:
+            fields["trend_pct"], fields["trend_dir"] = trend
+        ownership.apply_api_update(conn, site_id, fields, source="dataforseo:historical")
+    conn.commit()
+    return {"domain": dom, "months": len(target_months), "snapshots": snaps}
+
+
 def build_history(conn: sqlite3.Connection, months: int = 12,
                   client: DataForSEOClient | None = None,
                   progress=None, cache_dir: str | None = None) -> dict:

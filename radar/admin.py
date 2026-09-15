@@ -1972,6 +1972,12 @@ class _Handler(BaseHTTPRequestHandler):
                     try:
                         from . import refresh as _refresh
                         tr = _refresh.refresh_one_site(conn, site_id)
+                        # backfill 12-month history so the profile graph is populated
+                        # on approval (best-effort — never blocks the approval)
+                        try:
+                            _refresh.build_history_one_site(conn, site_id)
+                        except Exception:
+                            pass
                     except Exception:
                         tr = None
                     if tr and tr.get("markets"):
