@@ -1283,9 +1283,12 @@ def api_site(conn, domain, mid):
     p["you_have"] = bool(sid and conn.execute(
         "SELECT 1 FROM swap_haves WHERE manager_id=? AND site_id=?", (mid, sid)).fetchone())
     p["recent_reviews"] = [
-        {"handle": r["handle"], "rating": r["rating"], "body": r["body"]}
+        {"handle": r["handle"], "name": r["real_name"] or r["handle"],
+         "company": r["company"], "avatar": r["avatar_url"],
+         "rating": r["rating"], "body": r["body"]}
         for r in conn.execute(
-            "SELECT cm.handle, r.rating, r.body FROM reviews r JOIN chat_managers cm ON cm.id=r.manager_id "
+            "SELECT cm.handle, cm.real_name, cm.company, cm.avatar_url, r.rating, r.body "
+            "FROM reviews r JOIN chat_managers cm ON cm.id=r.manager_id "
             "WHERE r.site_id=? AND r.status='approved' ORDER BY r.resolved_at DESC LIMIT 4", (sid,))
     ] if sid else []
     return p

@@ -428,7 +428,16 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .sp-reviews{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow-sm);margin-top:16px}
 .sp-rev-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}
 .sp-rev-score{font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-0.02em}
-.sp-rev-item{padding:12px 0;border-top:1px solid var(--line);color:var(--ink-2);font-size:13.5px}
+.sp-rev-item{padding:14px 0;border-top:1px solid var(--line);color:var(--ink-2);font-size:13.5px}
+.rev-top{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.rev-av{width:34px;height:34px;border-radius:50%;flex:0 0 34px;object-fit:cover;vertical-align:middle}
+.rev-ini{display:inline-flex;align-items:center;justify-content:center;background:var(--blue-soft);color:var(--blue-hi);font-weight:700;font-size:12.5px;font-family:var(--f-mono)}
+.rev-who{min-width:0;flex:1}
+.rev-name{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-0.01em}
+.rev-vf{color:#0E9760;font-size:11px;font-weight:800}
+.rev-co{color:var(--ink-mute);font-weight:500}
+.rev-stars{font-size:12px;color:#E8A400;letter-spacing:1.5px;margin-top:1px}
+.rev-body{font-size:13.5px;color:var(--ink-2);line-height:1.5}
 @media(max-width:820px){.sp-stats{grid-template-columns:repeat(3,1fr)}.sp-main{grid-template-columns:1fr}.sp-top{grid-template-columns:1fr}.sp-shot-lg{width:100%}}
 
 /* ---- Listing row trend + market intelligence ---- */
@@ -1875,7 +1884,15 @@ function hydrateSite(domain){
     var mktRows=reg.map(function(g,idx){var w=Math.max(3,Math.round((g.etv||0)/maxr*100));var pct=p.etv?Math.round((g.etv||0)/p.etv*100):0;return '<div class="sp-mkt-row2'+(idx>=8?' sp-mkt-extra':'')+'"><span class="mq-flag">'+g.flag+'</span><div><div class="nm">'+h(g.name||g.iso)+(g.primary?' <span style="color:var(--blue);font-size:10.5px;font-weight:600">★ primary</span>':'')+'</div><div class="bar"><i style="width:'+w+'%"></i></div></div><span class="etv">'+fmt(g.etv||0)+' <span style="color:var(--ink-mute);font-weight:500">'+pct+'%</span></span></div>';}).join('');
     var moreMkts=mktCount>8?'<div class="sp-mkt-more" onclick="spToggleMarkets(this,'+mktCount+')">Show all '+mktCount+' markets ↓</div>':'';
     var revScore=p.review_count?Number(p.rating||0).toFixed(1):'—';
-    var revItems=(p.recent_reviews&&p.recent_reviews.length)?p.recent_reviews.slice(0,3).map(function(r){return '<div class="sp-rev-item">★ '+(r.rating||'')+' — '+h(r.body||r.text||'')+'</div>';}).join(''):'<div class="sp-rev-item" style="border-top:0;color:var(--ink-mute)">No reviews yet — be the first to review '+h(p.name||domain)+'.</div>';
+    var revItems=(p.recent_reviews&&p.recent_reviews.length)?p.recent_reviews.slice(0,3).map(function(r){
+      var nm=r.name||r.handle||'Verified member';
+      var ini=nm.split(' ').map(function(w){return w.charAt(0).toUpperCase();}).slice(0,2).join('');
+      var av=r.avatar
+        ? '<img class="rev-av" src="'+h(r.avatar)+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\'"><span class="rev-av rev-ini" style="display:none">'+h(ini)+'</span>'
+        : '<span class="rev-av rev-ini">'+h(ini)+'</span>';
+      var nrat=Math.round(r.rating||0);var st='';for(var i=0;i<5;i++)st+=(i<nrat?'★':'☆');
+      return '<div class="sp-rev-item"><div class="rev-top">'+av+'<div class="rev-who"><div class="rev-name">'+h(nm)+' <span class="rev-vf" title="Verified affiliate manager">✓</span>'+(r.company?'<span class="rev-co"> · '+h(r.company)+'</span>':'')+'</div><div class="rev-stars">'+st+'</div></div></div>'+(r.body?'<div class="rev-body">'+h(r.body)+'</div>':'')+'</div>';
+    }).join(''):'<div class="sp-rev-item" style="border-top:0;color:var(--ink-mute)">No reviews yet — be the first to review '+h(p.name||domain)+'.</div>';
     var shot='<img src="https://www.google.com/s2/favicons?domain='+encodeURIComponent(domain)+'&sz=128" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="letter" style="display:none">'+letter+'</div>';
     var hl=p.market_highlight;
     var hlHtml=hl?'<div class="sp-watch"><span class="sp-watch-emoji">👀</span><div><b>One to watch:</b> '+hl.flag+' '+h(hl.name)+' traffic is <b class="up">up '+(hl.pct>999?'999+':hl.pct)+'%</b> over the last '+hl.months+' months'+(hl.iso!==prim.iso?' — even though this site is primarily '+h(prim.name||prim.iso):'')+'.</div></div>':'';
