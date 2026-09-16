@@ -1207,6 +1207,16 @@ def _full_members_page(conn, flash: str = "") -> bytes:
     ]
     if flash:
         body.append(f"<div class='note'>{_esc(flash)}</div>")
+    from . import messaging
+    body.append(
+        f"<form class='card' method='post' action='/broadcast-message' style='max-width:none;margin-bottom:18px' "
+        f"onsubmit=\"return confirm('Send this announcement to all {len(verified)} verified members?')\">"
+        "<label style='margin-top:0'>📢 Broadcast to all members</label>"
+        "<input name='title' placeholder='Title — e.g. Norway is live 🇳🇴' style='width:100%;margin-bottom:8px'>"
+        "<textarea name='body' rows='3' required placeholder='Announcement…' style='width:100%'></textarea>"
+        f"<div style='margin-top:8px'><button type='submit'>Send to all {len(verified)} members</button></div>"
+        "<div class='hint'>Shows in everyone's My Account &rarr; Messages, with a &lsquo;new message&rsquo; "
+        "pop-up on their next login.</div></form>")
     if not verified:
         body.append("<div class='empty'><div class='big'>👥</div>No verified members yet.</div>")
         return _page("".join(body), title="Members")
@@ -1375,6 +1385,15 @@ def _member_detail_page(conn, mid: int, flash: str = "", temp_pw: str = "") -> b
         "<div class='hint'>Sets a new temporary password and shows it once so you can share it. "
         "LinkedIn sign-ins are unaffected.</div></form>"
         "</div>")
+
+    body.append(
+        f"<form class='card' method='post' action='/member-message?id={mid}' style='max-width:none;margin-top:16px'>"
+        "<label style='margin-top:0'>Send this member a message</label>"
+        "<input name='title' placeholder='Title — e.g. You asked, we delivered' style='width:100%;margin-bottom:8px'>"
+        "<textarea name='body' rows='3' required placeholder='Your message…' style='width:100%'></textarea>"
+        "<div style='margin-top:8px'><button type='submit'>Send message</button></div>"
+        "<div class='hint'>Lands in their My Account &rarr; <b>Messages</b>, and pops up &lsquo;you have 1 new "
+        "message&rsquo; next time they log in.</div></form>")
 
     body.append(
         "<div class='card' style='max-width:none;margin-top:16px'>"
@@ -1848,6 +1867,31 @@ class _Handler(BaseHTTPRequestHandler):
                 members.reject(conn, int(qs["id"][0]), by="backoffice")
                 self._send(b"", code=303,
                            headers={"Location": "/members?flash=" + urllib.parse.quote("Application rejected.")})
+                return
+            if parsed.path == "/member-message":              # operator: message ONE member
+                from . import messaging
+                mid = int(qs["id"][0])
+                title = (form.get("title", [""])[0] or "").strip()
+                mbody = (form.get("body", [""])[0] or "").strip()
+                if not mbody:
+                    msg = "Message not sent — write something first."
+                else:
+                    messaging.send(conn, mid, title, mbody, by="backoffice")
+                    msg = "Message sent — it's in their My Account inbox and pops up on next login."
+                self._send(b"", code=303,
+                           headers={"Location": f"/member?id={mid}&flash=" + urllib.parse.quote(msg)})
+                return
+            if parsed.path == "/broadcast-message":           # operator: message ALL members
+                from . import messaging
+                title = (form.get("title", [""])[0] or "").strip()
+                mbody = (form.get("body", [""])[0] or "").strip()
+                if not mbody:
+                    msg = "Broadcast not sent — write something first."
+                else:
+                    messaging.send(conn, None, title, mbody, by="backoffice")
+                    msg = f"Broadcast sent to all {messaging.recipient_count(conn)} members."
+                self._send(b"", code=303,
+                           headers={"Location": "/full-members?flash=" + urllib.parse.quote(msg)})
                 return
             if parsed.path == "/member-gift":                 # operator: gift swap credits
                 from . import swaps

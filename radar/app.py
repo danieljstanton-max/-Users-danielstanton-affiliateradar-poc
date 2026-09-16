@@ -17,7 +17,7 @@ import os
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import auth, config, reviews, stripe_client, swaps, views
+from . import auth, config, messaging, reviews, stripe_client, swaps, views
 from .db import connect, now_iso
 from .locations import flag, name
 
@@ -1572,7 +1572,14 @@ class _H(BaseHTTPRequestHandler):
                     "swaps": a.get("swaps"),
                     "unlimited": a.get("unlimited"),
                     "pending_matches": pending_matches,
+                    "unread_messages": (messaging.unread_count(conn, mid) if authed else 0),
                 })
+            elif u.path == "/api/messages":
+                if not authed:
+                    self._json({"messages": [], "unread": 0})
+                else:
+                    self._json({"messages": messaging.list_for(conn, mid),
+                                "unread": messaging.unread_count(conn, mid)})
             else:
                 self._json({"error": "not_found"}, 404)
         finally:
@@ -1681,6 +1688,13 @@ class _H(BaseHTTPRequestHandler):
                         self._json({"ok": True, **res})
                     except swaps.SwapError as e:
                         self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/messages/read":
+                # Mark a message read (or all, when no id) for the signed-in member.
+                if not authed:
+                    self._json({"ok": False}, 401)
+                else:
+                    messaging.mark_read(conn, mid, payload.get("id"))
+                    self._json({"ok": True, "unread": messaging.unread_count(conn, mid)})
             elif u.path == "/api/feedback":
                 # Member feedback / feature requests -> back office · Feedback tab.
                 if not authed:

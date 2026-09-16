@@ -1065,6 +1065,22 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 
 /* TOAST */
 #toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;font-size:14px;opacity:0;transition:opacity .2s ease,transform .2s ease;pointer-events:none;z-index:100}
+.msg-popup{position:fixed;right:20px;bottom:24px;z-index:120;display:flex;align-items:center;gap:12px;max-width:340px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;box-shadow:0 14px 40px rgba(16,42,90,0.18);transform:translateY(16px);opacity:0;transition:transform .22s ease,opacity .22s ease}
+.msg-popup.in{transform:translateY(0);opacity:1}
+.msg-popup .mp-ico{font-size:22px;flex:0 0 auto}
+.msg-popup .mp-txt{display:flex;flex-direction:column;min-width:0;flex:1}
+.msg-popup .mp-txt b{font-size:13.5px;color:var(--ink);letter-spacing:-0.01em}
+.msg-popup .mp-txt span{font-size:12px;color:var(--ink-mute)}
+.msg-popup .mp-view{flex:0 0 auto;background:var(--blue);color:#fff;border:0;border-radius:8px;padding:7px 12px;font-weight:700;font-size:12.5px;cursor:pointer}
+.msg-popup .mp-x{flex:0 0 auto;background:transparent;border:0;color:var(--ink-mute);font-size:18px;cursor:pointer;padding:0 2px;line-height:1}
+@media(max-width:640px){.msg-popup{right:12px;left:12px;bottom:78px;max-width:none}}
+.acct-msg{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--card)}
+.acct-msg.unread{border-color:var(--blue);background:var(--blue-softer)}
+.acct-msg .am-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.acct-msg .am-title{font-size:14.5px;font-weight:700;color:var(--ink);letter-spacing:-0.01em}
+.acct-msg .am-new{font-size:9.5px;font-weight:800;letter-spacing:.06em;color:#fff;background:var(--blue);border-radius:20px;padding:2px 7px}
+.acct-msg .am-date{margin-left:auto;font-size:11.5px;color:var(--ink-mute);font-family:var(--f-mono)}
+.acct-msg .am-body{font-size:13.5px;color:var(--ink-2);line-height:1.55;white-space:pre-wrap}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(-4px)}
 
 /* RESPONSIVE */
@@ -1413,7 +1429,7 @@ function updateNav(active){
     return '<a class="'+(n[0]===active?'on':'')+'" onclick="go(\'#/'+n[0]+'\')">'+h(n[1])+'</a>';
   }).join('');
   // mobile bottom tabs — map sub-routes to their family tab
-  var famAcct=['account','matches','swaps','loyalty','lists','alerts'];
+  var famAcct=['account','messages','matches','swaps','loyalty','lists','alerts'];
   var famPay=['payments','billing','plans'];
   var tabs=document.querySelectorAll('#mtabs a');
   for(var i=0;i<tabs.length;i++){
@@ -1424,9 +1440,23 @@ function updateNav(active){
 }
 
 var ME=null;
+var MSG_POPUP_SHOWN=false;
+function showMsgPopup(n){
+  if(MSG_POPUP_SHOWN||!n) return; MSG_POPUP_SHOWN=true;
+  var d=document.createElement('div'); d.className='msg-popup';
+  d.innerHTML='<span class="mp-ico">📬</span><div class="mp-txt"><b>You have '+n+' new message'+(n===1?'':'s')+'</b><span>Read '+(n===1?'it':'them')+' in My Account</span></div>'+
+    '<button class="mp-view">View</button><button class="mp-x" aria-label="Dismiss">×</button>';
+  document.body.appendChild(d);
+  requestAnimationFrame(function(){d.classList.add('in');});
+  var open=function(){ window.ACCT_TAB='messages'; window._ACCT_TAB_REDIRECT=true; go('#/account'); d.remove(); };
+  d.querySelector('.mp-view').onclick=open;
+  d.querySelector('.mp-x').onclick=function(e){ e.stopPropagation(); d.classList.remove('in'); setTimeout(function(){d.remove();},200); };
+  setTimeout(function(){ if(d.parentNode){d.classList.remove('in');setTimeout(function(){d.remove();},200);} }, 14000);
+}
 function updateMeChip(){
   return apiGet('/api/me').then(function(m){
     ME=m;
+    if(m.authed && (+m.unread_messages||0)>0) showMsgPopup(+m.unread_messages);
     var el=document.getElementById('swaps-count');
     if(el) el.textContent = m.unlimited ? '∞' : (m.swaps==null?'—':m.swaps);
     // Refresh avatar in the nav — real photo if we have one, initials otherwise.
@@ -2269,13 +2299,41 @@ function hydrateSwaps(){
 window.ACCT_TAB = window.ACCT_TAB || 'profile';
 function switchAcctTab(t, el){
   window.ACCT_TAB = t;
-  ['profile','matches','swaps','loyalty','lists'].forEach(function(k){
+  ['profile','messages','matches','swaps','loyalty','lists'].forEach(function(k){
     var pane=document.getElementById('acct-pane-'+k);
     if(pane) pane.hidden = (k!==t);
   });
   document.querySelectorAll('.acct-tab').forEach(function(b){b.classList.remove('on');});
   if(el && el.classList) el.classList.add('on');
+  if(t==='messages') loadMessages();
   try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}
+}
+// Inbox: load the member's messages, render them, and mark everything read.
+function loadMessages(){
+  var box=document.getElementById('acct-msg-list'); if(!box) return;
+  apiGet('/api/messages').then(function(j){
+    var msgs=(j&&j.messages)||[];
+    if(!msgs.length){
+      box.innerHTML='<div style="padding:32px 8px;text-align:center;color:var(--ink-mute);font-size:13.5px">No messages yet — updates from the Affswap team will show up here.</div>';
+      return;
+    }
+    box.innerHTML=msgs.map(function(m){
+      var when=m.at?new Date(m.at).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'';
+      return '<div class="acct-msg'+(m.read?'':' unread')+'"><div class="am-top">'+
+        (m.read?'':'<span class="am-new">NEW</span>')+
+        '<span class="am-title">'+h(m.title||'')+'</span>'+
+        '<span class="am-date">'+h(when)+'</span></div>'+
+        '<div class="am-body">'+h(m.body||'')+'</div></div>';
+    }).join('');
+    // mark all read once viewed — clears the badge + tab dot
+    if(j.unread>0){
+      apiPost('/api/messages/read',{}).then(function(){
+        if(typeof ME!=='undefined'&&ME) ME.unread_messages=0;
+        var badge=document.querySelector('.acct-tab.on .tab-badge'); if(badge) badge.remove();
+        var dot=document.querySelector('.acct-tab.on .tab-dot'); if(dot) dot.remove();
+      });
+    }
+  }).catch(function(){ box.innerHTML='<div style="padding:24px;text-align:center;color:var(--ink-mute)">Couldn\'t load messages.</div>'; });
 }
 
 function removeFromList(domain, kind, btn){
@@ -2538,6 +2596,7 @@ function _hydrateAccountFull(meArg){
     var initials = (a.handle||'You').split(' ').map(function(w){return w.charAt(0).toUpperCase();}).slice(0,2).join('');
     var pendingMatches = matches.filter(function(m){return m.status!=='completed' && !m.you_agreed;}).length;
     var openMatches = matches.filter(function(m){return m.status!=='completed';}).length;
+    var unreadMsgs = (typeof ME!=='undefined' && ME && +ME.unread_messages) || 0;
     var initialTab = window.ACCT_TAB || 'profile';
     document.getElementById('v-account').innerHTML =
       '<div class="loy-hero"><h1>My Account</h1><p class="sub">Profile, matches, swaps, loyalty and your Want/Have lists.</p></div>'+
@@ -2545,6 +2604,7 @@ function _hydrateAccountFull(meArg){
       /* Tab bar */
       '<div class="acct-tabs" role="tablist">'+
         '<button class="acct-tab'+(initialTab==='profile'?' on':'')+'" onclick="switchAcctTab(\'profile\',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M2 14 C 2 11, 5 10, 8 10 C 11 10, 14 11, 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Profile</button>'+
+        '<button class="acct-tab'+(initialTab==='messages'?' on':'')+'" onclick="switchAcctTab(\'messages\',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2.5 4 H13.5 V12 H2.5 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M2.8 4.5 L8 8.5 L13.2 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Messages'+(unreadMsgs?'<span class="tab-dot" title="'+unreadMsgs+' unread"></span><span class="tab-badge">'+unreadMsgs+'</span>':'')+'</button>'+
         '<button class="acct-tab'+(initialTab==='matches'?' on':'')+'" onclick="switchAcctTab(\'matches\',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="7" r="2.4" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="7.6" r="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 14 C 7 12, 8.5 11.2, 10.5 11.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Matches'+(pendingMatches?'<span class="tab-dot" title="'+pendingMatches+' match'+(pendingMatches===1?'':'es')+' need your action"></span><span class="tab-badge">'+pendingMatches+'</span>':(openMatches?'<span class="tab-badge" style="background:var(--ink-mute);color:#fff">'+openMatches+'</span>':''))+'</button>'+
         '<button class="acct-tab'+(initialTab==='swaps'?' on':'')+'" onclick="switchAcctTab(\'swaps\',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 5 L11 5 L9 3 M14 11 L2 11 L4 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>My Swaps</button>'+
         '<button class="acct-tab'+(initialTab==='loyalty'?' on':'')+'" onclick="switchAcctTab(\'loyalty\',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2 L10 6 L14 6.5 L11 9.5 L11.7 13.5 L8 11.5 L4.3 13.5 L5 9.5 L2 6.5 L6 6 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Loyalty</button>'+
@@ -2658,6 +2718,16 @@ function _hydrateAccountFull(meArg){
       /* Sign out lives at the very bottom of Profile */
       (me.authed ? '<div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn btn-gho" style="color:var(--warn);border-color:rgba(229,72,77,0.28)" onclick="authAction()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:6px;vertical-align:-2px"><path d="M9 3 L11 3 L11 11 L9 11 M8 7 L2 7 M4 5 L2 7 L4 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Sign out</button></div>' : '')+
       '</div>'+ /* end pane-profile */
+
+      /* ============================================================ */
+      /* PANE: Messages (inbox — operator announcements & replies)    */
+      /* ============================================================ */
+      '<div id="acct-pane-messages" class="acct-pane"'+(initialTab==='messages'?'':' hidden')+'>'+
+        '<div class="acct-card">'+
+          '<div class="acct-card-head"><span class="ico-hero" style="background:#EAF2FF;color:var(--blue)"><svg viewBox="0 0 20 20" fill="none"><path d="M3 5 H17 V15 H3 Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.4 5.5 L10 11 L16.6 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h2>Messages</h2><p>Updates and replies from the Affswap team.</p></div></div>'+
+          '<div id="acct-msg-list"><div style="padding:24px 0;text-align:center;color:var(--ink-mute)">Loading…</div></div>'+
+        '</div>'+
+      '</div>'+
 
       /* ============================================================ */
       /* PANE: Matches                                                */
@@ -2813,6 +2883,7 @@ function _hydrateAccountFull(meArg){
     ACC_SEL = (a.markets==null) ? ['gb','us','de']
                                 : a.markets.map(function(x){return String(x).toLowerCase();});
     renderAcctMk();
+    if(initialTab==='messages') loadMessages();
     // Wire alerts
     document.getElementById('acct-alerts').innerHTML = ACC_ALERTS.map(function(al,i){
       return '<div class="altrow"><span class="switch'+(al.on?' on':'')+'" onclick="ACC_ALERTS['+i+'].on=!ACC_ALERTS['+i+'].on;this.classList.toggle(\'on\')"></span><div class="at"><b>'+h(al.t)+'</b><span>'+h(al.d)+'</span></div></div>';
