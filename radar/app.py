@@ -1345,12 +1345,21 @@ def api_geo(conn, iso, vertical, mid):
 
 
 def api_site(conn, domain, mid):
+    from . import regulation
     p = views.site_profile(conn, domain, published_only=False)
     if not p:
         return None
     p["screenshot"] = _shot_url(p.get("screenshot"), p.get("domain"))
     sid = conn.execute("SELECT id FROM sites WHERE domain=?", (domain,)).fetchone()
     sid = sid["id"] if sid else None
+    if sid:
+        row = conn.execute(
+            "SELECT COALESCE(regulation_status,'unknown') AS s "
+            "FROM sites WHERE id=?", (sid,)).fetchone()
+        p["regulation_status"] = row["s"]
+        p["regulation_tally"] = regulation.tally(conn, sid)
+        p["you_regulation_vote"] = regulation.my_vote(conn, sid, mid)
+        p["licences"] = regulation.licences_for(conn, sid)
     p["you_reviewed"] = bool(sid and conn.execute(
         "SELECT 1 FROM reviews WHERE manager_id=? AND site_id=? AND status IN ('pending','approved')",
         (mid, sid)).fetchone())
@@ -1623,6 +1632,30 @@ class _H(BaseHTTPRequestHandler):
                     self._json({"ok": True, **res})
                 except reviews.ReviewError as e:
                     self._json({"ok": False, "error": str(e)}, 400)
+            elif u.path == "/api/site/vote-regulation":
+                # Community verification of a site's regulation status.
+                # Signed-in members only, to keep vote quality high.
+                if not authed:
+                    self._json({"ok": False, "error": "not_authenticated"}, 401)
+                else:
+                    from . import regulation
+                    try:
+                        dom = (payload.get("domain") or "").strip().lower()
+                        vote = (payload.get("vote") or "").strip().lower()
+                        srow = conn.execute(
+                            "SELECT id FROM sites WHERE domain=?", (dom,)).fetchone()
+                        if not srow:
+                            self._json({"ok": False, "error": "site_not_found"}, 404)
+                        elif vote == "skip":
+                            result = regulation.clear_vote(conn, srow["id"], mid)
+                            self._json({"ok": True, "tally": result,
+                                        "you_voted": None})
+                        else:
+                            result = regulation.cast_vote(conn, srow["id"], mid, vote)
+                            self._json({"ok": True, "tally": result,
+                                        "you_voted": vote})
+                    except Exception as e:
+                        self._json({"ok": False, "error": str(e)}, 400)
             elif u.path in ("/api/want", "/api/have"):
                 try:
                     fn = swaps.register_want if u.path == "/api/want" else swaps.register_have

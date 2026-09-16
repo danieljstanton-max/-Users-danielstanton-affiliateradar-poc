@@ -303,6 +303,13 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .mkd-pill.on{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:var(--glow-blue)}
 .mkd-pill.on .n{color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.16)}
 .mkd-pill .n{font-family:var(--f-mono);font-size:11.5px;font-weight:600;padding:2px 8px;background:var(--blue-softer);color:var(--blue);border-radius:999px}
+.mkd-pills-reg{margin-top:0}
+.reg-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 8px}
+.mkd-pill.on .reg-dot{box-shadow:0 0 0 2px rgba(255,255,255,0.35)}
+.dot-reg{background:#0E9760}
+.dot-unreg{background:#E5484D}
+.dot-disp{background:#B45309}
+.dot-unk{background:#6B7480}
 
 /* List / grid view toggle */
 .mkd-viewtog{display:inline-flex;padding:3px;background:var(--card);border:1px solid var(--line);border-radius:10px;margin-left:auto}
@@ -373,6 +380,44 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .sp-back:hover{color:var(--blue)}
 .sp-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:32px;align-items:start}
 .sp-hero{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow-sm)}
+
+/* ============ Regulation status ============ */
+.reg-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border-radius:999px;font-size:11.5px;font-weight:600;letter-spacing:0.01em;line-height:1;white-space:nowrap;border:1px solid transparent}
+.reg-badge-ico{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:9px;font-weight:800;color:#fff}
+.reg-regulated{background:rgba(14,151,96,0.10);color:#0E7A50;border-color:rgba(14,151,96,0.25)}
+.reg-regulated .reg-badge-ico{background:#0E9760}
+.reg-unlicensed{background:rgba(229,72,77,0.10);color:#B33338;border-color:rgba(229,72,77,0.25)}
+.reg-unlicensed .reg-badge-ico{background:#E5484D}
+.reg-soft{background:rgba(180,83,9,0.10);color:#8A4009;border-color:rgba(180,83,9,0.25)}
+.reg-soft .reg-badge-ico{background:#B45309}
+.reg-disputed{background:rgba(180,83,9,0.08);color:#8A4009;border-color:rgba(180,83,9,0.20)}
+.reg-disputed .reg-badge-ico{background:#B45309}
+.reg-unknown{background:var(--ground);color:var(--ink-mute);border-color:var(--line)}
+.reg-unknown .reg-badge-ico{background:var(--ink-mute)}
+
+/* Icon-only shield for dense lists — never inherits the parent's
+   font weight (b tags upstream would otherwise stretch it). */
+.reg-mini{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:9px;font-weight:800;color:#fff;margin-left:6px;vertical-align:middle;font-family:var(--f-body);line-height:1;flex:0 0 16px}
+.reg-mini.reg-regulated{background:#0E9760}
+.reg-mini.reg-unlicensed{background:#E5484D}
+.reg-mini.reg-soft,.reg-mini.reg-disputed{background:#B45309}
+.reg-mini.reg-unknown{background:var(--ink-mute)}
+
+/* Community-vote card that sits under the CTA row on the site profile */
+.reg-vote{margin-top:14px;padding:16px 18px;background:linear-gradient(180deg,#FAFCFF 0%,#FFFFFF 60%);border:1px solid var(--line);border-radius:12px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
+.reg-vote-body b{display:block;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-0.005em;margin-bottom:3px}
+.reg-vote-body span{color:var(--ink-mute);font-size:12.5px;line-height:1.5}
+.reg-vote-btns{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.reg-vote-btn{padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;transition:all .14s ease}
+.reg-vote-btn.up:hover,.reg-vote-btn.up.on{background:rgba(14,151,96,0.14);color:#0E7A50;border-color:rgba(14,151,96,0.32)}
+.reg-vote-btn.down:hover,.reg-vote-btn.down.on{background:rgba(229,72,77,0.12);color:#B33338;border-color:rgba(229,72,77,0.30)}
+.reg-vote-btn.skip{color:var(--ink-mute);background:transparent}
+.reg-vote-btn.skip:hover{color:var(--ink);background:var(--ground)}
+@media (max-width:640px){
+  .reg-vote{grid-template-columns:1fr;gap:12px}
+  .reg-vote-btns{justify-content:stretch}
+  .reg-vote-btn{flex:1;text-align:center}
+}
 .sp-shot{background:linear-gradient(180deg,#F8FAFD,#EEF2F8);border-radius:10px;padding:12px;min-height:180px;display:flex;align-items:center;justify-content:center}
 .sp-shot .letter{width:80px;height:80px;border-radius:16px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:800}
 .sp-name{font-size:32px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);line-height:1.05;margin-top:16px}
@@ -1689,14 +1734,16 @@ function renderMarket(iso){
 }
 
 function hydrateMarket(iso){
-  MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
+  MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.reg='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
   apiGet('/api/geo?iso='+encodeURIComponent(iso)).then(function(d){
     MKD_STATE.rows = (d.cards||[]).map(function(c){
-      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:(c.market_trend_pct!=null?c.market_trend_pct:c.trend_pct),spark:((c.market_spark&&c.market_spark.length>1)?c.market_spark:c.spark)||[],landing:c.landing_url};
+      return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:(c.market_trend_pct!=null?c.market_trend_pct:c.trend_pct),spark:((c.market_spark&&c.market_spark.length>1)?c.market_spark:c.spark)||[],landing:c.landing_url,reg:c.regulation_status||'unknown'};
     });
     var country = d.country||{iso:iso,name:iso,flag:''};
     var totalEtv = MKD_STATE.rows.reduce(function(s,r){return s+r.etv;},0);
     var cats={casino:0,sportsbook:0,bingo:0,poker:0};
+    var regCounts={regulated:0,unlicensed:0,soft:0,disputed:0,unknown:0};
+    MKD_STATE.rows.forEach(function(r){var k=r.reg||'unknown';if(regCounts[k]!=null)regCounts[k]++;});
     MKD_STATE.rows.forEach(function(r){r.verts.forEach(function(v){var k=v.toLowerCase();if(cats[k]!=null)cats[k]++;});});
     var avgAuth = MKD_STATE.rows.length ? Math.round(MKD_STATE.rows.reduce(function(s,r){return s+r.authority;},0)/MKD_STATE.rows.length) : 0;
     var topVert = Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];})[0];
@@ -1767,6 +1814,15 @@ function hydrateMarket(iso){
         '<button class="mkd-pill" data-c="Poker">Poker <span class="n">'+cats.poker+'</span></button>'+
       '</div>'+
 
+      /* Regulation pills */
+      '<div class="mkd-pills mkd-pills-reg" id="mkd-pills-reg">'+
+        '<button class="mkd-pill on" data-r="all">All licences <span class="n">'+d.count+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="regulated"><span class="reg-dot dot-reg"></span>Regulated <span class="n">'+regCounts.regulated+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="unlicensed"><span class="reg-dot dot-unreg"></span>Unregulated <span class="n">'+regCounts.unlicensed+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="disputed"><span class="reg-dot dot-disp"></span>Disputed <span class="n">'+regCounts.disputed+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="unknown"><span class="reg-dot dot-unk"></span>Unverified <span class="n">'+regCounts.unknown+'</span></button>'+
+      '</div>'+
+
       /* Site rows — table (list) or cards (grid), swapped by view toggle */
       '<div id="mkd-list-wrap" class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th class="th-sort" id="mkd-th-traffic" onclick="mkdSortTraffic()" title="Click to flip — highest / lowest traffic">Monthly traffic <span class="th-arr" id="mkd-tarr">▼</span></th><th>Authority</th><th>Trend</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
       '<div id="mkd-grid-wrap" class="mkd-cards" hidden></div>'+
@@ -1780,6 +1836,7 @@ function hydrateMarket(iso){
     drawMarketChart(d.history);
     // Wire pills
     document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(x){x.classList.remove('on');});b.classList.add('on');MKD_STATE.cat=b.dataset.c;renderMkdRows();});});
+    document.querySelectorAll('#mkd-pills-reg .mkd-pill').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#mkd-pills-reg .mkd-pill').forEach(function(x){x.classList.remove('on');});b.classList.add('on');MKD_STATE.reg=b.dataset.r||'all';renderMkdRows();});});
     // Wire search + sort
     document.getElementById('mkd-search').addEventListener('input',function(e){MKD_STATE.q=e.target.value.toLowerCase().trim();renderMkdRows();});
     document.getElementById('mkd-sort').addEventListener('change',function(e){MKD_STATE.sort=e.target.value;renderMkdRows();});
@@ -1834,6 +1891,89 @@ function setMkdView(v){
    The img loads a real favicon via Google's public service; when it
    fails (site has no favicon or the request is blocked), the wrapper
    flips to .is-fallback and the coloured monogram tile takes over. */
+/* ============ Regulation badges + community voting ============ */
+var REG_LABEL = {regulated:'Regulated',unlicensed:'Unregulated',soft:'Soft',disputed:'Disputed',unknown:'Unverified'};
+var REG_ICON  = {regulated:'✓',unlicensed:'⚠',soft:'○',disputed:'?',unknown:'○'};
+
+function regBadgeHtml(status, tally){
+  /* Full text pill — use on the site profile hero where there's room. */
+  var s = status||'unknown';
+  if(s==='unknown') return '';
+  var count = tally && tally.total ? tally.total : 0;
+  var titl  = s==='regulated'||s==='unlicensed'
+    ? (count+' member'+(count===1?'':'s')+' voted')
+    : (s==='disputed' ? 'Members disagree — vote to help settle' : '');
+  return '<span class="reg-badge reg-'+s+'" title="'+h(titl)+'">'+
+           '<span class="reg-badge-ico">'+REG_ICON[s]+'</span>'+h(REG_LABEL[s])+
+         '</span>';
+}
+
+function regBadgeMini(status){
+  /* Icon-only shield — use in dense lists. Hover shows the label. */
+  var s = status||'unknown';
+  if(s==='unknown') return '';
+  return '<span class="reg-mini reg-'+s+'" title="'+h(REG_LABEL[s])+'">'+
+           REG_ICON[s]+
+         '</span>';
+}
+
+function regVoteCardHtml(domain, status, tally, youVoted){
+  tally = tally || {up:0,down:0,total:0};
+  var confirmed = (status==='regulated'||status==='unlicensed');
+  var isDisputed = status==='disputed';
+  var head = confirmed
+    ? ('<b>'+REG_ICON[status]+' Confirmed '+REG_LABEL[status].toLowerCase()+'</b>'
+       +'<span>Marked by '+tally.total+' member'+(tally.total===1?'':'s')+
+       ' — you can still cast your vote.</span>')
+    : isDisputed
+      ? ('<b>⚠ Members disagree on this site</b>'
+         +'<span>'+tally.up+' say regulated, '+tally.down+' say unregulated. Your vote helps settle it.</span>')
+      : ('<b>Do you know this site?</b>'
+         +'<span>Tell the network — one vote is enough to mark it, and more votes settle it if members disagree.</span>');
+  var voted = youVoted || null;
+  return '<div class="reg-vote">'+
+    '<div class="reg-vote-body">'+head+'</div>'+
+    '<div class="reg-vote-btns">'+
+      '<button class="reg-vote-btn up'+(voted==='regulated'?' on':'')+
+        '" onclick="voteRegulation(\''+domain+'\',\'regulated\',this)">👍 Regulated</button>'+
+      '<button class="reg-vote-btn down'+(voted==='unregulated'?' on':'')+
+        '" onclick="voteRegulation(\''+domain+'\',\'unregulated\',this)">👎 Unregulated</button>'+
+      (voted?'<button class="reg-vote-btn skip" onclick="voteRegulation(\''+domain+'\',\'skip\',this)">Undo</button>':'')+
+    '</div>'+
+  '</div>';
+}
+
+function voteRegulation(domain, vote, btn){
+  var wrap = btn.closest('.reg-vote');
+  if(wrap) wrap.style.opacity = '.55';
+  apiPost('/api/site/vote-regulation',{domain:domain, vote:vote}).then(function(j){
+    if(!j || j.ok===false){
+      var msg = j && j.error==='not_authenticated'
+        ? 'Please sign in to vote'
+        : (j && j.error) || 'Vote failed';
+      toast(msg);
+      if(wrap) wrap.style.opacity = '1';
+      if(j && j.error==='not_authenticated') go('#/login');
+      return;
+    }
+    // Re-fetch the site so the badge + card update from ground truth.
+    if(typeof hydrateSite==='function' && window.location.hash.indexOf('/site/')>=0){
+      hydrateSite(domain);
+    } else {
+      if(wrap) wrap.style.opacity='1';
+    }
+    var messages = {
+      regulated:  '✓ Thanks — vote recorded',
+      unregulated:'⚠ Thanks — vote recorded',
+      skip:       'Vote cleared'
+    };
+    toast(messages[vote]||'Vote recorded');
+  }).catch(function(){
+    toast('Network error');
+    if(wrap) wrap.style.opacity='1';
+  });
+}
+
 function mkdFavHtml(r, color){
   var initial = ((r.name||r.domain||'?').charAt(0)||'?').toUpperCase();
   return '<span class="mkd-fav">'+
@@ -1851,6 +1991,7 @@ function mkdSortTraffic(){
 function renderMkdRows(){
   var rows=MKD_STATE.rows.slice();
   if(MKD_STATE.cat!=='all') rows=rows.filter(function(r){return r.verts.some(function(v){return v.toLowerCase()===MKD_STATE.cat.toLowerCase();});});
+  if(MKD_STATE.reg && MKD_STATE.reg!=='all') rows=rows.filter(function(r){return (r.reg||'unknown')===MKD_STATE.reg;});
   if(MKD_STATE.q) rows=rows.filter(function(r){return (r.name||'').toLowerCase().includes(MKD_STATE.q) || (r.domain||'').toLowerCase().includes(MKD_STATE.q);});
   if(MKD_STATE.sort==='traffic') rows.sort(function(a,b){return b.etv-a.etv;});
   else if(MKD_STATE.sort==='traffic_asc') rows.sort(function(a,b){return a.etv-b.etv;});
@@ -1879,7 +2020,7 @@ function renderMkdRows(){
       var verts=(r.verts||[]).slice(0,3).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
       var color=MKD_PALETTE[i%MKD_PALETTE.length];
       return '<tr class="mk-row-link" onclick="go(\'#/site/'+r.domain+'\')">'+
-        '<td><div class="mkd-site">'+mkdFavHtml(r,color)+'<div class="mkd-site-info"><b>'+h(r.name)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
+        '<td><div class="mkd-site">'+mkdFavHtml(r,color)+'<div class="mkd-site-info"><b>'+h(r.name)+regBadgeMini(r.reg)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
         '<td data-label="Monthly traffic"><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
         '<td data-label="Authority"><span class="mkd-auth">'+r.authority+'</span></td>'+
         '<td data-label="Trend"><div class="mkd-trend">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div></td>'+
@@ -1971,12 +2112,13 @@ function hydrateSite(domain){
       '<div class="sp-top">'+
         '<div class="sp-shot-lg">'+shot+'</div>'+
         '<div>'+
-          '<div class="sp-name-row"><span class="sp-name2">'+h(p.name||domain)+'</span>'+verts+'</div>'+
+          '<div class="sp-name-row"><span class="sp-name2">'+h(p.name||domain)+'</span>'+verts+regBadgeHtml(p.regulation_status,p.regulation_tally)+'</div>'+
           '<div class="sp-sub"><span class="mq-flag">'+prim.flag+'</span> Primarily '+h(prim.name||'—')+' · live in '+mktCount+' markets · <a class="sp-visit" href="https://'+encodeURI(domain)+'/" target="_blank" rel="noopener nofollow">'+h(domain)+' →</a></div>'+
           '<div class="sp-cta">'+
             '<button class="sp-btn want'+(p.you_want?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'want\',this)">'+(p.you_want?'✓ On your Want list':'I want this')+'</button>'+
             '<button class="sp-btn have'+(p.you_have?' on':'')+'" onclick="actSiteBig(\''+domain+'\',\'have\',this)">'+(p.you_have?'✓ On your Have list':'I have this')+'</button>'+
           '</div>'+
+          regVoteCardHtml(domain, p.regulation_status, p.regulation_tally, p.you_regulation_vote)+
         '</div>'+
       '</div>'+
       '<div class="sp-stats">'+stats+'</div>'+
