@@ -44,7 +44,7 @@ _NUM_TO_ISO = {num: iso for iso, num, _ in COUNTRIES}
 # Default language per market (real deployments store this per country/vertical).
 LANG = {
     "DE": "de", "AT": "de", "CH": "de", "FR": "fr", "ES": "es", "PT": "pt",
-    "IT": "it", "NL": "nl", "BE": "nl", "SE": "sv", "NO": "no", "FI": "fi",
+    "IT": "it", "NL": "nl", "BE": "nl", "SE": "sv", "NO": "nb", "FI": "fi",
     "DK": "da", "PL": "pl", "GR": "el", "RO": "ro", "CZ": "cs", "HU": "hu",
     "JP": "ja", "BR": "pt", "MX": "es", "AR": "es", "CL": "es", "CO": "es",
     "PE": "es", "TR": "tr", "UA": "uk", "ID": "id", "TH": "th",
