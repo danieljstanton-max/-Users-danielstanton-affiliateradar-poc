@@ -26,10 +26,11 @@ from .db import now_iso
 STATUSES = ("regulated", "soft", "unlicensed", "disputed", "unknown")
 
 # --- Community verification thresholds -------------------------------------
-# Minimum votes cast before a status can lock, and the minimum share of one
-# side needed to declare a winner. Anything short of that stays 'unknown'
-# (no votes) or 'disputed' (mixed).
-REG_VOTE_THRESHOLD = 3
+# One vote is enough to mark a site. If a second member disagrees the site
+# flips to 'disputed'; a third agreeing vote (2/3 majority) settles it.
+# Members trust each other by default — first to know sets the truth, and
+# the badge updates live as more members vote.
+REG_VOTE_THRESHOLD = 1
 REG_VOTE_MAJORITY  = 2 / 3
 
 # The tier-1 jurisdictions Affswap surfaces in v1. Order = display order.

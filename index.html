@@ -1879,21 +1879,18 @@ function regBadgeHtml(status, tally){
 }
 
 function regVoteCardHtml(domain, status, tally, youVoted){
-  tally = tally || {up:0,down:0,total:0,needed:3};
+  tally = tally || {up:0,down:0,total:0};
   var confirmed = (status==='regulated'||status==='unlicensed');
   var isDisputed = status==='disputed';
-  var need = tally.needed || 3;
-  var progress = Math.min(tally.total, need);
   var head = confirmed
     ? ('<b>'+REG_ICON[status]+' Confirmed '+REG_LABEL[status].toLowerCase()+'</b>'
-       +'<span>Verified by '+tally.total+' member'+(tally.total===1?'':'s')+
+       +'<span>Marked by '+tally.total+' member'+(tally.total===1?'':'s')+
        ' — you can still cast your vote.</span>')
     : isDisputed
       ? ('<b>⚠ Members disagree on this site</b>'
          +'<span>'+tally.up+' say regulated, '+tally.down+' say unregulated. Your vote helps settle it.</span>')
       : ('<b>Do you know this site?</b>'
-         +'<span>Tell the network if it\'s regulated. '+progress+' of '+need+
-         ' votes cast so far — we mark it once we have '+need+'.</span>');
+         +'<span>Tell the network — one vote is enough to mark it, and more votes settle it if members disagree.</span>');
   var voted = youVoted || null;
   return '<div class="reg-vote">'+
     '<div class="reg-vote-body">'+head+'</div>'+
