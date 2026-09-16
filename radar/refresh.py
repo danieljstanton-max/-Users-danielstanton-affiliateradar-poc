@@ -219,6 +219,63 @@ def refresh_one_site(conn: sqlite3.Connection, site_id: int,
     return {"domain": dom, "markets": len(by_country), "etv": total, "top": top}
 
 
+def refresh_market(conn: sqlite3.Connection, iso: str,
+                   client: DataForSEOClient | None = None, progress=None) -> dict:
+    """Fetch ONE market's live traffic for the whole approved catalogue in a few
+    bulk calls, and upsert each site's region for that market — so the market's
+    affiliates get their local traffic and the market becomes browsable. When this
+    market is bigger than a site's current headline, it also becomes the site's
+    headline traffic + primary market (fixes sites whose real home market had never
+    been fetched). Doesn't re-fetch other markets. No-op in MOCK mode."""
+    from .views import COUNTRY_MIN_ETV
+    client = client or DataForSEOClient()
+    if not getattr(client, "live", False):
+        return {"skipped": "not_live"}
+    iso = iso.upper()
+    code = code_for(iso)
+    if not code:
+        return {"skipped": "unknown_market"}
+    lang = language_for(iso) or "en"
+    rows = conn.execute("SELECT id, domain, etv FROM sites "
+                        "WHERE classification='affiliate'").fetchall()
+    by_dom = {r["domain"]: r for r in rows}
+    doms = list(by_dom)
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    listed = promoted = 0
+    for i in range(0, len(doms), 1000):
+        chunk = doms[i:i + 1000]
+        try:
+            etv_map = client.bulk_domain_traffic(chunk, code, lang)
+        except Exception:
+            etv_map = {}
+        for dom, val in etv_map.items():
+            v = round(val or 0, 1)
+            r = by_dom.get(dom)
+            if not r or v < COUNTRY_MIN_ETV:
+                continue
+            sid = r["id"]
+            conn.execute(
+                "INSERT INTO site_regions (site_id, country, etv, is_primary, updated_at) "
+                "VALUES (?,?,?,0,?) ON CONFLICT(site_id, country) DO UPDATE SET "
+                "etv=excluded.etv, updated_at=excluded.updated_at",
+                (sid, iso, v, now))
+            listed += 1
+            # this market is now the site's biggest -> make it the headline + primary
+            if v > (r["etv"] or 0):
+                ownership.apply_api_update(
+                    conn, sid,
+                    {"etv": v, "top_country": iso, "last_api_refresh": iso_week_for(LATEST_WEEK)},
+                    source="dataforseo:market")
+                conn.execute(
+                    "UPDATE site_regions SET is_primary=CASE WHEN country=? THEN 1 ELSE 0 END "
+                    "WHERE site_id=?", (iso, sid))
+                promoted += 1
+        if progress:
+            progress(min(i + 1000, len(doms)), len(doms))
+    conn.commit()
+    return {"market": iso, "checked": len(doms), "listed": listed, "promoted": promoted}
+
+
 def build_history_one_site(conn: sqlite3.Connection, site_id: int, months: int = 12,
                            client: DataForSEOClient | None = None) -> dict:
     """Backfill ONE site's 12-month MONTHLY traffic history right after it's

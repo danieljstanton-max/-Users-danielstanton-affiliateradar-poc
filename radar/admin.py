@@ -510,6 +510,19 @@ def _list_page(conn, flash: str = "") -> bytes:
         "<button class='btn secondary' type='submit'>↻ Refresh traffic now</button>"
         "<span class='hint' style='margin-left:11px'>Re-pulls DataForSEO for every site and re-tags "
         "the markets it draws traffic from. Runs automatically once a week.</span></form>")
+    # Bring ONE market live — pulls just that country's traffic for the whole
+    # catalogue (fast), so a new market like Norway starts listing its affiliates.
+    from .locations import all_isos, name as _cname, flag as _cflag
+    _isos = sorted(all_isos(), key=lambda i: _cname(i) or i)
+    _mkopts = "".join(f"<option value='{i}'>{_cflag(i)} {_esc(_cname(i) or i)}</option>" for i in _isos)
+    body.append(
+        "<form method='post' action='/market-refresh' style='margin:0 0 16px;display:flex;"
+        "gap:8px;align-items:center;flex-wrap:wrap'>"
+        "<select name='iso' style='padding:8px 10px;border:1px solid var(--line);border-radius:8px;"
+        "font-size:13px'>" + _mkopts + "</select>"
+        "<button class='btn secondary' type='submit'>↻ Refresh this market</button>"
+        "<span class='hint'>Pulls one market's live traffic for the whole catalogue so a new market "
+        "(e.g. Norway) goes live. Much faster than a full refresh.</span></form>")
     body.append(
         "<form method='post' action='/sheets-sync' style='margin:0 0 16px'>"
         "<button class='btn secondary' type='submit'>⤓ Sync to Google Sheet</button>"
@@ -1934,6 +1947,22 @@ class _Handler(BaseHTTPRequestHandler):
                 r = refresh_all(conn, week_index=LATEST_WEEK)
                 msg = (f"Refreshed {r['updated']} sites from DataForSEO — traffic, trend and market "
                        f"tags updated ({r['iso_week']}).")
+                self._send(b"", code=303,
+                           headers={"Location": "/sites?flash=" + urllib.parse.quote(msg)})
+                return
+            if parsed.path == "/market-refresh":              # bring ONE market live
+                from .refresh import refresh_market
+                from .locations import name as _cname
+                iso = (form.get("iso", [""])[0] or "").upper()
+                r = refresh_market(conn, iso)
+                if r.get("skipped") == "not_live":
+                    msg = "Can't refresh in MOCK mode — set DataForSEO creds on the server."
+                elif r.get("skipped"):
+                    msg = f"Couldn't refresh {iso}: {r['skipped']}."
+                else:
+                    mk = _cname(r["market"]) or r["market"]
+                    msg = (f"{mk}: {r['listed']} sites now have {mk} traffic "
+                           f"({r['promoted']} promoted to it as their home market). The market is live.")
                 self._send(b"", code=303,
                            headers={"Location": "/sites?flash=" + urllib.parse.quote(msg)})
                 return
