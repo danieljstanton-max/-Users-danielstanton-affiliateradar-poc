@@ -303,6 +303,13 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .mkd-pill.on{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:var(--glow-blue)}
 .mkd-pill.on .n{color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.16)}
 .mkd-pill .n{font-family:var(--f-mono);font-size:11.5px;font-weight:600;padding:2px 8px;background:var(--blue-softer);color:var(--blue);border-radius:999px}
+.mkd-pills-reg{margin-top:0}
+.reg-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 8px}
+.mkd-pill.on .reg-dot{box-shadow:0 0 0 2px rgba(255,255,255,0.35)}
+.dot-reg{background:#0E9760}
+.dot-unreg{background:#E5484D}
+.dot-disp{background:#B45309}
+.dot-unk{background:#6B7480}
 
 /* List / grid view toggle */
 .mkd-viewtog{display:inline-flex;padding:3px;background:var(--card);border:1px solid var(--line);border-radius:10px;margin-left:auto}
@@ -387,6 +394,14 @@ h1.mk-h{font-size:clamp(36px,4.2vw,54px);font-weight:700;line-height:1.02;letter
 .reg-disputed .reg-badge-ico{background:#B45309}
 .reg-unknown{background:var(--ground);color:var(--ink-mute);border-color:var(--line)}
 .reg-unknown .reg-badge-ico{background:var(--ink-mute)}
+
+/* Icon-only shield for dense lists — never inherits the parent's
+   font weight (b tags upstream would otherwise stretch it). */
+.reg-mini{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:9px;font-weight:800;color:#fff;margin-left:6px;vertical-align:middle;font-family:var(--f-body);line-height:1;flex:0 0 16px}
+.reg-mini.reg-regulated{background:#0E9760}
+.reg-mini.reg-unlicensed{background:#E5484D}
+.reg-mini.reg-soft,.reg-mini.reg-disputed{background:#B45309}
+.reg-mini.reg-unknown{background:var(--ink-mute)}
 
 /* Community-vote card that sits under the CTA row on the site profile */
 .reg-vote{margin-top:14px;padding:16px 18px;background:linear-gradient(180deg,#FAFCFF 0%,#FFFFFF 60%);border:1px solid var(--line);border-radius:12px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
@@ -1717,7 +1732,7 @@ function renderMarket(iso){
 }
 
 function hydrateMarket(iso){
-  MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
+  MKD_STATE.iso=iso; MKD_STATE.cat='all'; MKD_STATE.reg='all'; MKD_STATE.q=''; MKD_STATE.sort='traffic';
   apiGet('/api/geo?iso='+encodeURIComponent(iso)).then(function(d){
     MKD_STATE.rows = (d.cards||[]).map(function(c){
       return {domain:c.domain,name:c.name||c.domain,etv:c.etv||0,verts:c.verticals||[],want:!!c.you_want,have:!!c.you_have,authority:c.etv>0?Math.round(Math.log10(c.etv+1)*10):0,tpct:(c.market_trend_pct!=null?c.market_trend_pct:c.trend_pct),spark:((c.market_spark&&c.market_spark.length>1)?c.market_spark:c.spark)||[],landing:c.landing_url,reg:c.regulation_status||'unknown'};
@@ -1725,6 +1740,8 @@ function hydrateMarket(iso){
     var country = d.country||{iso:iso,name:iso,flag:''};
     var totalEtv = MKD_STATE.rows.reduce(function(s,r){return s+r.etv;},0);
     var cats={casino:0,sportsbook:0,bingo:0,poker:0};
+    var regCounts={regulated:0,unlicensed:0,soft:0,disputed:0,unknown:0};
+    MKD_STATE.rows.forEach(function(r){var k=r.reg||'unknown';if(regCounts[k]!=null)regCounts[k]++;});
     MKD_STATE.rows.forEach(function(r){r.verts.forEach(function(v){var k=v.toLowerCase();if(cats[k]!=null)cats[k]++;});});
     var avgAuth = MKD_STATE.rows.length ? Math.round(MKD_STATE.rows.reduce(function(s,r){return s+r.authority;},0)/MKD_STATE.rows.length) : 0;
     var topVert = Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];})[0];
@@ -1795,6 +1812,15 @@ function hydrateMarket(iso){
         '<button class="mkd-pill" data-c="Poker">Poker <span class="n">'+cats.poker+'</span></button>'+
       '</div>'+
 
+      /* Regulation pills */
+      '<div class="mkd-pills mkd-pills-reg" id="mkd-pills-reg">'+
+        '<button class="mkd-pill on" data-r="all">All licences <span class="n">'+d.count+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="regulated"><span class="reg-dot dot-reg"></span>Regulated <span class="n">'+regCounts.regulated+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="unlicensed"><span class="reg-dot dot-unreg"></span>Unregulated <span class="n">'+regCounts.unlicensed+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="disputed"><span class="reg-dot dot-disp"></span>Disputed <span class="n">'+regCounts.disputed+'</span></button>'+
+        '<button class="mkd-pill mkd-pill-reg" data-r="unknown"><span class="reg-dot dot-unk"></span>Unverified <span class="n">'+regCounts.unknown+'</span></button>'+
+      '</div>'+
+
       /* Site rows — table (list) or cards (grid), swapped by view toggle */
       '<div id="mkd-list-wrap" class="mk-table-card"><table class="mk-table"><thead><tr><th>Site</th><th class="th-sort" id="mkd-th-traffic" onclick="mkdSortTraffic()" title="Click to flip — highest / lowest traffic">Monthly traffic <span class="th-arr" id="mkd-tarr">▼</span></th><th>Authority</th><th>Trend</th><th>Categories</th><th></th></tr></thead><tbody id="mkd-body"></tbody></table></div>'+
       '<div id="mkd-grid-wrap" class="mkd-cards" hidden></div>'+
@@ -1808,6 +1834,7 @@ function hydrateMarket(iso){
     drawMarketChart(d.history);
     // Wire pills
     document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#mkd-pills .mkd-pill').forEach(function(x){x.classList.remove('on');});b.classList.add('on');MKD_STATE.cat=b.dataset.c;renderMkdRows();});});
+    document.querySelectorAll('#mkd-pills-reg .mkd-pill').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#mkd-pills-reg .mkd-pill').forEach(function(x){x.classList.remove('on');});b.classList.add('on');MKD_STATE.reg=b.dataset.r||'all';renderMkdRows();});});
     // Wire search + sort
     document.getElementById('mkd-search').addEventListener('input',function(e){MKD_STATE.q=e.target.value.toLowerCase().trim();renderMkdRows();});
     document.getElementById('mkd-sort').addEventListener('change',function(e){MKD_STATE.sort=e.target.value;renderMkdRows();});
@@ -1867,14 +1894,24 @@ var REG_LABEL = {regulated:'Regulated',unlicensed:'Unregulated',soft:'Soft',disp
 var REG_ICON  = {regulated:'✓',unlicensed:'⚠',soft:'○',disputed:'?',unknown:'○'};
 
 function regBadgeHtml(status, tally){
+  /* Full text pill — use on the site profile hero where there's room. */
   var s = status||'unknown';
-  if(s==='unknown') return '';    // no badge until it's classified
+  if(s==='unknown') return '';
   var count = tally && tally.total ? tally.total : 0;
   var titl  = s==='regulated'||s==='unlicensed'
     ? (count+' member'+(count===1?'':'s')+' voted')
     : (s==='disputed' ? 'Members disagree — vote to help settle' : '');
   return '<span class="reg-badge reg-'+s+'" title="'+h(titl)+'">'+
            '<span class="reg-badge-ico">'+REG_ICON[s]+'</span>'+h(REG_LABEL[s])+
+         '</span>';
+}
+
+function regBadgeMini(status){
+  /* Icon-only shield — use in dense lists. Hover shows the label. */
+  var s = status||'unknown';
+  if(s==='unknown') return '';
+  return '<span class="reg-mini reg-'+s+'" title="'+h(REG_LABEL[s])+'">'+
+           REG_ICON[s]+
          '</span>';
 }
 
@@ -1952,6 +1989,7 @@ function mkdSortTraffic(){
 function renderMkdRows(){
   var rows=MKD_STATE.rows.slice();
   if(MKD_STATE.cat!=='all') rows=rows.filter(function(r){return r.verts.some(function(v){return v.toLowerCase()===MKD_STATE.cat.toLowerCase();});});
+  if(MKD_STATE.reg && MKD_STATE.reg!=='all') rows=rows.filter(function(r){return (r.reg||'unknown')===MKD_STATE.reg;});
   if(MKD_STATE.q) rows=rows.filter(function(r){return (r.name||'').toLowerCase().includes(MKD_STATE.q) || (r.domain||'').toLowerCase().includes(MKD_STATE.q);});
   if(MKD_STATE.sort==='traffic') rows.sort(function(a,b){return b.etv-a.etv;});
   else if(MKD_STATE.sort==='traffic_asc') rows.sort(function(a,b){return a.etv-b.etv;});
@@ -1980,7 +2018,7 @@ function renderMkdRows(){
       var verts=(r.verts||[]).slice(0,3).map(function(v){return '<span class="chip">'+h(v.charAt(0).toUpperCase()+v.slice(1))+'</span>'}).join('');
       var color=MKD_PALETTE[i%MKD_PALETTE.length];
       return '<tr class="mk-row-link" onclick="go(\'#/site/'+r.domain+'\')">'+
-        '<td><div class="mkd-site">'+mkdFavHtml(r,color)+'<div class="mkd-site-info"><b>'+h(r.name)+' '+regBadgeHtml(r.reg,null)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
+        '<td><div class="mkd-site">'+mkdFavHtml(r,color)+'<div class="mkd-site-info"><b>'+h(r.name)+regBadgeMini(r.reg)+'</b><span>'+h(r.domain)+'</span></div></div></td>'+
         '<td data-label="Monthly traffic"><div class="mkd-tf"><b>'+fmt(r.etv)+'</b><span class="mkd-bar"><i style="width:'+bar+'%"></i></span></div></td>'+
         '<td data-label="Authority"><span class="mkd-auth">'+r.authority+'</span></td>'+
         '<td data-label="Trend"><div class="mkd-trend">'+miniSpark(r.spark)+trendArrow(r.tpct)+'</div></td>'+
