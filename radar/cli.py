@@ -264,6 +264,17 @@ def cmd_grant_swap(args) -> None:
         conn.close()
 
 
+def cmd_classify_regulation(args) -> None:
+    """Bulk-classify sites' regulation status via heuristics."""
+    from . import regulation
+    conn = connect()
+    try:
+        summary = regulation.bulk_classify(conn, only_unknown=not args.all)
+        print("classify-regulation:", summary)
+    finally:
+        conn.close()
+
+
 def cmd_evaluate_alerts(args) -> None:
     """Fire the alerts engine once. Prints matches; when --dry-run isn't
     set, delivers via alerts.deliver() (email through Resend, others
@@ -947,6 +958,12 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--handle", help="alternative: member's display handle")
     q.add_argument("--count", type=int, default=1, help="number of swaps to grant")
     q.set_defaults(func=cmd_grant_swap)
+
+    q = sub.add_parser("classify-regulation",
+                       help="bulk-classify sites' regulation status via heuristics")
+    q.add_argument("--all", action="store_true",
+                   help="re-classify every site (default: only 'unknown')")
+    q.set_defaults(func=cmd_classify_regulation)
 
     q = sub.add_parser("evaluate-alerts",
                        help="run the alerts engine once and deliver any matching events")

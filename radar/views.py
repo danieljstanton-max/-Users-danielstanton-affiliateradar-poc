@@ -219,6 +219,7 @@ def country_list(conn: sqlite3.Connection, country: str,
     q = f"""
         SELECT DISTINCT s.id, s.domain, s.display_name, rg.etv AS region_etv, s.etv AS total_etv,
                s.top_country, s.trend_pct, s.trend_dir, s.classification, s.rank_best, s.published_at,
+               COALESCE(s.regulation_status, 'unknown') AS regulation_status,
                rv.rating AS rating, rv.review_count AS review_count,
                (SELECT COUNT(*) FROM site_contacts c WHERE c.site_id = s.id
                   AND (c.contact_email IS NOT NULL OR c.contact_telegram IS NOT NULL
@@ -268,6 +269,7 @@ def country_list(conn: sqlite3.Connection, country: str,
             "is_new": _is_recent(r["published_at"]),
             "has_contact": bool(r["has_contact"]),
             "best_rank": r["rank_best"],
+            "regulation_status": r["regulation_status"],
         })
     return {**header, "count": len(cards), "cards": cards}
 

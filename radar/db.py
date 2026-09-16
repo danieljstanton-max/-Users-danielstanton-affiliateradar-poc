@@ -85,6 +85,52 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             "CREATE INDEX idx_chat_room_id ON chat_messages(room, id DESC);"
             "CREATE INDEX idx_chat_mgr ON chat_messages(manager_id);")
         applied.append("chat_messages")
+    # sites.regulation_status — 'regulated' | 'soft' | 'unlicensed' | 'unknown'.
+    # Powers the trust badge on site cards and the "Regulated only" filter
+    # on Markets. Per-jurisdiction detail lives in site_licenses.
+    if not _column_exists(conn, "sites", "regulation_status"):
+        conn.execute("ALTER TABLE sites ADD COLUMN regulation_status TEXT "
+                     "NOT NULL DEFAULT 'unknown'")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sites_regulation "
+                     "ON sites(regulation_status)")
+        applied.append("sites.regulation_status")
+    # site_regulation_votes — community verification. One row per
+    # (site, member); the aggregate result flips sites.regulation_status
+    # once we have >= REG_VOTE_THRESHOLD votes with >= REG_VOTE_MAJORITY
+    # agreement. Members can change their vote later.
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                    "AND name='site_regulation_votes'").fetchone() is None:
+        conn.executescript(
+            "CREATE TABLE site_regulation_votes ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,"
+            " manager_id INTEGER NOT NULL REFERENCES chat_managers(id) ON DELETE CASCADE,"
+            " vote TEXT NOT NULL CHECK (vote IN ('regulated','unregulated')),"
+            " created_at TEXT NOT NULL,"
+            " updated_at TEXT NOT NULL,"
+            " UNIQUE(site_id, manager_id));"
+            "CREATE INDEX idx_reg_votes_site ON site_regulation_votes(site_id);"
+            "CREATE INDEX idx_reg_votes_mgr  ON site_regulation_votes(manager_id);")
+        applied.append("site_regulation_votes")
+    # site_licenses — one row per (site, jurisdiction) licence.
+    #   jurisdiction: ISO-2 (GB, MT, DE, ES, IT, DK, SE, NL, PT, FR, IE, RO,
+    #                 BR, ON, US-NJ, US-PA, US-MI...)
+    #   source: 'admin' (manual) | 'heuristic' (bulk classifier) | 'suggest'
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                    "AND name='site_licenses'").fetchone() is None:
+        conn.executescript(
+            "CREATE TABLE site_licenses ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,"
+            " jurisdiction TEXT NOT NULL,"
+            " license_number TEXT,"
+            " source TEXT NOT NULL DEFAULT 'admin',"
+            " verified_at TEXT,"
+            " created_at TEXT NOT NULL,"
+            " UNIQUE(site_id, jurisdiction));"
+            "CREATE INDEX idx_site_licenses_site ON site_licenses(site_id);"
+            "CREATE INDEX idx_site_licenses_jur  ON site_licenses(jurisdiction);")
+        applied.append("site_licenses")
     # chat_managers.email_manually_set — flipped to 1 when a member
     # verifies a manual email change from the Profile form. linkedin_land
     # respects this flag: once set, LinkedIn's OIDC email claim will not
