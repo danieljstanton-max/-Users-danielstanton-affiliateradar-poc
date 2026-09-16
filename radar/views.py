@@ -26,7 +26,9 @@ NEW_WINDOW_DAYS = 14
 # in NO country is hidden from the app — but stays fully visible in the back
 # office. refresh.py persists a market row for every country >= COUNTRY_MIN_ETV,
 # so this gate has the per-country data it needs.
-COUNTRY_MIN_ETV = 500
+# 300/mo (was 500): every listed site is already a human-APPROVED affiliate, so
+# a lower floor surfaces more known-good sites (fuller markets) rather than junk.
+COUNTRY_MIN_ETV = 300
 LARGE_SITE_ETV = 10_000
 LARGE_COUNTRY_MIN_ETV = 1_500
 
