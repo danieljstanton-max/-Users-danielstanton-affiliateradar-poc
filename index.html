@@ -2665,7 +2665,11 @@ function _hydrateAccountFull(meArg){
         '</div>'+
       '</div>'; /* end pane-lists */
 
-    // Wire markets chips + mirror
+    // Wire markets chips + mirror. Load the member's SAVED markets of interest;
+    // null means they've never saved, so we show a sensible first-run default.
+    // A saved list (even empty) is respected exactly, so removing all + saving sticks.
+    ACC_SEL = (a.markets==null) ? ['gb','us','de']
+                                : a.markets.map(function(x){return String(x).toLowerCase();});
     renderAcctMk();
     // Wire alerts
     document.getElementById('acct-alerts').innerHTML = ACC_ALERTS.map(function(al,i){
@@ -2768,7 +2772,8 @@ function saveProfile(btn){
     work_email:(document.getElementById('acct-email')||{}).value ? document.getElementById('acct-email').value.trim() : '',
     linkedin_url:document.getElementById('acct-linkedin').value.trim(),
     site_url:(document.getElementById('acct-site')||{}).value ? document.getElementById('acct-site').value.trim() : null,
-    sector:'casino'
+    sector:'casino',
+    markets: ACC_SEL.map(function(x){return String(x).toUpperCase();})
   };
   apiPost('/api/account',payload).then(function(j){
     if(j && j.ok===false){

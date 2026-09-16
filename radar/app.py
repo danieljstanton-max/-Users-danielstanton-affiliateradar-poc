@@ -179,12 +179,19 @@ def api_search(conn, q, limit: int = 20):
 def api_account(conn, mid):
     row = conn.execute(
         "SELECT handle, real_name, company, work_email, linkedin_url, avatar_url, "
-        "site_url, sector, status, linkedin_verified, created_at, last_login_at "
+        "site_url, sector, status, linkedin_verified, created_at, last_login_at, markets_json "
         "FROM chat_managers WHERE id=?", (mid,)
     ).fetchone()
     if not row:
         return None
-    return {k: row[k] for k in row.keys()}
+    out = {k: row[k] for k in row.keys() if k != "markets_json"}
+    # null == never saved (client shows a first-run default); a list (even empty)
+    # == the member's saved selection, which must be respected exactly.
+    try:
+        out["markets"] = json.loads(row["markets_json"]) if row["markets_json"] else None
+    except (ValueError, TypeError):
+        out["markets"] = None
+    return out
 
 
 def _normalize_linkedin_url(raw: str | None) -> str | None:
@@ -261,6 +268,20 @@ def api_account_update(conn, mid, payload, public_base: str = ""):
         (*editable.values(), mid))
     conn.commit()
 
+    # Markets of interest — a list of ISO codes from the profile chip box.
+    # Only touch the column when the client sends the field, so a partial save
+    # never wipes the selection. Normalise to unique 2-letter uppercase codes.
+    if "markets" in payload:
+        raw = payload.get("markets")
+        seen: list = []
+        for x in (raw if isinstance(raw, list) else []):
+            iso = str(x or "").strip().upper()
+            if len(iso) == 2 and iso.isalpha() and iso not in seen:
+                seen.append(iso)
+        conn.execute("UPDATE chat_managers SET markets_json=? WHERE id=?",
+                     (json.dumps(seen), mid))
+        conn.commit()
+
     pending_email = None
     email_error = None
     if email_in:
@@ -285,10 +306,17 @@ def api_account_update(conn, mid, payload, public_base: str = ""):
                     email_error = "email_send_failed"
 
     row = conn.execute(
-        "SELECT real_name, company, work_email, linkedin_url, site_url, sector "
+        "SELECT real_name, company, work_email, linkedin_url, site_url, sector, markets_json "
         "FROM chat_managers WHERE id=?", (mid,)).fetchone()
+    saved = dict(row) if row else None
+    if saved is not None:
+        mj = saved.pop("markets_json", None)
+        try:
+            saved["markets"] = json.loads(mj) if mj else []
+        except (ValueError, TypeError):
+            saved["markets"] = []
     return {"ok": True,
-            "saved": (dict(row) if row else None),
+            "saved": saved,
             "pending_email": pending_email,
             "email_error": email_error}
 
@@ -991,11 +1019,18 @@ def api_alerts_prefs_save(conn, mid: int, payload: dict) -> dict:
 
 
 def _member_markets(conn, mid: int) -> list:
-    """The ISO markets this member has selected in their profile (Markets of
-    interest chip box). Currently we don't persist the chip selection to
-    the DB, so return an empty list — engine falls back to 'all markets'.
-    Wire this to the real column when we persist market chips."""
-    return []
+    """The ISO markets this member selected in their profile (Markets of interest
+    chip box), persisted on chat_managers.markets_json. Empty list → the alert
+    engine falls back to 'all markets'."""
+    row = conn.execute("SELECT markets_json FROM chat_managers WHERE id=?",
+                       (mid,)).fetchone()
+    if not row or not row["markets_json"]:
+        return []
+    try:
+        vals = json.loads(row["markets_json"])
+        return [str(x).upper() for x in vals if x] if isinstance(vals, list) else []
+    except (ValueError, TypeError):
+        return []
 
 
 def api_lists(conn, mid):

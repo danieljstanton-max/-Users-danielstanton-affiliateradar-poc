@@ -98,6 +98,12 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     if not _column_exists(conn, "chat_managers", "alert_prefs"):
         conn.execute("ALTER TABLE chat_managers ADD COLUMN alert_prefs TEXT")
         applied.append("chat_managers.alert_prefs")
+    # chat_managers.markets_json — the member's "Markets of interest" chips
+    # (a JSON array of ISO codes). Saved from the Profile form, used to target
+    # their alerts. NULL until they save; the app then defaults to none-selected.
+    if not _column_exists(conn, "chat_managers", "markets_json"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN markets_json TEXT")
+        applied.append("chat_managers.markets_json")
     # Stripe billing columns — added lazily as we wire real payments.
     # We store the Stripe customer id on the manager (one per person)
     # and the current subscription's id + status + expiry on the swap
