@@ -12,10 +12,25 @@ def now_iso() -> str:
 
 
 def connect() -> sqlite3.Connection:
+    """Open a connection with lock-friendly PRAGMAs.
+
+    Chat polling + alerts scheduler + normal request traffic used to
+    trip 'database is locked' on any brief contention because SQLite's
+    default busy_timeout is 0 (fail immediately). We wait 5 seconds
+    for a writer to finish before giving up, which effectively
+    eliminates the error under normal load without adding latency to
+    the fast path. WAL + synchronous=NORMAL is the recommended
+    small-app config.
+    """
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(config.DB_PATH)
+    conn = sqlite3.connect(config.DB_PATH, timeout=5.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 5000")
+    # WAL is a persistent per-DB setting but re-asserting per connection
+    # is cheap and defends against a boot that ran init before migrate.
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
     return conn
 
 
