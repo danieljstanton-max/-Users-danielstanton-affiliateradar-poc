@@ -1587,7 +1587,7 @@ function renderMarkets(){
     '<section class="mk-side-row">'+
       '<div class="mk-tile"><span class="ico"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M2 10 H18 M10 2 C 6 5, 6 15, 10 18 M10 2 C 14 5, 14 15, 10 18" stroke="currentColor" stroke-width="1.6"/></svg></span><div><div class="n" id="mk-count">— countries</div><div class="l">Worldwide coverage — <b id="mk-sites-total">—</b> verified affiliate sites across the network</div></div></div>'+
       '<div class="mk-top">'+
-        '<div class="head"><h3><svg viewBox="0 0 15 15" fill="none"><path d="M2 12 L6 7 L9 10 L13 3 M13 3 L13 7 M13 3 L9 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Top Markets</h3><a class="view-all">View all →</a></div>'+
+        '<div class="head"><h3><svg viewBox="0 0 15 15" fill="none"><path d="M2 12 L6 7 L9 10 L13 3 M13 3 L13 7 M13 3 L9 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Top Markets</h3><a class="view-all" style="cursor:pointer" onclick="scrollToAllMarkets()">View all →</a></div>'+
         '<table class="mk-top-table"><thead><tr><th></th><th>Country</th><th class="num">Sites</th><th class="num">Monthly traffic</th><th></th></tr></thead><tbody id="mk-top-body"></tbody></table>'+
       '</div>'+
     '</section>'+
@@ -1609,6 +1609,8 @@ function renderMarkets(){
 // market and jump straight to it (the market grid keeps filtering by country name).
 var _siteSearchT=null, _siteSearchSeq=0;
 function hideSiteSearch(){var w=document.getElementById('mk-site-results');if(w){w.hidden=true;w.innerHTML='';}}
+// "View all →" on the Top Markets card scrolls down to the full All Markets table.
+function scrollToAllMarkets(){var e=document.querySelector('.mk-all');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});}
 function siteSearch(raw){
   var q=(raw||'').trim();
   var w=document.getElementById('mk-site-results');if(!w)return;
@@ -2523,9 +2525,9 @@ function _hydrateAccountFull(meArg){
           '<div class="acct-card" style="margin-bottom:16px;border-color:rgba(61,124,255,0.30)">'+
             '<div class="acct-card-head"><span class="ico-hero"><svg viewBox="0 0 20 20" fill="none"><path d="M10 3 A7 7 0 1 1 3 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="10" cy="10" r="2.3" fill="currentColor"/></svg></span><div><h2>People want your sites</h2><p>They want a site you have &mdash; add one of their sites to your Want list to complete the swap.</p></div></div>'+
             interest.map(function(it){
-              var wants=it.wants.map(function(w){return h(w.name||w.domain);}).join(', ');
+              var wants=it.wants.map(function(w){return h(w.domain||w.name);}).join(', ');
               var offers=it.offers.length
-                ? it.offers.map(function(o){return '<button class="btn btn-gho btn-sm" style="margin:0 8px 8px 0" onclick="completeSwap(\''+o.domain+'\',this)">+ Want '+h(o.name||o.domain)+'</button>';}).join('')
+                ? it.offers.map(function(o){return '<button class="btn btn-gho btn-sm" style="margin:0 8px 8px 0" onclick="completeSwap(\''+o.domain+'\',this)" title="Add '+h(o.domain)+' to your Want list">+ Want '+h(o.domain||o.name)+'</button>';}).join('')
                 : '<span class="hint">They have no sites you can swap for yet.</span>';
               return '<div style="padding:14px 0;border-top:1px solid var(--line)"><div style="font-size:14px"><b>'+h(it.name)+'</b>'+(it.company?' <span class="ev">&middot; '+h(it.company)+'</span>':'')+' wants your <b>'+wants+'</b></div><div style="margin-top:9px">'+offers+'</div></div>';
             }).join('')+
