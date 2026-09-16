@@ -922,6 +922,17 @@ def _chat_page(conn, flash: str = "") -> bytes:
     ]
     if flash:
         body.append(f"<div class='note'>{_esc(flash)}</div>")
+    try:
+        _msgs = conn.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
+    except Exception:
+        _msgs = 0
+    body.append(
+        f"<form method='post' action='/chat-clear' "
+        f"onsubmit=\"return confirm('Delete ALL {_msgs} chat message(s) in every room? This cannot be undone.')\" "
+        f"style='margin:0 0 22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap'>"
+        f"<button class='btn reject' type='submit'>Clear all chat messages ({_msgs})</button>"
+        f"<span class='hint' style='font-weight:400'>Wipes the community-chat history in every room — "
+        f"use to clear test messages before going live.</span></form>")
     if not reports:
         body.append("<div class='empty'><div class='big'>✓</div>No open chat reports.</div>")
     for r in reports:
@@ -1690,6 +1701,17 @@ class _Handler(BaseHTTPRequestHandler):
                 service.moderate(conn, int(qs["id"][0]), form.get("action", ["dismiss"])[0], by="backoffice")
                 self._send(b"", code=303,
                            headers={"Location": "/chat?flash=" + urllib.parse.quote("Report actioned via CometChat.")})
+                return
+            if parsed.path == "/chat-clear":               # operator: wipe community chat history
+                try:
+                    n = conn.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
+                    conn.execute("DELETE FROM chat_messages")
+                    conn.commit()
+                    msg = f"Cleared {n} chat message(s) from every room."
+                except Exception as e:
+                    msg = f"Could not clear chat: {e}"
+                self._send(b"", code=303,
+                           headers={"Location": "/chat?flash=" + urllib.parse.quote(msg)})
                 return
             if parsed.path == "/api/chat/session":         # APP-FACING: mint a gated session
                 from .chat import service
