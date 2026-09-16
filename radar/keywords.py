@@ -254,11 +254,15 @@ _EU: dict[str, dict[str, list[tuple[str, str]]]] = {
                           "paris sportifs en ligne", "sites de paris sportifs", "comparatif bookmakers"),
     },
     "NO": {
-        "casino": _kw("no", "beste nettcasinoer", "anmeldelser av nettcasino", "beste casinosider",
-                      "nye nettcasinoer", "nettcasinoer 2026", "casino bonus",
-                      "casino bonus uten innskudd", "casinoer med raske uttak"),
-        "sportsbook": _kw("no", "beste bettingsider", "anmeldelser av bettingsider",
-                          "beste bookmakere", "sportsbetting på nett"),
+        "casino": _kw("no",
+                      "nettcasino", "casino på nett", "norske casino", "beste nettcasino",
+                      "beste casino", "casino bonus", "casino bonus uten innskudd",
+                      "gratisspinn", "spilleautomater", "live casino",
+                      "casino med raske uttak", "anmeldelser av nettcasino",
+                      "beste casinosider", "nye nettcasinoer"),
+        "sportsbook": _kw("no",
+                          "bettingsider", "beste bettingsider", "odds på nett",
+                          "sportsbetting", "anmeldelser av bettingsider", "beste bookmakere"),
     },
 }
 
