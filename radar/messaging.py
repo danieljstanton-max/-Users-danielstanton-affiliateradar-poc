@@ -89,3 +89,48 @@ def recipient_count(conn: sqlite3.Connection) -> int:
     """How many verified members a broadcast would reach (for the operator UI)."""
     return conn.execute(
         "SELECT COUNT(*) FROM chat_managers WHERE status='verified'").fetchone()[0]
+
+
+# --- auto welcome, dropped into a member's inbox the moment they sign up -------
+WELCOME_TITLE = "Welcome to Affswap 👋"
+# {count} is replaced with the live registered-member count at send time, so the
+# opening stays true forever instead of going stale.
+WELCOME_BODY = """Thanks for joining Affswap.
+
+You're now one of {count} affiliate managers who've registered and taken time to have a look around — which is exactly how a swap network gets stronger.
+
+The platform works best when everyone gives a little to get a lot. Take some time to go through the site and mark the websites you Have and the websites you Want. The more people that do this, the more matches are created — and the stronger the whole ecosystem becomes.
+
+Affswap is free to use, and you can keep earning free swaps through the Loyalty section in My Account. You can earn swaps by:
+
+• Writing reviews
+• Adding affiliate websites that aren't already listed
+• Sharing Affswap on LinkedIn
+
+If there's a website you work with, know the owner of, or have simply been following, just add the URL through the Loyalty section. Within minutes it's added to Affswap with its own traffic page, so you can watch whether its SEO traffic is growing or declining.
+
+You'll also earn a free swap for every 5 reviews you leave — the more useful information everyone contributes, the more value there is for the whole network.
+
+And please don't be afraid to send feedback. If there's a feature you'd like to see, let us know — we move quickly, and where it makes sense we'll build it for everyone.
+
+Thanks again for being part of the early Affswap community.
+
+— The Affswap Team"""
+
+
+def send_welcome(conn: sqlite3.Connection, mid: int) -> int:
+    """Send the welcome message to a brand-new member. Idempotent — never welcomes
+    the same member twice — and best-effort (never blocks signup). Returns the new
+    message id, or None if already welcomed / on any error."""
+    try:
+        _ensure(conn)
+        already = conn.execute(
+            "SELECT 1 FROM member_messages WHERE manager_id=? AND sent_by='system:welcome'",
+            (mid,)).fetchone()
+        if already:
+            return None
+        n = conn.execute("SELECT COUNT(*) FROM chat_managers WHERE status!='rejected'").fetchone()[0]
+        body = WELCOME_BODY.replace("{count}", f"{n:,}")
+        return send(conn, mid, WELCOME_TITLE, body, by="system:welcome")
+    except Exception:
+        return None

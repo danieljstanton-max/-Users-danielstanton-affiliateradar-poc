@@ -1073,6 +1073,7 @@ def api_signup(conn, payload):
         (f"web_{when}_{handle[:20]}", handle, real_name, company, work_email, linkedin, site_url, sector, when, when)
     )
     conn.commit()
+    messaging.send_welcome(conn, cur.lastrowid)   # waiting in their inbox on first login
     return {"ok": True, "id": cur.lastrowid, "status": "pending"}
 
 
@@ -1120,6 +1121,7 @@ def api_register(conn, payload):
              sector, ph, when, when, when, when))
         mid = cur.lastrowid
     swaps.ensure_account(conn, mid, plan="standard")
+    messaging.send_welcome(conn, mid)             # welcome waiting the moment they land
     conn.commit()
     return ({"ok": True, "id": mid, "handle": handle},
             auth.set_cookie_header(auth.make_session_cookie(mid)))
@@ -1210,6 +1212,7 @@ def linkedin_land(conn, ui: dict) -> int:
          email_verified, when, when, when, when))
     mid = cur.lastrowid
     swaps.ensure_account(conn, mid, plan="standard")
+    messaging.send_welcome(conn, mid)             # first-time LinkedIn member — welcome them
     conn.commit()
     return mid
 
