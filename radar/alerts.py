@@ -25,7 +25,7 @@ from .locations import flag, name
 
 TRIGGERS = ("new", "up", "down")
 CHANNELS = ("push", "email", "telegram")
-VERTICALS = ("casino", "sportsbook", "bingo", "poker")
+VERTICALS = ("casino", "sportsbook", "bingo", "poker", "crypto")
 NEW_WINDOW_DAYS = 14                       # a site reads as "new" for this long
 _TRIGGER_LABEL = {"new": "✦ New affiliate", "up": "▲ Traffic up", "down": "▼ Traffic down"}
 

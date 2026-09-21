@@ -22,7 +22,7 @@ import re
 import sqlite3
 
 # The 4-value taxonomy (kept in sync with keywords.py / importer.py / alerts.py).
-VERTICALS = ("casino", "sportsbook", "bingo", "poker")
+VERTICALS = ("casino", "sportsbook", "bingo", "poker", "crypto")
 
 # Domain-substring signals per vertical, ordered casino-last so a domain that
 # names another vertical explicitly (oddschecker, pokerstars) isn't drowned by a

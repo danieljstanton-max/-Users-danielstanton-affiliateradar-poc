@@ -102,7 +102,7 @@ def set_display_name(conn: sqlite3.Connection, site_id: int,
                owner="human", source=f"admin:{admin}")
 
 
-_VALID_VERTICALS = ("casino", "sportsbook", "bingo", "poker")
+_VALID_VERTICALS = ("casino", "sportsbook", "bingo", "poker", "crypto")
 
 
 def set_verticals(conn: sqlite3.Connection, site_id: int, verticals, admin: str) -> None:

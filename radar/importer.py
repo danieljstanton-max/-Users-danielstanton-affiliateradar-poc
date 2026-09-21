@@ -37,7 +37,7 @@ ALIASES = {
     "teams": "teams", "ms_teams": "teams", "microsoft_teams": "teams",
     "status": "status", "classification": "status",
 }
-VERTICALS = ("casino", "sportsbook", "bingo", "poker")
+VERTICALS = ("casino", "sportsbook", "bingo", "poker", "crypto")
 STATUSES = ("candidate", "affiliate", "rejected")
 
 TEMPLATE = (

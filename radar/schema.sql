@@ -61,7 +61,9 @@ CREATE TABLE IF NOT EXISTS sites (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS site_verticals (
     site_id   INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
-    vertical  TEXT NOT NULL CHECK (vertical IN ('casino','sportsbook','bingo','poker')),
+    -- vertical is validated in the app (tagging/ownership), not by a CHECK, so
+    -- new tags like 'crypto' can be added without a schema migration.
+    vertical  TEXT NOT NULL,
     source    TEXT NOT NULL DEFAULT 'auto' CHECK (source IN ('auto','human')),
     PRIMARY KEY (site_id, vertical)
 );

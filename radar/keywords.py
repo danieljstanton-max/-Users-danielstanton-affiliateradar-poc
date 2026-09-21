@@ -10,12 +10,20 @@ from __future__ import annotations
 
 from . import locations
 
-VERTICALS = ("casino", "sportsbook", "bingo", "poker")
+VERTICALS = ("casino", "sportsbook", "bingo", "poker", "crypto")
 
 
 def _kw(lang: str, *terms: str) -> list[tuple[str, str]]:
     """Compact helper: attach one language to many keywords."""
     return [(t, lang) for t in terms]
+
+
+# Crypto-casino terms are searched in English almost everywhere, so we reuse one
+# English set across the English-first markets to find crypto affiliates.
+_CRYPTO_EN = _kw("en",
+    "crypto casino", "bitcoin casino", "best crypto casinos", "best bitcoin casinos",
+    "crypto gambling sites", "no kyc casino", "bitcoin gambling",
+    "crypto casino no deposit bonus")
 
 
 # Hand-curated launch markets. keyed by (ISO, vertical) -> [(keyword, lang)].
@@ -269,6 +277,11 @@ _EU: dict[str, dict[str, list[tuple[str, str]]]] = {
 for _iso, _verts in _EU.items():
     for _vert, _kws in _verts.items():
         CURATED[(_iso, _vert)] = _kws
+
+# crypto casinos — English crypto terms across the main markets crypto affiliates
+# target (searched in English even in non-English geos).
+for _iso in ("US", "GB", "CA", "AU", "IE", "NZ", "IN", "ZA", "DE", "BR"):
+    CURATED[(_iso, "crypto")] = _CRYPTO_EN
 
 
 def _seed_keywords(iso: str, vertical: str) -> list[tuple[str, str]]:

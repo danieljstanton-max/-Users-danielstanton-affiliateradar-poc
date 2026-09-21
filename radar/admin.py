@@ -242,6 +242,8 @@ _SIDEBAR = [
          "SELECT COUNT(*) n FROM reviews WHERE status='pending'"),
         ("feedback", "/feedback", "Feedback",
          "SELECT COUNT(*) n FROM feedback WHERE status='new'"),
+        ("crypto", "/crypto", "Crypto review",
+         "SELECT COUNT(*) n FROM crypto_review WHERE status='pending'"),
         ("shots", "/screenshots", "Homepages",
          "SELECT COUNT(*) n FROM sites s WHERE s.classification='affiliate' "
          "AND s.id NOT IN (SELECT site_id FROM blacklist) "
@@ -1445,6 +1447,55 @@ def _member_detail_page(conn, mid: int, flash: str = "", temp_pw: str = "") -> b
     return _page("".join(body), title=f"Member · {name}")
 
 
+def _crypto_page(conn, flash: str = "") -> bytes:
+    """Crypto-casino review queue — candidates detected by name / crypto keywords.
+    Nothing is tagged 'crypto' until the operator confirms it here."""
+    from . import crypto
+    pending = crypto.list_review(conn, "pending")
+    dismissed = crypto.count(conn, "dismissed")
+    tagged = crypto.crypto_affiliate_count(conn)
+    body = [
+        "<div class='eyebrow'>Affswap · Back office</div>",
+        "<h1>Crypto review</h1>",
+        "<p class='sub'>Affiliates flagged as maybe promoting crypto casinos — by their domain / brand "
+        "name, or by ranking for crypto-casino keywords. <b>Nothing is tagged until you confirm it.</b> "
+        "Open the site, check it, then Confirm (adds the Crypto tag + filter) or mark Not crypto.</p>",
+        f"<p class='mode'>Pending: <b>{len(pending)}</b> &nbsp;·&nbsp; "
+        f"Tagged crypto: <b>{tagged}</b> &nbsp;·&nbsp; Dismissed: <b>{dismissed}</b></p>",
+        _nav("crypto", _queue_count(conn)),
+    ]
+    if flash:
+        body.append(f"<div class='note'>{_esc(flash)}</div>")
+    body.append(
+        "<form method='post' action='/crypto-detect' style='margin:0 0 16px'>"
+        "<button class='btn secondary' type='submit'>🔍 Detect crypto casinos</button>"
+        "<span class='hint' style='margin-left:11px'>Scans every affiliate by name (free), then runs a "
+        "crypto-keyword search on the live server to catch ones that rank for crypto. Adds them here "
+        "for review — never tags automatically.</span></form>")
+    if not pending:
+        body.append("<div class='empty'><div class='big'>🪙</div>No crypto candidates waiting — "
+                    "run detection to scan the catalogue.</div>")
+        return _page("".join(body), title="Crypto review")
+    for r in pending:
+        etv = f"{int(r['etv']):,}/mo" if r["etv"] else "no traffic yet"
+        fl = flag(r["top_country"]) if r["top_country"] else ""
+        body.append(
+            "<div class='qcard'><div class='qthumb'>🪙</div>"
+            f"<div class='qmain'><div class='qdomain'>{_esc(r['domain'])}"
+            f"<a href='https://{_esc(r['domain'])}/' target='_blank' rel='noopener noreferrer' "
+            f"style='font-size:12px;font-weight:700;color:var(--blue-d);margin-left:10px'>Visit&nbsp;↗</a></div>"
+            f"<div class='qmeta'><span>{fl} <b>{etv}</b></span>"
+            f"<span class='ev'>flagged: {_esc(r['reason'])}</span></div></div>"
+            "<div class='qactions'>"
+            f"<form method='post' action='/crypto-confirm?id={r['site_id']}'>"
+            "<button class='btn approve' type='submit'>✓ Confirm crypto</button></form>"
+            f"<form method='post' action='/crypto-dismiss?id={r['site_id']}'>"
+            "<button class='btn reject' type='submit'>Not crypto</button></form>"
+            f"<a class='btn secondary' href='/site?id={r['site_id']}'>Details</a>"
+            "</div></div>")
+    return _page("".join(body), title="Crypto review")
+
+
 def _feedback_page(conn, flash: str = "") -> bytes:
     """Member feedback + feature requests, newest/unreviewed first."""
     conn.execute("CREATE TABLE IF NOT EXISTS feedback ("
@@ -1640,6 +1691,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(_reviews_page(conn, flash=flash))
             elif parsed.path == "/feedback":
                 self._send(_feedback_page(conn, flash=flash))
+            elif parsed.path == "/crypto":
+                self._send(_crypto_page(conn, flash=flash))
             elif parsed.path == "/blacklist":
                 self._send(_blacklist_page(conn, flash=flash))
             elif parsed.path == "/blacklist/sample":
@@ -1769,6 +1822,33 @@ class _Handler(BaseHTTPRequestHandler):
                     msg = f"Could not clear chat: {e}"
                 self._send(b"", code=303,
                            headers={"Location": "/chat?flash=" + urllib.parse.quote(msg)})
+                return
+            if parsed.path == "/crypto-detect":            # scan + queue crypto candidates (no tagging)
+                from . import crypto
+                from .providers.dataforseo import DataForSEOClient
+                try:
+                    r = crypto.detect(conn, client=DataForSEOClient())
+                    live = " (name + keyword search)" if r["serp_markets"] else " (name only — set DataForSEO creds for the keyword search)"
+                    msg = (f"Detection done{live}: {r['new_suggestions']} new candidate(s) queued, "
+                           f"{r['pending']} pending review.")
+                except Exception as e:
+                    msg = f"Detection failed: {e}"
+                self._send(b"", code=303,
+                           headers={"Location": "/crypto?flash=" + urllib.parse.quote(msg)})
+                return
+            if parsed.path == "/crypto-confirm":           # operator: yes, it's crypto -> tag it
+                from . import crypto
+                sid = int(qs["id"][0])
+                dom = (conn.execute("SELECT domain FROM sites WHERE id=?", (sid,)).fetchone() or ["site"])[0]
+                crypto.confirm(conn, sid)
+                self._send(b"", code=303,
+                           headers={"Location": "/crypto?flash=" + urllib.parse.quote(f"Tagged {dom} as crypto — it now shows in the Crypto filter.")})
+                return
+            if parsed.path == "/crypto-dismiss":           # operator: not crypto
+                from . import crypto
+                crypto.dismiss(conn, int(qs["id"][0]))
+                self._send(b"", code=303,
+                           headers={"Location": "/crypto?flash=" + urllib.parse.quote("Dismissed — not tagged crypto.")})
                 return
             if parsed.path == "/api/chat/session":         # APP-FACING: mint a gated session
                 from .chat import service

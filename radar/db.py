@@ -159,6 +159,24 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     if not _column_exists(conn, "chat_managers", "alert_prefs"):
         conn.execute("ALTER TABLE chat_managers ADD COLUMN alert_prefs TEXT")
         applied.append("chat_managers.alert_prefs")
+    # site_verticals originally CHECK-constrained vertical to the 4 launch types.
+    # Rebuild without that CHECK so new tags (crypto, …) are allowed; validation
+    # now lives in the app. Idempotent — only fires while the old CHECK is present.
+    _sv = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' "
+                       "AND name='site_verticals'").fetchone()
+    if _sv and "IN ('casino'" in (_sv["sql"] or ""):
+        conn.executescript(
+            "PRAGMA foreign_keys=OFF;"
+            "CREATE TABLE site_verticals_new ("
+            "  site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,"
+            "  vertical TEXT NOT NULL,"
+            "  source TEXT NOT NULL DEFAULT 'auto' CHECK (source IN ('auto','human')),"
+            "  PRIMARY KEY (site_id, vertical));"
+            "INSERT INTO site_verticals_new SELECT site_id, vertical, source FROM site_verticals;"
+            "DROP TABLE site_verticals;"
+            "ALTER TABLE site_verticals_new RENAME TO site_verticals;"
+            "PRAGMA foreign_keys=ON;")
+        applied.append("site_verticals.vertical_check_relaxed")
     # chat_managers.markets_json — the member's "Markets of interest" chips
     # (a JSON array of ISO codes). Saved from the Profile form, used to target
     # their alerts. NULL until they save; the app then defaults to none-selected.

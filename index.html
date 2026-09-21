@@ -1771,7 +1771,7 @@ function hydrateMarket(iso){
     });
     var country = d.country||{iso:iso,name:iso,flag:''};
     var totalEtv = MKD_STATE.rows.reduce(function(s,r){return s+r.etv;},0);
-    var cats={casino:0,sportsbook:0,bingo:0,poker:0};
+    var cats={casino:0,sportsbook:0,bingo:0,poker:0,crypto:0};
     var regCounts={regulated:0,unlicensed:0,soft:0,disputed:0,unknown:0};
     MKD_STATE.rows.forEach(function(r){var k=r.reg||'unknown';if(regCounts[k]!=null)regCounts[k]++;});
     MKD_STATE.rows.forEach(function(r){r.verts.forEach(function(v){var k=v.toLowerCase();if(cats[k]!=null)cats[k]++;});});
@@ -1842,6 +1842,7 @@ function hydrateMarket(iso){
         '<button class="mkd-pill" data-c="Sportsbook">Sportsbook <span class="n">'+cats.sportsbook+'</span></button>'+
         '<button class="mkd-pill" data-c="Bingo">Bingo <span class="n">'+cats.bingo+'</span></button>'+
         '<button class="mkd-pill" data-c="Poker">Poker <span class="n">'+cats.poker+'</span></button>'+
+        (cats.crypto?'<button class="mkd-pill" data-c="Crypto">Crypto <span class="n">'+cats.crypto+'</span></button>':'')+
       '</div>'+
 
       /* Regulation pills */
