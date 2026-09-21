@@ -505,6 +505,31 @@ def _list_page(conn, flash: str = "") -> bytes:
         f"<div class='stat'><div class='k'>Missing contact</div>"
         f"<div class='v {'warn' if missing else ''}'>{missing}</div></div>"
         "</div>")
+
+    # Launch growth — the real "what's happened since we opened" numbers. A 7- and
+    # 30-day window off the true activity signals (publishes, sign-ups, submissions).
+    def _since(sql, days):
+        try:
+            return conn.execute(sql.replace("{d}", str(days))).fetchone()[0]
+        except Exception:
+            return 0
+    q_pub = "SELECT COUNT(*) FROM sites WHERE classification='affiliate' AND published_at >= datetime('now','-{d} days')"
+    q_new = "SELECT COUNT(*) FROM chat_managers WHERE status!='rejected' AND created_at >= datetime('now','-{d} days')"
+    q_sub = "SELECT COUNT(*) FROM swap_contributions WHERE created_at >= datetime('now','-{d} days')"
+    tot_members = _since("SELECT COUNT(*) FROM chat_managers WHERE status!='rejected'", 99999)
+    body.append(
+        "<div class='card' style='max-width:none;margin:0 0 16px'>"
+        "<label style='margin-top:0'>Launch growth</label>"
+        "<div class='stats' style='margin:6px 0 0'>"
+        f"<div class='stat'><div class='k'>New sites · 7d</div><div class='v'>{_since(q_pub,7)}</div>"
+        f"<div class='hint' style='margin:0'>{_since(q_pub,30)} in 30d</div></div>"
+        f"<div class='stat'><div class='k'>New members · 7d</div><div class='v'>{_since(q_new,7)}</div>"
+        f"<div class='hint' style='margin:0'>{tot_members} total</div></div>"
+        f"<div class='stat'><div class='k'>Member submissions · 7d</div><div class='v'>{_since(q_sub,7)}</div>"
+        f"<div class='hint' style='margin:0'>sites members added</div></div>"
+        "</div>"
+        "<div class='hint'>New sites = affiliates published in the window. Members = sign-ups "
+        "(excludes rejected).</div></div>")
     body.append(
         "<form method='post' action='/refresh' style='margin:0 0 10px'>"
         "<button class='btn secondary' type='submit'>↻ Refresh traffic now</button>"
