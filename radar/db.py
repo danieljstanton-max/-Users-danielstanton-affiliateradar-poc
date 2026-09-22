@@ -146,6 +146,24 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             "CREATE INDEX idx_site_licenses_site ON site_licenses(site_id);"
             "CREATE INDEX idx_site_licenses_jur  ON site_licenses(jurisdiction);")
         applied.append("site_licenses")
+    # Presence — see radar/presence.py. last_seen_at drives "online now";
+    # member_activity is the sign-in / returning-visit log for the back office.
+    if not _column_exists(conn, "chat_managers", "last_seen_at"):
+        conn.execute("ALTER TABLE chat_managers ADD COLUMN last_seen_at TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_last_seen ON chat_managers(last_seen_at)")
+        applied.append("chat_managers.last_seen_at")
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                    "AND name='member_activity'").fetchone() is None:
+        conn.executescript(
+            "CREATE TABLE member_activity ("
+            " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " manager_id INTEGER NOT NULL REFERENCES chat_managers(id) ON DELETE CASCADE,"
+            " kind TEXT NOT NULL,"
+            " device TEXT,"
+            " created_at TEXT NOT NULL);"
+            "CREATE INDEX idx_activity_time ON member_activity(created_at DESC);"
+            "CREATE INDEX idx_activity_mgr  ON member_activity(manager_id, created_at DESC);")
+        applied.append("member_activity")
     # chat_managers.email_manually_set — flipped to 1 when a member
     # verifies a manual email change from the Profile form. linkedin_land
     # respects this flag: once set, LinkedIn's OIDC email claim will not

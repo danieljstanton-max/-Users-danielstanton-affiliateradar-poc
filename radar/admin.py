@@ -222,6 +222,7 @@ ICONS = {
     "swaps":     _ic("<path d='M4 8h13l-3-3'/><path d='M20 16H7l3 3'/>"),
     "rewards":   _ic("<rect x='4' y='9' width='16' height='11' rx='1.5'/><path d='M4 13h16M12 9v11'/><path d='M12 9c-2.2 0-4-1-4-2.6C8 5 9.8 5.4 12 9c2.2-3.6 4-4 4-2.6C16 8 14.2 9 12 9z'/>"),
     "chat":      _ic("<path d='M5 5h14v10H9l-4 4z'/>"),
+    "activity":  _ic("<path d='M3 12h4l3-7 4 14 3-7h4'/>"),
 }
 
 # grouped left-nav: (section, [(key, href, label, count_sql_or_None)])
@@ -257,6 +258,11 @@ _SIDEBAR = [
         ("blacklist", "/blacklist", "Blacklist", None),
     ]),
     ("Network", [
+        # Badge = members online right now (seen in the last 5 minutes). The
+        # cutoff is built with strftime so it matches now_iso()'s 'T' format.
+        ("activity", "/activity", "Activity · online",
+         "SELECT COUNT(*) n FROM chat_managers WHERE last_seen_at >= "
+         "strftime('%Y-%m-%dT%H:%M:%S+00:00','now','-5 minutes')"),
         ("fullmembers", "/full-members", "Members",
          "SELECT COUNT(*) n FROM chat_managers WHERE status='verified'"),
         ("swaps", "/swaps", "Swaps ledger", None),
@@ -1218,6 +1224,111 @@ def _members_page(conn, flash: str = "") -> bytes:
     return _page("".join(body), title="Member approvals")
 
 
+def _activity_page(conn) -> bytes:
+    """Who's online right now, and every sign-in / return visit this week."""
+    from . import presence
+    c = presence.counts(conn)
+    live = presence.online(conn)
+    log = presence.activity_since(conn, days=7)
+
+    def who(r) -> str:
+        return r.get("real_name") or r.get("handle") or "Member"
+
+    def avatar(r, size=30) -> str:
+        nm = who(r)
+        ini = "".join(w[0] for w in nm.split()[:2]).upper() or "?"
+        base = (f"width:{size}px;height:{size}px;border-radius:50%;flex:0 0 {size}px;"
+                "display:inline-flex;align-items:center;justify-content:center;overflow:hidden;")
+        if r.get("avatar_url"):
+            return (f"<span style='{base}background:var(--card2)'><img src='{_esc(r['avatar_url'])}' "
+                    "alt='' style='width:100%;height:100%;object-fit:cover'></span>")
+        return (f"<span style='{base}background:var(--blue);color:#fff;font-weight:700;"
+                f"font-size:{size * 0.4:.0f}px'>{_esc(ini)}</span>")
+
+    body = [
+        _nav("activity", 0),
+        "<div class='eyebrow'>Affswap · Back office</div>",
+        "<h1>Activity</h1>",
+        f"<p class='sub'>Members count as online if they've used the site in the last "
+        f"{presence.ONLINE_WINDOW_MINUTES} minutes. The log shows every sign-in, plus a "
+        f"<b>Returned</b> entry when someone comes back after {presence.SESSION_GAP_MINUTES}+ minutes "
+        "away (most members stay signed in for 30 days, so they rarely log in again). "
+        "Refreshes every minute.</p>",
+        "<div class='stats'>"
+        f"<div class='stat'><div class='k'>Online now</div><div class='v' style='color:var(--up)'>{c['online']}</div></div>"
+        f"<div class='stat'><div class='k'>Active · 24h</div><div class='v'>{c['today']}</div></div>"
+        f"<div class='stat'><div class='k'>Members · 7d</div><div class='v'>{c['week_members']}</div></div>"
+        f"<div class='stat'><div class='k'>Sessions · 7d</div><div class='v'>{c['week_sessions']}</div></div>"
+        "</div>",
+    ]
+
+    # --- Online now ---------------------------------------------------------
+    body.append("<div class='card' style='max-width:none;margin:0 0 22px'>"
+                "<label style='margin-top:0;display:flex;align-items:center;gap:8px'>"
+                "<span style='width:9px;height:9px;border-radius:50%;background:var(--up);"
+                "box-shadow:0 0 0 4px rgba(18,161,80,.18)'></span>"
+                f"Online now · {len(live)}</label>")
+    if not live:
+        body.append("<div class='hint' style='margin:6px 0 0'>Nobody right now.</div>")
+    else:
+        chips = []
+        for r in live:
+            chips.append(
+                f"<a href='/member?id={r['id']}' style='display:flex;align-items:center;gap:10px;"
+                "padding:8px 12px 8px 8px;border:1px solid var(--line);border-radius:12px;"
+                "background:#fff;text-decoration:none;color:var(--ink);min-width:220px'>"
+                + avatar(r) +
+                f"<span style='min-width:0'><b style='display:block;font-size:13.5px'>{_esc(who(r))}</b>"
+                f"<span style='font-size:11.5px;color:var(--ink2)'>{_esc(r.get('company') or '—')} · "
+                f"{presence.ago(r['last_seen_at'])}</span></span></a>")
+        body.append("<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px'>"
+                    + "".join(chips) + "</div>")
+    body.append("</div>")
+
+    # --- This week's log ----------------------------------------------------
+    body.append("<h2 style='font-size:17px;margin:0 0 10px'>This week</h2>")
+    if not log:
+        body.append("<div class='empty'><div class='big'>🕑</div>No sign-ins recorded yet — "
+                    "the log starts filling from this deploy onward.</div>")
+    else:
+        rows = []
+        for r in log:
+            rows.append(
+                f"<tr data-ts='{_esc(r['created_at'])}'>"
+                f"<td class='src'><time class='lt' datetime='{_esc(r['created_at'])}'>"
+                f"{_esc(r['created_at'][11:16])} UTC</time></td>"
+                f"<td><a href='/member?id={r['manager_id']}' style='display:flex;align-items:center;"
+                f"gap:9px;text-decoration:none;color:var(--ink)'>{avatar(r, 24)}"
+                f"<b style='font-size:13px'>{_esc(who(r))}</b></a></td>"
+                f"<td>{_esc(r.get('company') or '—')}</td>"
+                f"<td>{_esc(presence.KIND_LABEL.get(r['kind'], r['kind']))}</td>"
+                f"<td class='src'>{'📱 Mobile' if r.get('device') == 'mobile' else '💻 Desktop'}</td></tr>")
+        body.append("<table id='act-log'><thead><tr><th>Time</th><th>Member</th><th>Company</th>"
+                    "<th>How</th><th>Device</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>")
+
+    # Times are stored in UTC; show them in the viewer's own timezone and add a
+    # day header whenever the (local) date changes. Then reload every minute.
+    body.append("""<script>
+(function(){
+  var tb=document.querySelector('#act-log tbody'); var last='';
+  if(tb){ Array.prototype.slice.call(tb.rows).forEach(function(tr){
+    var d=new Date(tr.getAttribute('data-ts')); if(isNaN(d)) return;
+    var t=tr.querySelector('time.lt');
+    if(t) t.textContent=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    var day=d.toLocaleDateString([], {weekday:'long',day:'numeric',month:'short'});
+    if(day!==last){ last=day;
+      var h=document.createElement('tr');
+      h.innerHTML='<td colspan="5" style="background:var(--card2);font-weight:700;font-size:12px;'+
+        'letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)">'+day+'</td>';
+      tr.parentNode.insertBefore(h,tr);
+    }
+  });}
+  setTimeout(function(){ location.reload(); }, 60000);
+})();
+</script>""")
+    return _page("".join(body), title="Activity")
+
+
 def _full_members_page(conn, flash: str = "") -> bytes:
     """The member DIRECTORY — everyone approved/verified. Click through to manage."""
     from . import members
@@ -1685,6 +1796,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(_members_page(conn, flash=flash))
             elif parsed.path == "/full-members":
                 self._send(_full_members_page(conn, flash=flash))
+            elif parsed.path == "/activity":
+                self._send(_activity_page(conn))
             elif parsed.path == "/member":
                 self._send(_member_detail_page(conn, int(qs["id"][0]), flash=flash))
             elif parsed.path == "/reviews":
