@@ -10,3 +10,7 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+
+# SQLite WAL sidecars
+*.db-wal
+*.db-shm

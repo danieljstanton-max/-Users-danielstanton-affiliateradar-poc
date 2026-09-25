@@ -4009,6 +4009,9 @@ function route(){
 window.addEventListener('hashchange',route);
 updateMeChip();
 route();
+/* Presence heartbeat: a signed-in member reading one page still shows as
+   online in the back office. Skipped while the tab is hidden. */
+setInterval(function(){ if(!document.hidden && ME && ME.authed) updateMeChip(); }, 60000);
 </script>
 </body>
 </html>

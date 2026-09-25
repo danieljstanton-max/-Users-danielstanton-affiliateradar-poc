@@ -17,8 +17,17 @@ import os
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import auth, config, messaging, reviews, stripe_client, swaps, views
+from . import auth, config, messaging, presence, reviews, stripe_client, swaps, views
 from .db import connect, now_iso
+
+
+def _presence(fn, *args) -> None:
+    """Presence tracking is best-effort — a failure here must never break
+    the request the member actually made."""
+    try:
+        fn(*args)
+    except Exception as e:
+        print(f"[presence] {fn.__name__} failed: {e}")
 from .locations import flag, name
 
 DEMO_UID = "app_demo_user"
@@ -885,7 +894,10 @@ def api_chat_send(conn, mid, payload):
     # Rate cap — count posts by this member in the last 60 seconds.
     recent = conn.execute(
         "SELECT COUNT(*) c FROM chat_messages "
-        "WHERE manager_id=? AND created_at > datetime('now', '-60 seconds')",
+        # strftime (not datetime()) so the cutoff matches now_iso()'s 'T'
+        # format — datetime('now') uses a space, which sorts before 'T' and
+        # made every message from earlier today count as "last 60 seconds".
+        "WHERE manager_id=? AND created_at > strftime('%Y-%m-%dT%H:%M:%S+00:00','now','-60 seconds')",
         (mid,)).fetchone()["c"]
     if recent >= CHAT_MAX_PER_MINUTE:
         return {"ok": False, "error": "rate_limited",
@@ -1464,6 +1476,8 @@ class _H(BaseHTTPRequestHandler):
                 except Exception:
                     return self._redirect("/#/signup?li=failed",
                                           cookies=[auth.linkedin_clear_state_cookie()])
+                _presence(presence.log_login, conn, mid, "linkedin",
+                          self.headers.get("User-Agent"))
                 # Land on Account so the member immediately sees the
                 # fields we just pulled from LinkedIn (name, email,
                 # avatar). Better feedback than a home-page welcome.
@@ -1494,6 +1508,8 @@ class _H(BaseHTTPRequestHandler):
             cookies = self._cookies()
             mid = _me(conn, cookies)
             authed = _me_from_session(conn, cookies) is not None
+            if authed:
+                _presence(presence.touch, conn, mid, self.headers.get("User-Agent"))
             if u.path == "/api/home":
                 self._json(api_home(conn))
             elif u.path == "/api/geo":
@@ -1613,13 +1629,20 @@ class _H(BaseHTTPRequestHandler):
             mid = _me(conn, cookies)
             authed = _me_from_session(conn, cookies) is not None
             host = self._forwarded_host() or self.headers.get("Host", "127.0.0.1")
+            ua = self.headers.get("User-Agent")
+            if authed:
+                _presence(presence.touch, conn, mid, ua)
             # Auth-mutating endpoints handled first (they set their own cookies).
             if u.path == "/api/register":
                 res, cookie_hdr = api_register(conn, payload)
+                if res.get("ok") and res.get("id"):
+                    _presence(presence.log_login, conn, res["id"], "register", ua)
                 self._json(res, 200 if res.get("ok") else 400, set_cookie=cookie_hdr)
                 return
             if u.path == "/api/login":
                 res, cookie_hdr = api_login(conn, payload)
+                if res.get("ok") and res.get("id"):
+                    _presence(presence.log_login, conn, res["id"], "login", ua)
                 self._json(res, 200 if res.get("ok") else 401, set_cookie=cookie_hdr)
                 return
             if u.path == "/api/logout":
@@ -1632,6 +1655,8 @@ class _H(BaseHTTPRequestHandler):
                 return
             if u.path == "/api/reset":
                 res, cookie_hdr = api_reset_password(conn, payload)
+                if res.get("ok") and res.get("id"):
+                    _presence(presence.log_login, conn, res["id"], "reset", ua)
                 self._json(res, 200 if res.get("ok") else 400, set_cookie=cookie_hdr)
                 return
             if u.path == "/api/review":
