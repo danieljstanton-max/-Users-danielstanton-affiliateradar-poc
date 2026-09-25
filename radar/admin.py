@@ -430,6 +430,24 @@ def _queue_page(conn, kind: str = "seo", flash: str = "") -> bytes:
     ]
     if flash:
         body.append(f"<div class='note'>{_esc(flash)}</div>")
+    if not sub:
+        # Run discovery for a market/vertical on the live server — finds new
+        # affiliates ranking for its keywords and adds them to this queue.
+        from .locations import all_isos, name as _cname, flag as _cflag
+        _isos = sorted(all_isos(), key=lambda i: _cname(i) or i)
+        _mkopts = "".join(f"<option value='{i}'>{_cflag(i)} {_esc(_cname(i) or i)}</option>" for i in _isos)
+        _vopts = "".join(f"<option value='{v}'{' selected' if v=='casino' else ''}>{v.capitalize()}</option>"
+                         for v in ("casino", "sportsbook", "poker", "bingo", "crypto"))
+        body.append(
+            "<form method='post' action='/run-discovery' style='margin:0 0 18px;display:flex;"
+            "gap:8px;align-items:center;flex-wrap:wrap'>"
+            "<select name='iso' style='padding:8px 10px;border:1px solid var(--line);border-radius:8px;"
+            "font-size:13px'>" + _mkopts + "</select>"
+            "<select name='vertical' style='padding:8px 10px;border:1px solid var(--line);border-radius:8px;"
+            "font-size:13px'>" + _vopts + "</select>"
+            "<button class='btn secondary' type='submit'>🔍 Run discovery</button>"
+            "<span class='hint'>Searches this market's keywords live and adds any new affiliates to this "
+            "queue. Re-run casino across countries to catch ones you're missing.</span></form>")
     if not rows:
         msg = ("No member submissions waiting." if sub
                else "Queue is clear — every discovered site has been reviewed.")
@@ -1962,6 +1980,26 @@ class _Handler(BaseHTTPRequestHandler):
                 crypto.dismiss(conn, int(qs["id"][0]))
                 self._send(b"", code=303,
                            headers={"Location": "/crypto?flash=" + urllib.parse.quote("Dismissed — not tagged crypto.")})
+                return
+            if parsed.path == "/run-discovery":            # find new affiliates for a market/vertical
+                from .discovery import discover
+                from .locations import name as _cname
+                from .providers.dataforseo import DataForSEOClient
+                iso = (form.get("iso", [""])[0] or "").upper()
+                vertical = (form.get("vertical", ["casino"])[0] or "casino").lower()
+                try:
+                    r = discover(conn, iso, vertical, client=DataForSEOClient())
+                    mk = _cname(iso) or iso
+                    if not r.get("keywords"):
+                        msg = f"No {vertical} keywords for {mk} yet — nothing to search."
+                    else:
+                        msg = (f"{mk} · {vertical}: searched {r['keywords']} keywords, "
+                               f"{r['new_candidates']} new candidate(s) added to the queue "
+                               f"({r.get('auto_rejected_operators', 0)} operators auto-rejected).")
+                except Exception as e:
+                    msg = f"Discovery failed: {e}"
+                self._send(b"", code=303,
+                           headers={"Location": "/?flash=" + urllib.parse.quote(msg)})
                 return
             if parsed.path == "/api/chat/session":         # APP-FACING: mint a gated session
                 from .chat import service
