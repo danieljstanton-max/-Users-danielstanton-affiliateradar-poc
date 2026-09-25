@@ -2381,11 +2381,12 @@ function swapConfirmForm(m){
   var id=m.match_id, ch=(m.your_contact_channel||'email'), val=(m.your_contact_value||'');
   var opts=[['email','Email'],['teams','Microsoft Teams'],['telegram','Telegram'],['whatsapp','WhatsApp'],['other','Other']]
     .map(function(o){return '<option value="'+o[0]+'"'+(o[0]===ch?' selected':'')+'>'+o[1]+'</option>';}).join('');
+  var give=h(m.you_give||'the site');
   return '<div class="swconf" id="swconf-'+id+'" hidden>'+
-    '<div class="swc-h">Share your contact to complete the swap</div>'+
-    '<div class="swc-note">Choose how <b>'+h(m.with||'they')+'</b> should reach you and paste your details. It\'s only revealed once you both confirm.</div>'+
+    '<div class="swc-h">Share the contact for '+give+' to complete the swap</div>'+
+    '<div class="swc-note">Paste the affiliate contact for <b>'+give+'</b> — the site <b>'+h(m.with||'they')+'</b> asked for. This is what they receive; it\'s only revealed once you both confirm.</div>'+
     '<div class="swc-row"><select class="swc-sel" id="swch-'+id+'">'+opts+'</select>'+
-    '<input class="swc-inp" id="swcv-'+id+'" value="'+h(val)+'" placeholder="you@brand.com · @handle · +44…" autocomplete="off"></div>'+
+    '<input class="swc-inp" id="swcv-'+id+'" value="'+h(val)+'" placeholder="affiliate@'+give+' · @handle · +44…" autocomplete="off"></div>'+
     '<button class="match-btn" onclick="swapAgree('+id+',this)">Confirm swap · 1 swap</button></div>';
 }
 function toggleSwapForm(id,btn){
