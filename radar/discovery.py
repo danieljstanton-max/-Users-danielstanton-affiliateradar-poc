@@ -294,9 +294,18 @@ def _is_ignorable(domain: str) -> bool:
 
 
 def discover(conn: sqlite3.Connection, country: str, vertical: str,
-             client: DataForSEOClient | None = None) -> dict:
-    """Run discovery for one (country, vertical). Returns a summary dict."""
+             client: DataForSEOClient | None = None, min_etv: float | None = None) -> dict:
+    """Run discovery for one (country, vertical). Returns a summary dict.
+
+    min_etv gates on REAL traffic: after the SERP pass we pull each brand-new
+    candidate's traffic in this market and auto-reject the ones under the floor —
+    so only affiliates with actual traffic reach the review queue (default: the
+    app's per-country listing floor). Only applied with a live provider; pass 0
+    to disable."""
+    from .views import COUNTRY_MIN_ETV
     client = client or DataForSEOClient()
+    if min_etv is None:
+        min_etv = COUNTRY_MIN_ETV
     location_code = code_for(country)
     if location_code is None:
         raise ValueError(f"unknown country: {country}")
@@ -304,9 +313,10 @@ def discover(conn: sqlite3.Connection, country: str, vertical: str,
     kw_set = keywords.keywords_for(country, vertical)
     if not kw_set:
         return {"country": country, "vertical": vertical, "keywords": 0,
-                "domains": 0, "new_candidates": 0, "hits": 0}
+                "domains": 0, "new_candidates": 0, "hits": 0, "rejected_no_traffic": 0}
 
     seen_domains: set[str] = set()
+    new_sites: dict[str, int] = {}   # domain -> site_id for brand-new kept candidates
     new_candidates = 0
     rejected_ops = 0
     hit_count = 0
@@ -331,6 +341,8 @@ def discover(conn: sqlite3.Connection, country: str, vertical: str,
                     ownership.set_classification(conn, site_id, "rejected",
                                                  admin=f"discovery:auto-{verdict}")
                     rejected_ops += 1
+                else:
+                    new_sites[domain] = site_id   # candidate — traffic-check below
             seen_domains.add(domain)
 
             # record the SERP appearance (evidence trail)
@@ -356,8 +368,37 @@ def discover(conn: sqlite3.Connection, country: str, vertical: str,
                     conn.execute("UPDATE sites SET rank_best = ? WHERE id = ?",
                                  (rank, site_id))
 
+    # Traffic gate — keep only brand-new candidates with ACTUAL traffic in this
+    # market; auto-reject the no-/thin-traffic ones (hacked pages, parked domains,
+    # scrapers) and write real regions for the keepers so they show traffic in the
+    # queue. Needs a live provider; skipped in MOCK.
+    rejected_low = 0
+    if min_etv and new_sites and getattr(client, "live", False):
+        from .refresh import _write_regions, iso_week_for, LATEST_WEEK
+        iso = country.upper()
+        lang = (kw_set[0][1] if kw_set else "en")
+        doms = list(new_sites)
+        etv_map = {}
+        for i in range(0, len(doms), 1000):
+            try:
+                etv_map.update(client.bulk_domain_traffic(doms[i:i + 1000], location_code, lang))
+            except Exception:
+                pass
+        for dom, sid in new_sites.items():
+            v = round(etv_map.get(dom, 0) or 0, 1)
+            if v >= min_etv:
+                _write_regions(conn, sid, {iso: v}, v, iso)
+                ownership.apply_api_update(
+                    conn, sid, {"etv": v, "top_country": iso,
+                                "last_api_refresh": iso_week_for(LATEST_WEEK)},
+                    source="dataforseo:discovery")
+            else:
+                ownership.set_classification(conn, sid, "rejected",
+                                             admin="discovery:no-traffic")
+                rejected_low += 1
+
     conn.commit()
     return {"country": country.upper(), "vertical": vertical,
             "keywords": len(kw_set), "domains": len(seen_domains),
             "new_candidates": new_candidates, "auto_rejected_operators": rejected_ops,
-            "hits": hit_count}
+            "rejected_no_traffic": rejected_low, "hits": hit_count}

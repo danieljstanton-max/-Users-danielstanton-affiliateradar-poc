@@ -1993,9 +1993,12 @@ class _Handler(BaseHTTPRequestHandler):
                     if not r.get("keywords"):
                         msg = f"No {vertical} keywords for {mk} yet — nothing to search."
                     else:
-                        msg = (f"{mk} · {vertical}: searched {r['keywords']} keywords, "
-                               f"{r['new_candidates']} new candidate(s) added to the queue "
-                               f"({r.get('auto_rejected_operators', 0)} operators auto-rejected).")
+                        ops = r.get("auto_rejected_operators", 0)
+                        notraf = r.get("rejected_no_traffic", 0)
+                        kept = r["new_candidates"] - ops - notraf
+                        msg = (f"{mk} · {vertical}: searched {r['keywords']} keywords · "
+                               f"{kept} new affiliate(s) with traffic added to the queue · "
+                               f"auto-rejected {ops} operators + {notraf} with no traffic.")
                 except Exception as e:
                     msg = f"Discovery failed: {e}"
                 self._send(b"", code=303,
