@@ -270,6 +270,7 @@ def refresh_market(conn: sqlite3.Connection, iso: str,
                     "UPDATE site_regions SET is_primary=CASE WHEN country=? THEN 1 ELSE 0 END "
                     "WHERE site_id=?", (iso, sid))
                 promoted += 1
+        conn.commit()   # commit per chunk so the lock isn't held across bulk calls
         if progress:
             progress(min(i + 1000, len(doms)), len(doms))
     conn.commit()

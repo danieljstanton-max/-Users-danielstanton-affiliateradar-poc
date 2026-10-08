@@ -84,6 +84,7 @@ def detect(conn: sqlite3.Connection, client=None,
                         (dom,)).fetchone()
                     if site and _suggest(conn, site["id"], f"ranks for “{kw}”"):
                         added += 1
+                conn.commit()   # release the lock between SERP calls (avoid 'database is locked')
             serp_markets += 1
             if progress:
                 progress(serp_markets, len(markets), iso)

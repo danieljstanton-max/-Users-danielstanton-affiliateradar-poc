@@ -367,6 +367,10 @@ def discover(conn: sqlite3.Connection, country: str, vertical: str,
                 if cur is None or rank < cur:
                     conn.execute("UPDATE sites SET rank_best = ? WHERE id = ?",
                                  (rank, site_id))
+        # Commit after each keyword so the write lock is released between the slow
+        # SERP network calls — otherwise one long open transaction across the whole
+        # run collides with normal traffic (chat/alerts) → 'database is locked'.
+        conn.commit()
 
     # Traffic gate — keep only brand-new candidates with ACTUAL traffic in this
     # market; auto-reject the no-/thin-traffic ones (hacked pages, parked domains,
